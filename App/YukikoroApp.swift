@@ -6,23 +6,9 @@ struct YukikoroApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if let page = DemoMode.gallery3DPage {
-                Gallery3DView(page: page)
-            } else if let page = DemoMode.snapPage {
-                Gallery3DView(page: page, useSnapshots: true)
-            } else if let steps = DemoMode.ballSteps {
-                BallDemoView(steps: steps)
-            } else {
-                RootView()
-                    .environment(store)
-                    .tint(Palette.tint)
-            }
-            #else
             RootView()
                 .environment(store)
                 .tint(Palette.tint)
-            #endif
         }
     }
 }

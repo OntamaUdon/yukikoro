@@ -21,16 +21,15 @@ shot() {
   xcrun simctl terminate "$UDID" "$BUNDLE" || true
 }
 
-shot home-day      -yukikoro-demo -yukikoro-hour 11
-shot home-night    -yukikoro-demo -yukikoro-hour 22 -yukikoro-steps 12500
-shot home-small    -yukikoro-demo -yukikoro-hour 17 -yukikoro-steps 700
-shot home-xl       -yukikoro-demo -yukikoro-hour 9  -yukikoro-steps 26000
-shot collection    -yukikoro-demo -yukikoro-hour 11 -yukikoro-tab 1
-shot settings      -yukikoro-demo -yukikoro-hour 11 -yukikoro-tab 2
-shot complete      -yukikoro-demo -yukikoro-hour 11 -yukikoro-complete
-shot g3d-0         -yukikoro-gallery3d 0
-shot g3d-1         -yukikoro-gallery3d 1
-shot snap-0        -yukikoro-snap 0
-shot ball-day      -yukikoro-ball 4200 -yukikoro-hour 11
-shot ball-night    -yukikoro-ball 12500 -yukikoro-hour 22
+shot home-morning  -yukikoro-demo -yukikoro-hour 6.3
+shot home-day      -yukikoro-demo -yukikoro-hour 12
+shot home-dusk     -yukikoro-demo -yukikoro-hour 17.7  -yukikoro-steps 9000
+shot home-night    -yukikoro-demo -yukikoro-hour 22    -yukikoro-steps 12500
+shot stock         -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 1
+shot artworks      -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 2
+shot compose-day   -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 2 -yukikoro-compose
+shot compose-sel   -yukikoro-demo -yukikoro-hour 15 -yukikoro-tab 2 -yukikoro-compose -yukikoro-select
+shot compose-dusk  -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-tab 2 -yukikoro-compose
+shot compose-night -yukikoro-demo -yukikoro-hour 22 -yukikoro-tab 2 -yukikoro-compose
+shot sculpt        -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 1 -yukikoro-sculpt
 shot onboarding

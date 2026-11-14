@@ -1,62 +1,64 @@
 import SceneKit
 import UIKit
-import Metal
 import simd
 
-/// ホームに出す「転がる雪玉」の 3D シーン。雪道の写真を背景に、実際の光で照らされた雪玉が歩数に合わせて大きくなる。
+/// ホームに出す「転がる雪玉」の 3D シーン。時刻に合わせた空と雪原の上で、歩数に合わせて雪玉が大きくなる。
 final class BallScene: NSObject {
-    let scene = SCNScene()
+    let scene: SCNScene
     let camera = SCNNode()
+    private let rig: SkyRig
     private let pivot = SCNNode()   // 位置と大きさ
     private let ball = SCNNode()    // 回転
     private var steps = 0
     private var hasShown = false
+    private var timer: Timer?
+    private let hourProvider: () -> Double
 
     /// 雪玉をカメラの正面に置く距離
     static let ballDistance: Float = 4.4
 
-    init(daypart: Daypart, yaw: Float? = nil) {
+    init(hourProvider: @escaping () -> Double) {
+        self.hourProvider = hourProvider
+        let newScene = SCNScene()
+        scene = newScene
+        rig = SkyRig(scene: newScene, ground: true, shadows: true)
         super.init()
-        SnowmanScene.applyEnvironment(to: scene, daypart: daypart, background: true, yaw: yaw ?? daypart.backgroundYaw)
-        SnowmanScene.addSun(to: scene, daypart: daypart, castsShadow: false, intensity: 1300)
+        rig.apply(hour: hourProvider())
         buildBall()
-        buildCamera(daypart: daypart)
-        buildSnowfall(daypart: daypart)
+        buildCamera()
+        buildSnowfall()
+        // 空は時間とともにゆっくり変わる
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.rig.apply(hour: self.hourProvider())
+        }
     }
 
-    // MARK: 世界
+    deinit { timer?.invalidate() }
+
+    func refreshSky() { rig.apply(hour: hourProvider()) }
 
     // MARK: 雪玉
 
-    /// 半径1の雪玉（写真素材の質感）
-    static func makeBallNode() -> SCNNode {
-        let geo = SnowGeometry.blob(radius: 1, seed: 11, lump: 0.06, frequency: 1.4, rings: 72, segments: 144, tile: (3, 2))
-        geo.materials = [PBR.snow(tile: (1, 1))]
-        return SCNNode(geometry: geo)
-    }
-
     private func buildBall() {
-        ball.addChildNode(BallScene.makeBallNode())
+        let shape = SnowShape.pristine(seed: 11)
+        ball.geometry = SculptMesh.geometry(for: shape, material: SnowMaterial.make())
         pivot.addChildNode(ball)
-        // 足元のやわらかい影（雪玉の大きさに合わせて広がる）
-        let contact = SnowmanScene.shadowBlob(size: 3.4)
-        contact.position = SCNVector3(0, -0.995, 0)
-        pivot.addChildNode(contact)
         scene.rootNode.addChildNode(pivot)
         apply(steps: 0, animated: false)
     }
 
-    private func buildCamera(daypart: Daypart) {
+    private func buildCamera() {
         camera.camera = SCNCamera()
         camera.camera?.projectionDirection = .horizontal
         camera.camera?.fieldOfView = 42
-        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.5 : -0.2)
+        SceneSetup.configure(camera: camera.camera!, exposure: -0.3)
         camera.position = SCNVector3(0, 1.6, 0)
         camera.look(at: SCNVector3(0, 0.34, -BallScene.ballDistance))
         scene.rootNode.addChildNode(camera)
     }
 
-    private func buildSnowfall(daypart: Daypart) {
+    private func buildSnowfall() {
         let ps = SCNParticleSystem()
         ps.birthRate = 26
         ps.particleLifeSpan = 8
@@ -99,7 +101,7 @@ final class BallScene: NSObject {
             SCNTransaction.animationDuration = 1.4
             SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeOut)
         }
-        // 大きくなったら雪玉を遠くへ置き、画面からはみ出さないようにする（上限はなく、見かけの大きさはゆっくり増える）
+        // 大きくなったら雪玉を遠くへ置き、画面からはみ出さないようにする（見かけの大きさはゆっくり増える）
         let distance = Float(BallScale.distance(radius: Double(radius), baseDistance: Double(BallScene.ballDistance)))
         pivot.simdScale = SIMD3<Float>(repeating: radius)
         pivot.simdPosition = SIMD3<Float>(0, radius, -distance)
@@ -107,7 +109,7 @@ final class BallScene: NSObject {
 
         if animated, newSteps > old {
             let rolled = Float(newSteps - old) * 0.02
-            let angle = min(max(0.6, rolled / radius), 3 * .pi)
+            let angle = min(max(0.6, rolled / radius), 3 * Float.pi)
             let roll = SCNAction.rotateBy(x: CGFloat(angle), y: 0, z: 0, duration: 1.6)
             roll.timingMode = .easeInEaseOut
             ball.runAction(roll)

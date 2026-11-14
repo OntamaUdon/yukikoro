@@ -29,8 +29,8 @@ struct SettingsView: View {
 
                 Section("きろく") {
                     LabeledContent("これまでに転がした歩数", value: "\(formatSteps(store.state.totalSteps))歩")
-                    LabeledContent("つくった雪だるま", value: "\(store.state.snowmen.count)体")
-                    LabeledContent("ずかん", value: "\(store.state.discoveredKindCount) / \(GameState.totalKindCount)")
+                    LabeledContent("つくったゆきだま", value: "\(store.state.totalPieceCount)こ")
+                    LabeledContent("つくった作品", value: "\(store.state.artworks.count)点")
                 }
 
                 Section("このアプリについて") {
@@ -69,7 +69,7 @@ struct SettingsView: View {
                 Button("リセットする", role: .destructive) { store.resetAll() }
                 Button("やめる", role: .cancel) {}
             } message: {
-                Text("つくった雪だるまとずかんが消えます。元に戻せません。")
+                Text("つくったゆきだまと作品がすべて消えます。元に戻せません。")
             }
         }
     }

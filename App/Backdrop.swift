@@ -1,13 +1,13 @@
 import SwiftUI
 
-extension Daypart {
-    /// いまの時間帯（デバッグ起動時は引数で上書きできる）
-    static func now(_ date: Date = Date()) -> Daypart {
-        var hour = Calendar.current.component(.hour, from: date)
+enum SkyClock {
+    /// いまの時刻（0〜24。小数で分も表す。デバッグ起動時は引数で上書きできる）
+    static func hour(_ date: Date = Date()) -> Double {
         #if DEBUG
-        if let override = DemoMode.hour { hour = override }
+        if let override = DemoMode.hour { return override }
         #endif
-        return Daypart.current(hour: hour)
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return Double(c.hour ?? 12) + Double(c.minute ?? 0) / 60
     }
 }
 

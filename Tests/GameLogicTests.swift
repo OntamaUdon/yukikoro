@@ -1,24 +1,6 @@
 import XCTest
 
 final class GameLogicTests: XCTestCase {
-    // MARK: サイズ段階
-
-    func testTierThresholds() {
-        XCTAssertNil(SizeTier.tier(forSteps: 0))
-        XCTAssertNil(SizeTier.tier(forSteps: 499))
-        XCTAssertEqual(SizeTier.tier(forSteps: 500), .s)
-        XCTAssertEqual(SizeTier.tier(forSteps: 2_999), .s)
-        XCTAssertEqual(SizeTier.tier(forSteps: 3_000), .m)
-        XCTAssertEqual(SizeTier.tier(forSteps: 8_000), .l)
-        XCTAssertEqual(SizeTier.tier(forSteps: 15_000), .xl)
-        XCTAssertEqual(SizeTier.tier(forSteps: 99_999), .xl)
-    }
-
-    func testCollectionTotal() {
-        // ふつう3種×4 + めずらしい3種×3 + レア2種×2 + とくべつ2種×1
-        XCTAssertEqual(GameState.totalKindCount, 12 + 9 + 4 + 2)
-    }
-
     // MARK: 歩数の台帳
 
     func testFirstSyncCreditsOnlyToday() {
@@ -92,124 +74,7 @@ final class GameLogicTests: XCTestCase {
         XCTAssertLessThanOrEqual(state.credited.count, 40)
     }
 
-    // MARK: 完成
-
-    func testCannotCompleteBelowMinimum() {
-        var state = GameState()
-        state.addBonus(steps: 499)
-        var rng = SplitMix64(seed: 1)
-        XCTAssertNil(state.complete(using: &rng))
-        XCTAssertEqual(state.rollingSteps, 499)
-    }
-
-    func testCompleteResetsAndRecords() {
-        var state = GameState()
-        state.addBonus(steps: 3_400)
-        var rng = SplitMix64(seed: 7)
-        let result = state.complete(using: &rng)
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.snowman.tier, .m)
-        XCTAssertEqual(result?.snowman.steps, 3_400)
-        XCTAssertEqual(result?.isNewKind, true)
-        XCTAssertEqual(state.rollingSteps, 0)
-        XCTAssertEqual(state.snowmen.count, 1)
-        XCTAssertEqual(state.totalSteps, 3_400)
-    }
-
-    func testSecondOfSameKindIsNotNew() {
-        var state = GameState()
-        state.snowmen = [Snowman(id: UUID(), species: .plain, tier: .s, steps: 600, madeAt: Date(), decorations: [])]
-        XCTAssertTrue(state.hasMade(species: .plain, tier: .s))
-        XCTAssertFalse(state.hasMade(species: .plain, tier: .m))
-        XCTAssertEqual(state.discoveredKindCount, 1)
-    }
-
-    // MARK: 種類と飾りの抽選
-
-    func testSmallSnowmenAreAlwaysCommon() {
-        var rng = SplitMix64(seed: 42)
-        for _ in 0..<500 {
-            let species = SnowmanFactory.pickSpecies(tier: .s, using: &rng)
-            XCTAssertEqual(species.rarity, .common)
-        }
-    }
-
-    func testSpecialSpeciesOnlyAtXL() {
-        var rng = SplitMix64(seed: 99)
-        var seenSpecialAtXL = false
-        for _ in 0..<2_000 {
-            for tier in [SizeTier.s, .m, .l] {
-                XCTAssertNotEqual(SnowmanFactory.pickSpecies(tier: tier, using: &rng).rarity, .special)
-            }
-            if SnowmanFactory.pickSpecies(tier: .xl, using: &rng).rarity == .special { seenSpecialAtXL = true }
-        }
-        XCTAssertTrue(seenSpecialAtXL)
-    }
-
-    func testRareAppearsFromL() {
-        var rng = SplitMix64(seed: 5)
-        for _ in 0..<1_000 {
-            XCTAssertNotEqual(SnowmanFactory.pickSpecies(tier: .m, using: &rng).rarity, .rare)
-        }
-    }
-
-    func testDecorationsRespectSpeciesAndCount() {
-        var rng = SplitMix64(seed: 2026)
-        for species in Species.allCases {
-            for tier in SizeTier.allCases {
-                for _ in 0..<50 {
-                    let decorations = SnowmanFactory.pickDecorations(species: species, tier: tier, using: &rng)
-                    let slots = decorations.map { $0.kind.slot }
-                    XCTAssertEqual(Set(slots).count, slots.count, "同じ枠に2つ付かない")
-                    XCTAssertTrue(decorations.allSatisfy { species.allows($0.kind) })
-                    XCTAssertTrue(decorations.allSatisfy { $0.hue >= 0 && $0.hue < Decoration.hueCount })
-                    XCTAssertLessThanOrEqual(decorations.count, SnowmanFactory.decorationCountRange(for: tier).upperBound)
-                    XCTAssertGreaterThanOrEqual(decorations.count, 1)
-                }
-            }
-        }
-    }
-
-    func testSeededFactoryIsDeterministic() {
-        var a = SplitMix64(seed: 1234)
-        var b = SplitMix64(seed: 1234)
-        let date = Date(timeIntervalSince1970: 0)
-        let x = SnowmanFactory.make(tier: .l, steps: 9_000, date: date, using: &a)
-        let y = SnowmanFactory.make(tier: .l, steps: 9_000, date: date, using: &b)
-        XCTAssertEqual(x.species, y.species)
-        XCTAssertEqual(x.decorations, y.decorations)
-    }
-
-    func testNames() {
-        let s = Snowman(id: UUID(), species: .usagi, tier: .l, steps: 9_000, madeAt: Date(), decorations: [])
-        XCTAssertEqual(s.name, "おおきなゆきうさぎ")
-        let k = Snowman(id: UUID(), species: .plain, tier: .xl, steps: 20_000, madeAt: Date(), decorations: [])
-        XCTAssertEqual(k.name, "ばかでかい雪だるま")
-    }
-
     // MARK: 保存
-
-    func testCodableRoundTripAndOldFiles() throws {
-        var state = GameState()
-        state.addBonus(steps: 4_000)
-        var rng = SplitMix64(seed: 3)
-        _ = state.complete(using: &rng)
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let data = try encoder.encode(state)
-        let decoded = try decoder.decode(GameState.self, from: data)
-        XCTAssertEqual(decoded.snowmen.count, 1)
-        XCTAssertEqual(decoded.totalSteps, 4_000)
-
-        // 将来の項目が足りない古いファイルでも読める
-        let minimal = Data("{\"rollingSteps\": 123}".utf8)
-        let old = try decoder.decode(GameState.self, from: minimal)
-        XCTAssertEqual(old.rollingSteps, 123)
-        XCTAssertTrue(old.snowmen.isEmpty)
-    }
 
     func testStorageSaveAndLoad() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("yukikoro-test-\(UUID().uuidString).json")
@@ -228,15 +93,15 @@ final class GameLogicTests: XCTestCase {
     func testBallRadiusGrowsUntilAchievementCap() {
         var previous = BallScale.radius(steps: 0)
         XCTAssertEqual(previous, BallScale.r0, accuracy: 0.0001)
-        for steps in stride(from: 500, through: SizeTier.maxSteps, by: 500) {
+        for steps in stride(from: 500, through: Snow.maxSteps, by: 500) {
             let r = BallScale.radius(steps: steps)
             XCTAssertGreaterThan(r, previous, "上限までは歩数が増えたら必ず大きくなる")
             previous = r
         }
         // 達成上限を超えたら、それ以上は大きくならない
-        XCTAssertEqual(BallScale.radius(steps: SizeTier.maxSteps * 10), BallScale.radius(steps: SizeTier.maxSteps), accuracy: 1e-12)
+        XCTAssertEqual(BallScale.radius(steps: Snow.maxSteps * 10), BallScale.radius(steps: Snow.maxSteps), accuracy: 1e-12)
         // 収束する漸近線ではなく、上限の直前まで伸びている（頭打ちで潰れていない）
-        XCTAssertGreaterThan(BallScale.radius(steps: SizeTier.maxSteps) - BallScale.radius(steps: SizeTier.maxSteps - 2_500), 0.04)
+        XCTAssertGreaterThan(BallScale.radius(steps: Snow.maxSteps) - BallScale.radius(steps: Snow.maxSteps - 2_500), 0.04)
         XCTAssertEqual(BallScale.fraction(0), 0, accuracy: 0.0001)
     }
 
@@ -256,15 +121,10 @@ final class GameLogicTests: XCTestCase {
         }
     }
 
-    func testTierRadiiAreReasonablySpaced() {
-        let radii = SizeTier.allCases.map { BallScale.radius(steps: $0.minSteps) }
-        for i in 1..<radii.count { XCTAssertGreaterThan(radii[i], radii[i - 1] + 0.1) }
-    }
-
     func testBallStaysOnScreenAndKeepsGrowingVisually() {
         let base = 4.4
         var previous = 0.0
-        for steps in [0, 500, 3_000, 8_000, 15_000, 22_000, SizeTier.maxSteps] {
+        for steps in [0, 500, 3_000, 8_000, 15_000, 22_000, Snow.maxSteps] {
             let r = BallScale.radius(steps: steps)
             let apparent = BallScale.apparentFraction(radius: r, baseDistance: base)
             XCTAssertLessThan(apparent, 0.86, "画面の幅に収まる")
@@ -277,44 +137,12 @@ final class GameLogicTests: XCTestCase {
 
     // MARK: 達成上限と持ち越し
 
-    func testStepsBeyondCapAreCarriedOver() {
-        var state = GameState()
-        state.addBonus(steps: SizeTier.maxSteps + 5_000)
-        XCTAssertEqual(state.rollingSteps, SizeTier.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 5_000)
-        XCTAssertTrue(state.isAtCap)
-        XCTAssertEqual(state.totalSteps, SizeTier.maxSteps + 5_000, "記録上の歩数は減らない")
-
-        // さらに歩いても雪玉は大きくならず、持ち越しに積まれる
-        state.addBonus(steps: 1_000)
-        XCTAssertEqual(state.rollingSteps, SizeTier.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 6_000)
-
-        // 雪だるまにすると、持ち越しが次の雪玉になる
-        var rng = SplitMix64(seed: 5)
-        let result = state.complete(using: &rng)
-        XCTAssertEqual(result?.snowman.steps, SizeTier.maxSteps)
-        XCTAssertEqual(result?.snowman.tier, .xl)
-        XCTAssertEqual(state.rollingSteps, 6_000)
-        XCTAssertEqual(state.reserveSteps, 0)
-    }
-
-    func testCarryOverIsAlsoCappedPerSnowball() {
-        var state = GameState()
-        state.addBonus(steps: SizeTier.maxSteps * 2 + 7_000)
-        XCTAssertEqual(state.reserveSteps, SizeTier.maxSteps + 7_000)
-        var rng = SplitMix64(seed: 6)
-        _ = state.complete(using: &rng)
-        XCTAssertEqual(state.rollingSteps, SizeTier.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 7_000)
-    }
-
     func testSyncedStepsFillTheBallBeforeReserve() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 29_000], todayKey: "2026-11-14")
         let gained = state.apply(daily: ["2026-11-14": 32_000], todayKey: "2026-11-14")
         XCTAssertEqual(gained, 3_000)
-        XCTAssertEqual(state.rollingSteps, SizeTier.maxSteps)
+        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
         XCTAssertEqual(state.reserveSteps, 2_000)
     }
 
@@ -324,5 +152,97 @@ final class GameLogicTests: XCTestCase {
         let state = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 900}".utf8))
         XCTAssertEqual(state.reserveSteps, 0)
         XCTAssertEqual(state.rollingSteps, 900)
+    }
+
+    // MARK: ゆきだま
+
+    func testCannotMakePieceBelowMinimum() {
+        var state = GameState()
+        state.addBonus(steps: Snow.minimumSteps - 1)
+        var rng = SplitMix64(seed: 1)
+        XCTAssertNil(state.makePiece(using: &rng))
+        XCTAssertTrue(state.stock.isEmpty)
+        XCTAssertEqual(state.rollingSteps, Snow.minimumSteps - 1)
+    }
+
+    func testMakePieceMovesRollingBallToStock() {
+        var state = GameState()
+        state.addBonus(steps: 3_400)
+        var rng = SplitMix64(seed: 7)
+        let piece = state.makePiece(using: &rng)
+        XCTAssertEqual(piece?.steps, 3_400)
+        XCTAssertEqual(state.stock.count, 1)
+        XCTAssertEqual(state.rollingSteps, 0)
+        XCTAssertEqual(state.totalSteps, 3_400)
+    }
+
+    func testStepsBeyondCapAreCarriedToNextBall() {
+        var state = GameState()
+        state.addBonus(steps: Snow.maxSteps + 5_000)
+        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
+        XCTAssertEqual(state.reserveSteps, 5_000)
+        XCTAssertTrue(state.isAtCap)
+        state.addBonus(steps: 1_000)
+        XCTAssertEqual(state.reserveSteps, 6_000)
+        var rng = SplitMix64(seed: 5)
+        let piece = state.makePiece(using: &rng)
+        XCTAssertEqual(piece?.steps, Snow.maxSteps)
+        XCTAssertEqual(state.rollingSteps, 6_000)
+        XCTAssertEqual(state.reserveSteps, 0)
+    }
+
+    func testCarryOverIsAlsoCappedPerBall() {
+        var state = GameState()
+        state.addBonus(steps: Snow.maxSteps * 2 + 7_000)
+        var rng = SplitMix64(seed: 6)
+        _ = state.makePiece(using: &rng)
+        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
+        XCTAssertEqual(state.reserveSteps, 7_000)
+    }
+
+    func testArtworkPiecesMoveBetweenStockAndArtwork() {
+        var state = GameState()
+        state.addBonus(steps: 1_000)
+        var rng = SplitMix64(seed: 2)
+        let piece = state.makePiece(using: &rng)!
+        var art = state.newArtwork()
+        let taken = state.takeFromStock(id: piece.id)
+        XCTAssertNotNil(taken)
+        XCTAssertTrue(state.stock.isEmpty)
+        art.placements.append(Placement(piece: taken!, position: SIMD3<Float>(0, taken!.radius, 0)))
+        state.saveArtwork(art)
+        XCTAssertEqual(state.artworks.count, 1)
+        XCTAssertEqual(state.totalPieceCount, 1)
+        // 作品を消すとゆきだまは手元に戻る
+        state.deleteArtwork(id: art.id)
+        XCTAssertEqual(state.stock.count, 1)
+        XCTAssertTrue(state.artworks.isEmpty)
+    }
+
+    func testCodableRoundTripKeepsShapesAndArtworks() throws {
+        var state = GameState()
+        state.addBonus(steps: 4_000)
+        var rng = SplitMix64(seed: 3)
+        var piece = state.makePiece(using: &rng)!
+        piece.shape.apply(tool: .carve, direction: SIMD3<Float>(0, 1, 0), size: 0.4, strength: 1)
+        piece.shape.apply(tool: .paint, direction: SIMD3<Float>(1, 0, 0), size: 0.3, strength: 3, color: SIMD3<Float>(1, 0, 0))
+        state.updateStock(id: piece.id, shape: piece.shape)
+        var art = state.newArtwork()
+        art.placements = [Placement(piece: piece, position: SIMD3<Float>(1, 2, 3), rotation: SIMD4<Float>(0, 0.7071, 0, 0.7071))]
+        state.saveArtwork(art)
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(GameState.self, from: try encoder.encode(state))
+        XCTAssertEqual(decoded.stock.first?.shape, piece.shape)
+        XCTAssertEqual(decoded.artworks.first?.placements.first?.position, SIMD3<Float>(1, 2, 3))
+        XCTAssertEqual(decoded.totalSteps, 4_000)
+
+        // 将来の項目が足りない古いファイルでも読める
+        let old = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 123}".utf8))
+        XCTAssertEqual(old.rollingSteps, 123)
+        XCTAssertTrue(old.stock.isEmpty)
     }
 }

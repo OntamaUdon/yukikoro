@@ -49,11 +49,8 @@ struct RecordsView: View {
 
                 Section("これまで") {
                     LabeledContent("転がした歩数", value: "\(formatSteps(store.state.totalSteps))歩")
-                    LabeledContent("つくった雪だるま", value: "\(store.state.snowmen.count)体")
-                    LabeledContent("ずかん", value: "\(store.state.discoveredKindCount) / \(GameState.totalKindCount)")
-                    if let biggest = store.state.snowmen.max(by: { $0.steps < $1.steps }) {
-                        LabeledContent("いちばん大きい雪だるま", value: "\(biggest.name)（\(formatSteps(biggest.steps))歩）")
-                    }
+                    LabeledContent("つくったゆきだま", value: "\(store.state.totalPieceCount)こ")
+                    LabeledContent("つくった作品", value: "\(store.state.artworks.count)点")
                 }
 
                 Section {

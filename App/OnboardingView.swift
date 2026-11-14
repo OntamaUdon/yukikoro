@@ -13,17 +13,15 @@ struct OnboardingView: View {
             SnowFall()
             VStack(spacing: 22) {
                 Spacer()
-                SnowmanSceneView(species: .plain, decorations: [
-                    Decoration(kind: .knitCap, hue: 0),
-                    Decoration(kind: .scarf, hue: 1),
-                ])
-                .frame(height: 300)
-                Text("ゆきころ")
+                PieceThumbnail(piece: SnowPiece(steps: 3_000, madeAt: Date(), shape: .pristine(seed: 5)), size: CGSize(width: 360, height: 360))
+                    .frame(width: 240, height: 240)
+                    .clipShape(Circle())
+                Text("ゆきころさんぽ")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.ink)
                 VStack(spacing: 10) {
                     Text("歩くと、足元の雪玉がころころ大きくなります。")
-                    Text("好きな大きさで雪だるまにして、\nいろんな子を集めよう。")
+                    Text("できた雪玉を削ったり色を塗ったりして形を整え、\nいくつも組み合わせて雪の彫刻を作ろう。")
                     Text("ノルマも期限もありません。のんびりどうぞ。")
                         .foregroundStyle(.secondary)
                 }

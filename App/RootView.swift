@@ -3,37 +3,36 @@ import SwiftUI
 struct RootView: View {
     @Environment(GameStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
-    @State private var tab = RootView.initialTab
-
-    private static var initialTab: Int {
-        #if DEBUG
-        return DemoMode.isOn ? DemoMode.tab : 0
-        #else
-        return 0
-        #endif
-    }
 
     var body: some View {
         @Bindable var store = store
-        TabView(selection: $tab) {
+        TabView(selection: $store.tab) {
             HomeView()
                 .tabItem { Label("ホーム", systemImage: "snowflake") }
                 .tag(0)
-            CollectionView()
-                .tabItem { Label("ずかん", systemImage: "square.grid.2x2") }
+            StockView()
+                .tabItem { Label("ゆきだま", systemImage: "circle.dotted") }
                 .tag(1)
+            ArtworksView()
+                .tabItem { Label("さくひん", systemImage: "sparkles") }
+                .tag(2)
             RecordsView()
                 .tabItem { Label("きろく", systemImage: "chart.bar.fill") }
-                .tag(2)
+                .tag(3)
             SettingsView()
                 .tabItem { Label("せってい", systemImage: "gearshape") }
-                .tag(3)
+                .tag(4)
         }
         .fullScreenCover(isPresented: .constant(!store.state.onboarded)) {
             OnboardingView()
         }
-        .sheet(item: $store.pendingResult) { result in
-            CompletionView(result: result)
+        .fullScreenCover(item: sculptingPiece) { piece in
+            SculptView(shape: piece.shape, title: "ゆきだまを整える",
+                       onDone: { shape in
+                           store.updateStock(id: piece.id, shape: shape)
+                           store.sculptingPieceID = nil
+                       },
+                       onCancel: { store.sculptingPieceID = nil })
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -42,5 +41,13 @@ struct RootView: View {
                 try? await Task.sleep(for: .seconds(15))
             }
         }
+    }
+
+    /// 整える画面に出すゆきだま
+    private var sculptingPiece: Binding<SnowPiece?> {
+        Binding(
+            get: { store.state.stock.first { $0.id == store.sculptingPieceID } },
+            set: { if $0 == nil { store.sculptingPieceID = nil } }
+        )
     }
 }

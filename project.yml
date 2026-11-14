@@ -28,7 +28,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: ゆきころ
+        CFBundleDisplayName: ゆきころさんぽ
         CFBundleDevelopmentRegion: ja
         UILaunchScreen: {}
         UIApplicationSceneManifest:

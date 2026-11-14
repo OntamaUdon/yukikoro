@@ -5,11 +5,9 @@ struct HomeView: View {
     @State private var confirming = false
 
     var body: some View {
-        let daypart = Daypart.now()
         let state = store.state
         ZStack(alignment: .bottom) {
-            BallSceneView(steps: state.rollingSteps, daypart: daypart)
-                .id(daypart)
+            BallSceneView(steps: state.rollingSteps)
                 .ignoresSafeArea()
 
             VStack {
@@ -26,7 +24,7 @@ struct HomeView: View {
     private func header(state: GameState) -> some View {
         HStack(spacing: 10) {
             chip(icon: "figure.walk", text: "今日 \(formatSteps(store.todaySteps))歩")
-            chip(icon: "snowflake", text: "雪だるま \(state.snowmen.count)体")
+            chip(icon: "circle.dotted", text: "ゆきだま \(state.stock.count)こ")
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -50,7 +48,7 @@ struct HomeView: View {
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(state.currentTier.map { "\($0.adjective)サイズ" } ?? "ころがし中")
+                Text(state.isAtCap ? "最大の大きさ" : "ころがし中")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -75,7 +73,7 @@ struct HomeView: View {
             Button {
                 confirming = true
             } label: {
-                Text("雪だるまにする")
+                Text("ゆきだまにする")
                     .font(.system(.headline, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
@@ -94,35 +92,27 @@ struct HomeView: View {
                 .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
                 .ignoresSafeArea(edges: .bottom)
         )
-        .confirmationDialog("この大きさで雪だるまにする？", isPresented: $confirming, titleVisibility: .visible) {
-            Button("雪だるまにする") { store.completeSnowman() }
+        .confirmationDialog("この大きさでゆきだまにする？", isPresented: $confirming, titleVisibility: .visible) {
+            Button("ゆきだまにする") { store.makePiece() }
             Button("もう少し転がす", role: .cancel) {}
         } message: {
-            if let tier = state.currentTier {
-                Text("\(tier.adjective)サイズ（\(formatSteps(state.rollingSteps))歩）の雪だるまができます。")
-            }
+            Text("\(formatSteps(state.rollingSteps))歩ぶんのゆきだまができます。削ったり色を塗ったりして、作品に使えます。")
         }
     }
 
-    /// 次のサイズまでの進み具合（0〜1）
+    /// 最大の大きさまでの進み具合（0〜1）
     private func progress(for state: GameState) -> Double {
-        let lower = state.currentTier?.minSteps ?? 0
-        let upper = state.nextTier?.minSteps ?? SizeTier.maxSteps
-        let span = Double(upper - lower)
-        return min(1, max(0, Double(state.rollingSteps - lower) / max(span, 1)))
+        min(1, max(0, Double(state.rollingSteps) / Double(Snow.maxSteps)))
     }
 
     private func hint(for state: GameState) -> String {
-        guard let tier = state.currentTier else {
-            return "\(SizeTier.minimumSteps)歩から雪だるまにできます。"
+        if state.rollingSteps < Snow.minimumSteps {
+            return "\(Snow.minimumSteps)歩から、ゆきだまにできます。"
         }
         if state.isAtCap {
             let carry = state.reserveSteps > 0 ? "（持ち越し \(formatSteps(state.reserveSteps))歩）" : ""
-            return "最大サイズに達しました。雪だるまにすると、次の雪玉へ歩数を持ち越せます。\(carry)"
+            return "最大の大きさに達しました。ゆきだまにすると、次の雪玉へ歩数を持ち越せます。\(carry)"
         }
-        if let next = state.nextTier {
-            return "いまは「\(tier.adjective)」サイズ。\(formatSteps(next.minSteps))歩で「\(next.adjective)」サイズになります。"
-        }
-        return "いまは最大の「\(tier.adjective)」サイズ。\(formatSteps(SizeTier.maxSteps))歩で最大サイズに達します。"
+        return "大きいほど、作品の主役になります。好きな大きさでゆきだまにしましょう。"
     }
 }

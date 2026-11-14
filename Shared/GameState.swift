@@ -10,25 +10,27 @@ enum DayKey {
 
 /// ゲームの全状態。UI から独立していて、単体テストできる。
 struct GameState: Codable, Equatable {
-    var version: Int = 1
+    var version: Int = 2
     var onboarded: Bool = false
     /// 初回の歩数同期（過去日のベースライン記録）が済んだか
     var initialized: Bool = false
-    /// 今転がしている雪玉の歩数（達成上限 `SizeTier.maxSteps` まで）
+    /// 今転がしている雪玉の歩数（達成上限 `Snow.maxSteps` まで）
     var rollingSteps: Int = 0
-    /// 達成上限を超えて余った歩数。雪だるまにしたあと、次の雪玉に持ち越す。
+    /// 達成上限を超えて余った歩数。ゆきだまにしたあと、次の雪玉に持ち越す。
     var reserveSteps: Int = 0
     /// これまでに雪玉に加算した歩数の合計
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
     var credited: [String: Int] = [:]
-    var snowmen: [Snowman] = []
+    /// 作品に使えるゆきだま（まだ置いていないもの）
+    var stock: [SnowPiece] = []
+    var artworks: [Artwork] = []
     var createdAt: Date = Date()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, rollingSteps, reserveSteps, totalSteps, credited, snowmen, createdAt
+        case version, onboarded, initialized, rollingSteps, reserveSteps, totalSteps, credited, stock, artworks, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -40,7 +42,8 @@ struct GameState: Codable, Equatable {
         reserveSteps = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
-        snowmen = try c.decodeIfPresent([Snowman].self, forKey: .snowmen) ?? []
+        stock = try c.decodeIfPresent([SnowPiece].self, forKey: .stock) ?? []
+        artworks = try c.decodeIfPresent([Artwork].self, forKey: .artworks) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 
@@ -79,7 +82,7 @@ struct GameState: Codable, Equatable {
 
     /// 雪玉に歩数を足す。達成上限を超えた分は持ち越しに回す。
     private mutating func addToBall(_ steps: Int) {
-        let room = max(0, SizeTier.maxSteps - rollingSteps)
+        let room = max(0, Snow.maxSteps - rollingSteps)
         let toBall = min(steps, room)
         rollingSteps += toBall
         reserveSteps += steps - toBall
@@ -95,54 +98,70 @@ struct GameState: Codable, Equatable {
 
     func creditedSteps(on key: String) -> Int { credited[key] ?? 0 }
 
-    // MARK: 雪だるまの完成
+    // MARK: ゆきだまにする
 
-    var canComplete: Bool { rollingSteps >= SizeTier.minimumSteps }
+    var canComplete: Bool { rollingSteps >= Snow.minimumSteps }
 
     /// 達成上限（最大サイズ）に到達しているか
-    var isAtCap: Bool { rollingSteps >= SizeTier.maxSteps }
+    var isAtCap: Bool { rollingSteps >= Snow.maxSteps }
 
-    var currentTier: SizeTier? { SizeTier.tier(forSteps: rollingSteps) }
-
-    var nextTier: SizeTier? { SizeTier.allCases.first { $0.minSteps > rollingSteps } }
-
-    mutating func complete<G: RandomNumberGenerator>(using g: inout G, now: Date = Date()) -> CompletionResult? {
-        guard let tier = currentTier else { return nil }
-        let snowman = SnowmanFactory.make(tier: tier, steps: rollingSteps, date: now, using: &g)
-        let isNew = !hasMade(species: snowman.species, tier: snowman.tier)
-        snowmen.append(snowman)
+    /// 転がしている雪玉をゆきだまにして、手元（ストック）に入れる。
+    mutating func makePiece<G: RandomNumberGenerator>(using g: inout G, now: Date = Date()) -> SnowPiece? {
+        guard canComplete else { return nil }
+        let seed = UInt32(truncatingIfNeeded: g.next())
+        let piece = SnowPiece(id: UUID(), steps: rollingSteps, madeAt: now, shape: .pristine(seed: seed))
+        stock.append(piece)
         // 達成上限を超えて持ち越していた歩数があれば、次の雪玉に回す
-        let carried = min(reserveSteps, SizeTier.maxSteps)
+        let carried = min(reserveSteps, Snow.maxSteps)
         rollingSteps = carried
         reserveSteps -= carried
-        return CompletionResult(snowman: snowman, isNewKind: isNew)
+        return piece
     }
 
-    mutating func complete(now: Date = Date()) -> CompletionResult? {
+    mutating func makePiece(now: Date = Date()) -> SnowPiece? {
         var g = SystemRandomNumberGenerator()
-        return complete(using: &g, now: now)
+        return makePiece(using: &g, now: now)
     }
 
-    // MARK: 図鑑
+    // MARK: ストックと作品
 
-    func hasMade(species: Species, tier: SizeTier) -> Bool {
-        snowmen.contains { $0.species == species && $0.tier == tier }
+    mutating func updateStock(id: UUID, shape: SnowShape) {
+        guard let i = stock.firstIndex(where: { $0.id == id }) else { return }
+        stock[i].shape = shape
     }
 
-    func latest(species: Species, tier: SizeTier) -> Snowman? {
-        snowmen
-            .filter { $0.species == species && $0.tier == tier }
-            .max { $0.madeAt < $1.madeAt }
+    /// ストックからゆきだまを取り出す（作品に置くとき）
+    mutating func takeFromStock(id: UUID) -> SnowPiece? {
+        guard let i = stock.firstIndex(where: { $0.id == id }) else { return nil }
+        return stock.remove(at: i)
     }
 
-    var discoveredKindCount: Int {
-        Set(snowmen.map { $0.kindKey }).count
+    mutating func returnToStock(_ piece: SnowPiece) {
+        guard !stock.contains(where: { $0.id == piece.id }) else { return }
+        stock.append(piece)
     }
 
-    /// 図鑑のマス数（種類×出現できるサイズ）
-    static var totalKindCount: Int {
-        Species.allCases.reduce(0) { sum, species in
-            sum + SizeTier.allCases.filter { $0 >= species.rarity.minTier }.count
+    mutating func newArtwork(now: Date = Date()) -> Artwork {
+        let artwork = Artwork(name: "作品\(artworks.count + 1)", createdAt: now, updatedAt: now)
+        artworks.append(artwork)
+        return artwork
+    }
+
+    mutating func saveArtwork(_ artwork: Artwork) {
+        if let i = artworks.firstIndex(where: { $0.id == artwork.id }) {
+            artworks[i] = artwork
+        } else {
+            artworks.append(artwork)
         }
     }
+
+    /// 作品を消す。使っていたゆきだまはストックに戻る。
+    mutating func deleteArtwork(id: UUID) {
+        guard let i = artworks.firstIndex(where: { $0.id == id }) else { return }
+        for p in artworks[i].placements { returnToStock(p.piece) }
+        artworks.remove(at: i)
+    }
+
+    /// 手元とすべての作品にあるゆきだまの数
+    var totalPieceCount: Int { stock.count + artworks.reduce(0) { $0 + $1.placements.count } }
 }

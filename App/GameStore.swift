@@ -8,8 +8,10 @@ final class GameStore {
     var state: GameState
     /// 直近の同期で増えた歩数（画面の演出用）
     var lastGain = 0
-    /// 雪だるま完成直後に出すシート用
-    var pendingResult: CompletionResult?
+    /// 選んでいるタブ（0:ホーム 1:ゆきだま 2:さくひん 3:きろく 4:せってい）
+    var tab = 0
+    /// 整える画面を開いているゆきだま（手元のもの）
+    var sculptingPieceID: UUID?
     /// 設定画面のバージョンを5回タップすると有効になる検証用メニュー
     var developerMode = false
 
@@ -31,8 +33,9 @@ final class GameStore {
         lastSaved = initial
         isDemo = demo
         #if DEBUG
-        if demo, DemoMode.showsCompletion, let last = initial.snowmen.last {
-            pendingResult = CompletionResult(snowman: last, isNewKind: true)
+        if demo {
+            tab = DemoMode.tab
+            if DemoMode.sculpts { sculptingPieceID = initial.stock.first?.id }
         }
         #endif
     }
@@ -66,12 +69,46 @@ final class GameStore {
         await refresh()
     }
 
-    // MARK: 雪だるま
+    // MARK: ゆきだま・作品
 
-    func completeSnowman() {
-        guard let result = state.complete() else { return }
-        pendingResult = result
+    /// 転がした雪玉を「ゆきだま」にして、整える画面へ進む
+    func makePiece() {
+        guard let piece = state.makePiece() else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        persist()
+        tab = 1
+        sculptingPieceID = piece.id
+    }
+
+    func updateStock(id: UUID, shape: SnowShape) {
+        state.updateStock(id: id, shape: shape)
+        persist()
+    }
+
+    func takeFromStock(id: UUID) -> SnowPiece? {
+        let piece = state.takeFromStock(id: id)
+        persist()
+        return piece
+    }
+
+    func returnToStock(_ piece: SnowPiece) {
+        state.returnToStock(piece)
+        persist()
+    }
+
+    func newArtwork() -> Artwork {
+        let artwork = state.newArtwork()
+        persist()
+        return artwork
+    }
+
+    func saveArtwork(_ artwork: Artwork) {
+        state.saveArtwork(artwork)
+        persist()
+    }
+
+    func deleteArtwork(id: UUID) {
+        state.deleteArtwork(id: id)
         persist()
     }
 
@@ -84,7 +121,7 @@ final class GameStore {
 
     func resetAll() {
         state = GameState()
-        pendingResult = nil
+        sculptingPieceID = nil
         persist()
     }
 
