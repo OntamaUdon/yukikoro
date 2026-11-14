@@ -388,9 +388,9 @@ final class GameLogicTests: XCTestCase {
 
     func testPricesGrowWithEachPurchase() {
         let kid = Shop.item("kid")!
-        XCTAssertEqual(Shop.price(kid, owned: 0), 100)
-        XCTAssertEqual(Shop.price(kid, owned: 1), 112)
-        XCTAssertEqual(Shop.price(kid, owned: 2), 125)
+        XCTAssertEqual(Shop.price(kid, owned: 0), 60)
+        XCTAssertEqual(Shop.price(kid, owned: 1), 67)
+        XCTAssertEqual(Shop.price(kid, owned: 2), 75)
     }
 
     func testBuyingSpendsStepsAndAddsForce() {
@@ -399,12 +399,14 @@ final class GameLogicTests: XCTestCase {
         let kid = Shop.item("kid")!
         XCTAssertEqual(state.points, 250)
         XCTAssertTrue(state.buy(kid))
-        XCTAssertEqual(state.points, 150)
+        XCTAssertEqual(state.points, 190)
         XCTAssertTrue(state.buy(kid))
-        XCTAssertEqual(state.points, 38)
+        XCTAssertEqual(state.points, 123)
+        XCTAssertTrue(state.buy(kid))
+        XCTAssertEqual(state.points, 48)
         XCTAssertFalse(state.buy(kid), "足りないときは買えない")
-        XCTAssertEqual(state.ownedCount("kid"), 2)
-        XCTAssertEqual(state.team.force, SnowPhysics.bareHandForce + 2 * kid.force, accuracy: 1e-9)
+        XCTAssertEqual(state.ownedCount("kid"), 3)
+        XCTAssertEqual(state.team.force, SnowPhysics.bareHandForce + 3 * kid.force, accuracy: 1e-9)
         XCTAssertEqual(state.totalSteps, 250, "買い物をしても、雪玉は小さくならない")
     }
 

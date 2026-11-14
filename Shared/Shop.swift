@@ -26,17 +26,17 @@ struct ShopItem: Identifiable, Equatable {
 enum Shop {
     static let items: [ShopItem] = [
         ShopItem(id: "kid", name: "ゆきんこ", detail: "雪玉を押してくれる、小さな仲間", symbol: "figure.walk",
-                 kind: .pusher, force: 120, reach: 0.7, basePrice: 100, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0),
+                 kind: .pusher, force: 120, reach: 0.7, basePrice: 60, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0),
         ShopItem(id: "big", name: "でかゆきんこ", detail: "力もちの大きな仲間", symbol: "figure.strengthtraining.traditional",
-                 kind: .pusher, force: 900, reach: 0.7, basePrice: 1_500, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0.3),
+                 kind: .pusher, force: 900, reach: 0.7, basePrice: 900, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0.3),
         ShopItem(id: "plank", name: "そりいた", detail: "板で雪玉を押す。大きな雪玉も動かせる", symbol: "rectangle.fill",
-                 kind: .pusher, force: 12_000, reach: 1.5, basePrice: 8_000, baseMaterials: 5, priceGrowth: 1.12, unlockDiameter: 1.5),
+                 kind: .pusher, force: 12_000, reach: 1.5, basePrice: 4_000, baseMaterials: 5, priceGrowth: 1.12, unlockDiameter: 1.5),
         ShopItem(id: "crawler", name: "でんどうクローラー", detail: "電気で動くクローラーが転がす", symbol: "bolt.fill",
-                 kind: .pusher, force: 300_000, reach: 6, basePrice: 50_000, baseMaterials: 40, priceGrowth: 1.12, unlockDiameter: 2.8),
+                 kind: .pusher, force: 300_000, reach: 6, basePrice: 25_000, baseMaterials: 40, priceGrowth: 1.12, unlockDiameter: 2.8),
         ShopItem(id: "heavy", name: "おおがたクローラー", detail: "山も動かす大きなクローラー", symbol: "gearshape.2.fill",
-                 kind: .pusher, force: 6_000_000, reach: 20, basePrice: 120_000, baseMaterials: 250, priceGrowth: 1.12, unlockDiameter: 8),
+                 kind: .pusher, force: 6_000_000, reach: 20, basePrice: 60_000, baseMaterials: 250, priceGrowth: 1.12, unlockDiameter: 8),
         ShopItem(id: "gravity", name: "じゅうりょくそうち", detail: "重力で雪玉を転がし、雪を引き寄せる", symbol: "atom",
-                 kind: .gravity, force: 0, reach: 100, basePrice: 12_000, baseMaterials: 250, priceGrowth: 1.10, unlockDiameter: 14),
+                 kind: .gravity, force: 0, reach: 100, basePrice: 5_000, baseMaterials: 250, priceGrowth: 1.10, unlockDiameter: 14),
     ]
 
     static func item(_ id: String) -> ShopItem? { items.first { $0.id == id } }

@@ -125,6 +125,8 @@ final class StageCoordinator {
     private let sun = SCNNode()
     private let sparkles = SCNNode()
     private let sparkleSystem = SCNParticleSystem()
+    /// 雪玉・仲間・足元をあたたかく照らす、街灯のような光
+    private let lampLight = SCNNode()
 
     // 木の道に使う材料
     private let trunkMaterial = SCNMaterial()
@@ -155,7 +157,7 @@ final class StageCoordinator {
     private var lastSquish = 0
     private var lastBlackHole = false
 
-    private static let pairsPerLane = 12
+    private static let pairsPerLane = 10
     private static let tierSizes: [Double] = [0.8, 2.2, 3.0, 5.0, 12.0]
     private static let groundTile = 8.0
 
@@ -188,6 +190,16 @@ final class StageCoordinator {
         sun.light?.type = .directional
         sun.eulerAngles = SCNVector3(-0.9, 0.5, 0)
         scene.rootNode.addChildNode(sun)
+
+        lampLight.light = SCNLight()
+        lampLight.light?.type = .omni
+        lampLight.light?.color = UIColor(red: 1.0, green: 0.80, blue: 0.52, alpha: 1)
+        lampLight.light?.intensity = 0
+        lampLight.light?.attenuationStartDistance = 4
+        lampLight.light?.attenuationEndDistance = 22
+        lampLight.light?.attenuationFalloffExponent = 1.5
+        lampLight.position = SCNVector3(0, 3.6, 2.2)
+        scene.rootNode.addChildNode(lampLight)
 
         // 雪玉
         ballMaterial.lightingModel = .lambert
@@ -363,73 +375,81 @@ final class StageCoordinator {
             }
         }
 
-        // 枝
+        // 枝（1 本の枝と、そこから出る小枝を、同じ作り方でつくる）
+        func frond(origin: SIMD3<Float>, radial: SIMD3<Float>, side: SIMD3<Float>, length len: Float, droop: Float,
+                   widthFactor: Float, segments: Int, snowy: Bool, bulbAt: [Int]) {
+            var left: [SIMD3<Float>] = []
+            var right: [SIMD3<Float>] = []
+            var ridge: [SIMD3<Float>] = []
+            for i in 0...segments {
+                let t = Float(i) / Float(segments)
+                let dy = len * (0.14 * t - 0.42 * t * t) * droop
+                let spine = origin + radial * (len * t) + SIMD3(0, dy, 0)
+                let width = widthFactor * len * pow(max(0, sin(Float.pi * pow(t, 0.75))), 0.85)
+                left.append(spine - side * width)
+                right.append(spine + side * width)
+                ridge.append(spine + up * (0.22 * width + 0.025))
+            }
+            let nUp = simd_normalize(up + radial * 0.3)
+            let nLeft = simd_normalize(up * 0.9 - side * 0.6 + radial * 0.2)
+            let nRight = simd_normalize(up * 0.9 + side * 0.6 + radial * 0.2)
+            for i in 0..<segments {
+                mesh.quad(1, vertex(left[i], nLeft), vertex(ridge[i], nUp), vertex(ridge[i + 1], nUp), vertex(left[i + 1], nLeft))
+                mesh.quad(1, vertex(ridge[i], nUp), vertex(right[i], nRight), vertex(right[i + 1], nRight), vertex(ridge[i + 1], nUp))
+                mesh.quad(1, vertex(left[i], -up), vertex(left[i + 1], -up), vertex(right[i + 1], -up), vertex(right[i], -up))
+                if snowy && i >= 1 && i <= segments - 2 && random() < 0.9 {
+                    func snow(_ index: Int) -> (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) {
+                        (ridge[index] + (left[index] - ridge[index]) * 0.55 + up * 0.025,
+                         ridge[index] + up * 0.04,
+                         ridge[index] + (right[index] - ridge[index]) * 0.55 + up * 0.025)
+                    }
+                    let a = snow(i), c = snow(i + 1)
+                    mesh.quad(2, vertex(a.0, up), vertex(a.1, up), vertex(c.1, up), vertex(c.0, up))
+                    mesh.quad(2, vertex(a.1, up), vertex(a.2, up), vertex(c.2, up), vertex(c.1, up))
+                }
+            }
+            for i in bulbAt where i <= segments {
+                mesh.bulb(random() < 0.12 ? 4 : 3, center: ridge[i] + up * 0.05, size: 0.034)
+            }
+        }
+
         let whorls = 16
         for k in 0..<whorls {
             let h = Float(k) / Float(whorls - 1)
             let y0 = 1.5 + 6.3 * pow(h, 0.95)
             let length = 1.9 * pow(1 - h, 0.9) + 0.15
-            let branchCount = h < 0.35 ? 8 : (h < 0.7 ? 6 : 4)
+            let branchCount = h < 0.35 ? 10 : (h < 0.7 ? 8 : 6)
             let droop = 1 - 0.55 * h
             for b in 0..<branchCount {
-                let theta = (Float(b) / Float(branchCount) + Float(k) * 0.37 + random() * 0.08) * 2 * .pi
+                let theta = (Float(b) / Float(branchCount) + Float(k) * 0.37 + random() * 0.06) * 2 * .pi
                 let radial = SIMD3<Float>(cos(theta), 0, sin(theta))
                 let side = SIMD3<Float>(-sin(theta), 0, cos(theta))
                 let len = length * (0.85 + random() * 0.3)
+                let origin = SIMD3<Float>(0, y0, 0) + radial * 0.12
+                frond(origin: origin, radial: radial, side: side, length: len, droop: droop,
+                      widthFactor: 0.27, segments: 5, snowy: true, bulbAt: [3, 5])
 
-                let segments = 5
-                var left: [SIMD3<Float>] = []
-                var right: [SIMD3<Float>] = []
-                var ridge: [SIMD3<Float>] = []
-                for i in 0...segments {
-                    let t = Float(i) / Float(segments)
-                    let dy = len * (0.14 * t - 0.42 * t * t) * droop
-                    let spine = radial * (len * t + 0.12) + SIMD3(0, y0 + dy, 0)
-                    let width = 0.46 * len * pow(max(0, sin(Float.pi * pow(t, 0.75))), 0.85)
-                    left.append(spine - side * width)
-                    right.append(spine + side * width)
-                    ridge.append(spine + up * (0.22 * width + 0.03))
-                }
-                let nUp = simd_normalize(up + radial * 0.3)
-                let nLeft = simd_normalize(up * 0.9 - side * 0.6 + radial * 0.2)
-                let nRight = simd_normalize(up * 0.9 + side * 0.6 + radial * 0.2)
-                for i in 0..<segments {
-                    mesh.quad(1,
-                              vertex(left[i], nLeft), vertex(ridge[i], nUp),
-                              vertex(ridge[i + 1], nUp), vertex(left[i + 1], nLeft))
-                    mesh.quad(1,
-                              vertex(ridge[i], nUp), vertex(right[i], nRight),
-                              vertex(right[i + 1], nRight), vertex(ridge[i + 1], nUp))
-                    // 下がわ
-                    mesh.quad(1,
-                              vertex(left[i], -up), vertex(left[i + 1], -up),
-                              vertex(right[i + 1], -up), vertex(right[i], -up))
-                    // 雪（枝のなか側 60% の上に、うすくのせる）
-                    if i >= 1 && i <= 3 && random() < 0.9 {
-                        func snow(_ index: Int) -> (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) {
-                            (ridge[index] + (left[index] - ridge[index]) * 0.65 + up * 0.03,
-                             ridge[index] + up * 0.045,
-                             ridge[index] + (right[index] - ridge[index]) * 0.65 + up * 0.03)
-                        }
-                        let a = snow(i), c = snow(i + 1)
-                        mesh.quad(2, vertex(a.0, up), vertex(a.1, up), vertex(c.1, up), vertex(c.0, up))
-                        mesh.quad(2, vertex(a.1, up), vertex(a.2, up), vertex(c.2, up), vertex(c.1, up))
+                // 小枝（枝の途中から、左右に出る）
+                if len > 0.5 {
+                    let t: Float = 0.5
+                    let base = origin + radial * (len * t) + SIMD3(0, len * (0.14 * t - 0.42 * t * t) * droop, 0)
+                    for sign: Float in [-1, 1] {
+                        let direction = simd_normalize(radial * 0.8 + side * (0.6 * sign))
+                        let twigSide = simd_normalize(SIMD3<Float>(-direction.z, 0, direction.x))
+                        frond(origin: base, radial: direction, side: twigSide, length: len * 0.42, droop: droop,
+                              widthFactor: 0.30, segments: 2, snowy: false, bulbAt: [2])
                     }
-                }
-                // 枝にそった電球
-                for i in [2, 4, 5] {
-                    mesh.bulb(random() < 0.12 ? 4 : 3, center: ridge[i] + up * 0.05, size: 0.045)
                 }
             }
         }
 
         // てっぺんの星
-        mesh.bulb(3, center: SIMD3(0, 8.35, 0), size: 0.2)
+        mesh.bulb(3, center: SIMD3(0, 8.35, 0), size: 0.16)
         // 木から木へわたす光の列（次の木までの 7）
         for j in 0...14 {
             let z = Float(j) / 14 * 7
             let y = 5.9 - 0.9 * sin(Float.pi * z / 7)
-            mesh.bulb(j % 5 == 2 ? 4 : 3, center: SIMD3(0, y, z), size: 0.06)
+            mesh.bulb(j % 5 == 2 ? 4 : 3, center: SIMD3(0, y, z), size: 0.045)
         }
 
         return mesh.geometry(materials: [trunkMaterial, needleMaterial, snowMaterial, goldBulb, iceBulb])
@@ -447,7 +467,7 @@ final class StageCoordinator {
             let x = -reach + 2 * reach * t
             // 両はしでは高く、まん中ではたれる
             let drooped = height - sag * (1 - pow(abs(2 * t - 1), 2))
-            mesh.bulb(j % 6 == 3 ? 1 : 0, center: SIMD3(x, drooped, 0), size: Float(0.07 * f))
+            mesh.bulb(j % 6 == 3 ? 1 : 0, center: SIMD3(x, drooped, 0), size: Float(0.05 * f))
         }
         return mesh.geometry(materials: [goldBulb, iceBulb])
     }
@@ -533,7 +553,7 @@ final class StageCoordinator {
             holder.position = SCNVector3(Float(side * (half + 1.7 * f)), 0, Float(z))
             holder.scale = SCNVector3(fs, fs, fs)
             holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
-            holder.isHidden = fall >= 1
+            holder.isHidden = fall >= 1 || (slot == 2 && (index / 2) % 2 == 1)
 
             if index % 2 == 0 {
                 let arch = layer.arches[index / 2]
@@ -785,6 +805,8 @@ final class StageCoordinator {
         var bulbGlow: CGFloat = 0
         var pool: CGFloat = 0
         var sparkle: CGFloat = 0
+        var lamp: CGFloat = 0
+        var ballGlow = UIColor.black
         switch daypart {
         case .day:
             ambient.light?.color = color(0.60, 0.66, 0.78)
@@ -801,6 +823,8 @@ final class StageCoordinator {
             bulbGlow = 0.9
             pool = 0.45
             sparkle = 4
+            lamp = 250
+            ballGlow = color(0.10, 0.07, 0.06)
             camera.wantsHDR = false
             camera.bloomIntensity = 0
         case .night:
@@ -812,6 +836,8 @@ final class StageCoordinator {
             bulbGlow = 2.6
             pool = 0.9
             sparkle = 16
+            lamp = 800
+            ballGlow = color(0.16, 0.17, 0.27)
             camera.wantsHDR = true
             camera.bloomThreshold = 0.85
             camera.bloomBlurRadius = 14
@@ -821,6 +847,8 @@ final class StageCoordinator {
             material.emission.intensity = bulbGlow
         }
         poolMaterial.transparency = pool
+        lampLight.light?.intensity = lamp
+        if !lastBlackHole { ballMaterial.emission.contents = ballGlow }
         sparkleSystem.birthRate = sparkle
         scene.fogColor = UIColor(StoryPalette.of(daypart).hillNear)
     }
@@ -918,11 +946,11 @@ final class StageCoordinator {
             // 木の足元（くり返しの継ぎ目をまたぐので、上下に 1 つずつ描く）
             for centerV: CGFloat in [0, 1] {
                 for centerU: CGFloat in [0.079, 0.921] {
-                    blob(centerU: centerU, centerV: centerV, radiusU: 0.20, radiusV: 0.34, strength: 0.50)
+                    blob(centerU: centerU, centerV: centerV, radiusU: 0.22, radiusV: 0.40, strength: 0.85)
                 }
                 // 道のへり（ボールが通る側）
                 for centerU: CGFloat in [0.303, 0.697] {
-                    blob(centerU: centerU, centerV: centerV, radiusU: 0.08, radiusV: 0.22, strength: 0.18)
+                    blob(centerU: centerU, centerV: centerV, radiusU: 0.09, radiusV: 0.26, strength: 0.30)
                 }
             }
         }
