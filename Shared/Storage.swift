@@ -2,7 +2,7 @@ import Foundation
 
 enum SharedConfig {
     /// ウィジェットと状態を共有する App Group。Bundle ID を変えたらここと entitlements も合わせる。
-    static let appGroup = "group.com.example.yukikoro"
+    static let appGroup = "group.com.ontamaudon.yukikoro"
 }
 
 /// 状態を JSON ファイルで保存する。App Group が使えない環境では通常の保存先に退避する。

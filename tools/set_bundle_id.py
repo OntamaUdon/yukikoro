@@ -50,6 +50,7 @@ for rel in FILES:
         continue
     text = open(path, encoding="utf-8").read()
     out = text.replace(OLD, new)
+    out = out.replace("bundleIdPrefix: com.example", "bundleIdPrefix: " + new.rsplit(".", 1)[0])
     if args.team:
         out = re.sub(r'DEVELOPMENT_TEAM: ""', f"DEVELOPMENT_TEAM: {args.team}", out)
         out = re.sub(r'DEVELOPMENT_TEAM = "";', f"DEVELOPMENT_TEAM = {args.team};", out)

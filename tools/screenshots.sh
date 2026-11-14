@@ -3,7 +3,7 @@
 set -euo pipefail
 APP="$1"
 OUT="$2"
-BUNDLE="com.example.yukikoro"
+BUNDLE="com.ontamaudon.yukikoro"
 mkdir -p "$OUT"
 
 UDID=$(xcrun simctl list devices available | grep -m1 -E '^\s+iPhone' | grep -oE '[0-9A-F-]{36}')

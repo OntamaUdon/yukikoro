@@ -175,7 +175,7 @@ UI は**ごく普通のアプリの作り**にする（PixelPot などの散歩�
 
 ## 12. 審査・公開前に必要なこと（ユーザー作業）
 
-- Bundle ID と Team の設定（`project.yml` の `com.example.yukikoro` を差し替え）、App Group の登録。
+- Team の設定、App ID と App Group の Apple Developer への登録（Bundle ID は `com.ontamaudon.yukikoro` に設定済み）。手順は [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md)。
 - HealthKit の使用目的の説明（実装済み、文言の最終確認）。
 - プライバシーポリシーの公開 URL（PRIVACY.md を元に公開）。
 - App Store 用スクリーンショット・説明文（冬のうちに出すのが望ましい）。
