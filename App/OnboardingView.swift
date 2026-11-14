@@ -18,8 +18,7 @@ struct OnboardingView: View {
                     .foregroundStyle(Storybook.ink)
                 VStack(spacing: 10) {
                     Text("歩くと、足元の雪玉がころころ大きくなります。")
-                    Text("上限はありません。
-どこまでも、大きく育てよう。")
+                    Text("上限はありません。\nどこまでも、大きく育てよう。")
                 }
                 .font(Storybook.rounded(16, .medium))
                 .multilineTextAlignment(.center)
