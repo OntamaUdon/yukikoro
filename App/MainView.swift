@@ -112,7 +112,13 @@ struct MainView: View {
             .onPreferenceChange(TopBlockHeightKey.self) { topHeight = $0 }
             .onPreferenceChange(BottomPanelHeightKey.self) { bottomHeight = $0 }
         }
-        .onAppear { prepare() }
+        .onAppear {
+            prepare()
+            #if DEBUG
+            if DemoMode.sheet == "shop" { showShop = true }
+            if DemoMode.sheet == "menu" { showMenu = true }
+            #endif
+        }
         .onChange(of: store.state.mass) { _, _ in retarget() }
         .onChange(of: store.state.pack) { _, _ in retarget() }
         .onChange(of: scenePhase) { _, phase in

@@ -16,6 +16,10 @@ enum DemoMode {
     static var hour: Double? { value("-yukikoro-hour").flatMap(Double.init) }
     static var steps: Int { value("-yukikoro-steps").flatMap(Int.init) ?? 4_200 }
 
+    /// 開いておく画面の確認用: "-yukikoro-sheet shop" / "-yukikoro-sheet menu"
+    static var sheet: String? { value("-yukikoro-sheet") }
+    static var materials: Int? { value("-yukikoro-materials").flatMap(Int.init) }
+
     static var mass: Double? { value("-yukikoro-mass").flatMap(Double.init) }
 
     /// 仲間の見た目の確認用: "-yukikoro-crew 段,数"（0=ゆきんこ 1=でかゆきんこ 2=そりいた 3=クローラー 4=おおがた）
@@ -45,6 +49,7 @@ enum DemoMode {
             let ids = ["kid", "big", "plank", "crawler", "heavy"]
             s.owned[ids[min(max(crew.tier, 0), ids.count - 1)]] = crew.count
         }
+        if let materials = materials { s.materials = materials }
         s.markSeen()
         s.credited[DayKey.key(for: Date())] = 5_200
         return s

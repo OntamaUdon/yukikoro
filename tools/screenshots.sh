@@ -26,4 +26,7 @@ shot night-2400    -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 2200 -yukik
 shot night-small   -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 160  -yukikoro-crew 0,3
 shot day-2400      -yukikoro-demo -yukikoro-hour 12   -yukikoro-mass 2200 -yukikoro-crew 1,6
 shot dusk-2400     -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-mass 2200 -yukikoro-crew 2,3
+shot shop          -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 2200 -yukikoro-crew 1,6 -yukikoro-materials 600 -yukikoro-sheet shop
+shot menu          -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 2200 -yukikoro-crew 1,6 -yukikoro-sheet menu
+shot onboarding
 shot night-stage2  -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 800000 -yukikoro-crew 4,2
