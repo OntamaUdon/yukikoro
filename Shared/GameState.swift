@@ -10,29 +10,22 @@ enum DayKey {
 
 /// ゲームの全状態。UI から独立していて、単体テストできる。
 struct GameState: Codable, Equatable {
-    var version: Int = 2
+    var version: Int = 3
     var onboarded: Bool = false
     /// 初回の歩数同期（過去日のベースライン記録）が済んだか
     var initialized: Bool = false
-    /// 今転がしている雪玉の歩数（達成上限 `Snow.maxSteps` まで）
+    /// 雪玉の歩数。上限はなく、歩いた分だけ増え続ける。
     var rollingSteps: Int = 0
-    /// 今転がしている雪玉の形と色。歩数が増えると、この形のまま厚さ一定で一回り大きくなる。
-    var rollingShape: SnowShape = .pristine(seed: 11)
-    /// 達成上限を超えて余った歩数。ゆきだまにしたあと、次の雪玉に持ち越す。
-    var reserveSteps: Int = 0
     /// これまでに雪玉に加算した歩数の合計
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
     var credited: [String: Int] = [:]
-    /// 作品に使えるゆきだま（まだ置いていないもの）
-    var stock: [SnowPiece] = []
-    var artworks: [Artwork] = []
     var createdAt: Date = Date()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, rollingSteps, rollingShape, reserveSteps, totalSteps, credited, stock, artworks, createdAt
+        case version, onboarded, initialized, rollingSteps, reserveSteps, totalSteps, credited, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -40,14 +33,23 @@ struct GameState: Codable, Equatable {
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
         onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
         initialized = try c.decodeIfPresent(Bool.self, forKey: .initialized) ?? false
-        rollingSteps = try c.decodeIfPresent(Int.self, forKey: .rollingSteps) ?? 0
-        rollingShape = (try? c.decodeIfPresent(SnowShape.self, forKey: .rollingShape)) ?? .pristine(seed: 11)
-        reserveSteps = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
+        // 以前は上限を超えた歩数を「持ち越し」にしていたので、いまの雪玉に足して引き継ぐ
+        let carried = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
+        rollingSteps = (try c.decodeIfPresent(Int.self, forKey: .rollingSteps) ?? 0) + carried
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
-        stock = (try? c.decodeIfPresent([SnowPiece].self, forKey: .stock)) ?? []
-        artworks = (try? c.decodeIfPresent([Artwork].self, forKey: .artworks)) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(version, forKey: .version)
+        try c.encode(onboarded, forKey: .onboarded)
+        try c.encode(initialized, forKey: .initialized)
+        try c.encode(rollingSteps, forKey: .rollingSteps)
+        try c.encode(totalSteps, forKey: .totalSteps)
+        try c.encode(credited, forKey: .credited)
+        try c.encode(createdAt, forKey: .createdAt)
     }
 
     // MARK: 歩数の加算
@@ -72,7 +74,7 @@ struct GameState: Codable, Equatable {
                 credited[key] = value
             }
         }
-        addToBall(gained)
+        addSteps(gained)
         prune()
         return gained
     }
@@ -80,17 +82,11 @@ struct GameState: Codable, Equatable {
     /// テストやデバッグ用に歩数を直接足す
     mutating func addBonus(steps: Int) {
         guard steps > 0 else { return }
-        addToBall(steps)
+        addSteps(steps)
     }
 
-    /// 雪玉に歩数を足す。達成上限を超えた分は持ち越しに回す。
-    private mutating func addToBall(_ steps: Int) {
-        let room = max(0, Snow.maxSteps - rollingSteps)
-        let toBall = min(steps, room)
-        let before = Float(BallScale.radius(steps: rollingSteps))
-        rollingSteps += toBall
-        rollingShape.grow(fromRadius: before, toRadius: Float(BallScale.radius(steps: rollingSteps)))
-        reserveSteps += steps - toBall
+    private mutating func addSteps(_ steps: Int) {
+        rollingSteps += steps
         totalSteps += steps
     }
 
@@ -103,92 +99,11 @@ struct GameState: Codable, Equatable {
 
     func creditedSteps(on key: String) -> Int { credited[key] ?? 0 }
 
-    // MARK: ゆきだまにする
+    // MARK: 雪玉の大きさ
 
-    var canComplete: Bool { rollingSteps >= Snow.minimumSteps }
+    /// 雪玉の半径（メートル）
+    var radius: Double { BallScale.radius(steps: rollingSteps) }
 
-    /// 達成上限（最大サイズ）に到達しているか
-    var isAtCap: Bool { rollingSteps >= Snow.maxSteps }
-
-    /// 転がしている雪玉をゆきだまにして、手元（ストック）に入れる。
-    mutating func makePiece<G: RandomNumberGenerator>(using g: inout G, now: Date = Date()) -> SnowPiece? {
-        guard canComplete else { return nil }
-        let seed = UInt32(truncatingIfNeeded: g.next())
-        let piece = SnowPiece(id: UUID(), steps: rollingSteps, madeAt: now, shape: rollingShape)
-        stock.append(piece)
-        // 達成上限を超えて持ち越していた歩数があれば、次の雪玉に回す
-        let carried = min(reserveSteps, Snow.maxSteps)
-        rollingSteps = carried
-        rollingShape = .pristine(seed: UInt32(truncatingIfNeeded: g.next()))
-        reserveSteps -= carried
-        return piece
-    }
-
-    mutating func makePiece(now: Date = Date()) -> SnowPiece? {
-        var g = SystemRandomNumberGenerator()
-        return makePiece(using: &g, now: now)
-    }
-
-    /// 転がしている雪玉の形を更新する（成形したとき）
-    mutating func updateRolling(shape: SnowShape) { rollingShape = shape }
-
-    /// 転がしている雪玉の直径（メートル）
-    var rollingDiameter: Double { BallScale.diameter(steps: rollingSteps, extent: rollingShape.maxExtent) }
-
-    // MARK: ストックと作品
-
-    mutating func updateStock(id: UUID, shape: SnowShape) {
-        guard let i = stock.firstIndex(where: { $0.id == id }) else { return }
-        stock[i].shape = shape
-    }
-
-    /// ストックからゆきだまを取り出す（作品に置くとき）
-    mutating func takeFromStock(id: UUID) -> SnowPiece? {
-        guard let i = stock.firstIndex(where: { $0.id == id }) else { return nil }
-        return stock.remove(at: i)
-    }
-
-    mutating func returnToStock(_ piece: SnowPiece) {
-        guard !stock.contains(where: { $0.id == piece.id }) else { return }
-        stock.append(piece)
-    }
-
-    mutating func newArtwork(now: Date = Date()) -> Artwork {
-        let artwork = Artwork(name: "作品\(artworks.count + 1)", createdAt: now, updatedAt: now)
-        artworks.append(artwork)
-        return artwork
-    }
-
-    mutating func saveArtwork(_ artwork: Artwork) {
-        if let i = artworks.firstIndex(where: { $0.id == artwork.id }) {
-            artworks[i] = artwork
-        } else {
-            artworks.append(artwork)
-        }
-    }
-
-    /// 作品を消す。使っていたゆきだまはストックに戻る。
-    mutating func deleteArtwork(id: UUID) {
-        guard let i = artworks.firstIndex(where: { $0.id == id }) else { return }
-        for p in artworks[i].placements { returnToStock(p.piece) }
-        artworks.remove(at: i)
-    }
-
-    /// 飾る舞台（作品はひとつ）。まだなければ作る。
-    mutating func ensureStage(now: Date = Date()) -> Artwork {
-        if let first = artworks.first { return first }
-        return newArtwork(now: now)
-    }
-
-    /// 舞台を片付ける。置いていたゆきだまは手元に戻る。
-    mutating func clearStage(now: Date = Date()) {
-        guard var stage = artworks.first else { return }
-        for p in stage.placements { returnToStock(p.piece) }
-        stage.placements = []
-        stage.updatedAt = now
-        artworks[0] = stage
-    }
-
-    /// 手元とすべての作品にあるゆきだまの数
-    var totalPieceCount: Int { stock.count + artworks.reduce(0) { $0 + $1.placements.count } }
+    /// 雪玉の直径（メートル）
+    var diameter: Double { 2 * radius }
 }

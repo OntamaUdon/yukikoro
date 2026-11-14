@@ -6,7 +6,6 @@ struct MenuSheet: View {
     @Environment(GameStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @State private var confirmClear = false
     @State private var confirmReset = false
 
     private struct Day: Identifiable {
@@ -58,15 +57,6 @@ struct MenuSheet: View {
             }
         }
         .presentationDetents([.large])
-        .confirmationDialog("舞台を片付けますか？", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("片付ける", role: .destructive) {
-                store.clearStage()
-                dismiss()
-            }
-            Button("やめる", role: .cancel) {}
-        } message: {
-            Text("置いていたゆきだまは、手元に戻ります。")
-        }
         .confirmationDialog("すべてのデータを消してはじめからにしますか？", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("リセットする", role: .destructive) {
                 store.resetAll()
@@ -74,7 +64,7 @@ struct MenuSheet: View {
             }
             Button("やめる", role: .cancel) {}
         } message: {
-            Text("ゆきだまと作品がすべて消えます。元に戻せません。")
+            Text("雪玉が0歩からやり直しになります。元に戻せません。")
         }
     }
 
@@ -114,9 +104,9 @@ struct MenuSheet: View {
 
     private var totalsCard: some View {
         card("これまで", icon: "snowflake") {
-            row("転がした歩数", "\(formatSteps(store.state.totalSteps))歩")
-            row("つくったゆきだま", "\(store.state.totalPieceCount)こ")
-            row("舞台に飾っているゆきだま", "\(store.state.artworks.first?.placements.count ?? 0)こ")
+            row("雪玉の歩数", "\(formatSteps(store.state.rollingSteps))歩")
+            row("雪玉の直径", formatLength(meters: store.state.diameter * Double(SnowShape.pristine(seed: 11).maxExtent)))
+            row("転がした歩数の合計", "\(formatSteps(store.state.totalSteps))歩")
         }
     }
 
@@ -134,11 +124,8 @@ struct MenuSheet: View {
 
     private var dataCard: some View {
         card("データ", icon: "tray.full") {
-            Button("舞台を片付ける") { confirmClear = true }
-                .buttonStyle(StoryButtonStyle(kind: .soft, compact: true))
             Button("データをリセットする") { confirmReset = true }
                 .buttonStyle(StoryButtonStyle(kind: .soft, compact: true))
-                .foregroundStyle(Color.red)
         }
     }
 

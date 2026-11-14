@@ -5,7 +5,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        MainView(artwork: store.state.artworks.first ?? Artwork(name: "ゆきころ", createdAt: Date(), updatedAt: Date()))
+        MainView()
             .id(store.resetCount)
             .fullScreenCover(isPresented: .constant(!store.state.onboarded)) {
                 OnboardingView()

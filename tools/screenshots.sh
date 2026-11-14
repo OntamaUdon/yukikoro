@@ -21,12 +21,9 @@ shot() {
   xcrun simctl terminate "$UDID" "$BUNDLE" || true
 }
 
-shot grow-morning  -yukikoro-demo -yukikoro-hour 6.3
-shot grow-day      -yukikoro-demo -yukikoro-hour 12
-shot grow-dusk     -yukikoro-demo -yukikoro-hour 17.7  -yukikoro-steps 9000
-shot grow-night    -yukikoro-demo -yukikoro-hour 22    -yukikoro-steps 12500
-shot decorate-day  -yukikoro-demo -yukikoro-hour 12 -yukikoro-decorate
-shot decorate-sel  -yukikoro-demo -yukikoro-hour 15 -yukikoro-decorate -yukikoro-select
-shot decorate-dusk -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-decorate
-shot decorate-night -yukikoro-demo -yukikoro-hour 22 -yukikoro-decorate
+shot day-small     -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 20
+shot day-mid       -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 4200
+shot day-huge      -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 5000000
+shot dusk          -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-steps 90000
+shot night         -yukikoro-demo -yukikoro-hour 22 -yukikoro-steps 12500
 shot onboarding

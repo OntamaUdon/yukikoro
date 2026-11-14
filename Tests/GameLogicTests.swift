@@ -1,5 +1,4 @@
 import XCTest
-import simd
 
 final class GameLogicTests: XCTestCase {
     // MARK: 歩数の台帳
@@ -91,19 +90,27 @@ final class GameLogicTests: XCTestCase {
 
     // MARK: 雪玉の成長モデル
 
-    func testBallRadiusGrowsUntilAchievementCap() {
+    func testBallStartsAtOneCentimeterRadiusAndNeverStopsGrowing() {
+        XCTAssertEqual(BallScale.radius(steps: 0), 0.01, accuracy: 1e-12, "0歩は半径1cm")
         var previous = BallScale.radius(steps: 0)
-        XCTAssertEqual(previous, BallScale.r0, accuracy: 0.0001)
-        for steps in stride(from: 500, through: Snow.maxSteps, by: 500) {
+        for steps in [1, 10, 100, 1_000, 10_000, 30_000, 100_000, 1_000_000, 100_000_000, 10_000_000_000] {
             let r = BallScale.radius(steps: steps)
-            XCTAssertGreaterThan(r, previous, "上限までは歩数が増えたら必ず大きくなる")
+            XCTAssertGreaterThan(r, previous, "歩けば必ず大きくなる（上限はない）")
             previous = r
         }
-        // 達成上限を超えたら、それ以上は大きくならない
-        XCTAssertEqual(BallScale.radius(steps: Snow.maxSteps * 10), BallScale.radius(steps: Snow.maxSteps), accuracy: 1e-12)
-        // 収束する漸近線ではなく、上限の直前まで伸びている（頭打ちで潰れていない）
-        XCTAssertGreaterThan(BallScale.radius(steps: Snow.maxSteps) - BallScale.radius(steps: Snow.maxSteps - 2_500), 0.04)
-        XCTAssertEqual(BallScale.fraction(0), 0, accuracy: 0.0001)
+        // 3万歩を超えても、まだ伸びている
+        XCTAssertGreaterThan(BallScale.radius(steps: 60_000) - BallScale.radius(steps: 30_000), 0.1)
+    }
+
+    func testStepsForDiameterIsTheInverseOfTheRadius() {
+        for d in [0.05, 0.3, 1.7, 8, 40, 3_776] {
+            let steps = BallScale.steps(forDiameter: d)
+            XCTAssertGreaterThanOrEqual(BallScale.diameter(steps: steps, extent: 1), d - 1e-9, "d=\(d)")
+            if steps > 0 {
+                XCTAssertLessThan(BallScale.diameter(steps: steps - 1, extent: 1), d, "d=\(d) ぎりぎり")
+            }
+        }
+        XCTAssertEqual(BallScale.steps(forDiameter: 0.01), 0, "最初から超えている大きさは0歩")
     }
 
     func testBallGrowthSlowsDownInRadius() {
@@ -122,150 +129,114 @@ final class GameLogicTests: XCTestCase {
         }
     }
 
-    // MARK: 達成上限と持ち越し
+    // MARK: 上限なし
 
-    func testSyncedStepsFillTheBallBeforeReserve() {
+    func testStepsAreNeverCapped() {
+        var state = GameState()
+        state.addBonus(steps: 30_000)
+        state.addBonus(steps: 5_000)
+        XCTAssertEqual(state.rollingSteps, 35_000)
+        XCTAssertEqual(state.totalSteps, 35_000)
+        state.addBonus(steps: 2_000_000)
+        XCTAssertEqual(state.rollingSteps, 2_035_000)
+        XCTAssertGreaterThan(state.diameter, 10)
+    }
+
+    func testSyncedStepsKeepGrowingTheBall() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 29_000], todayKey: "2026-11-14")
         let gained = state.apply(daily: ["2026-11-14": 32_000], todayKey: "2026-11-14")
         XCTAssertEqual(gained, 3_000)
-        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 2_000)
+        XCTAssertEqual(state.rollingSteps, 32_000)
     }
 
-    func testOldSaveWithoutReserveStillLoads() throws {
+    func testOldSavesStillLoadAndKeepTheirSteps() throws {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let state = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 900}".utf8))
-        XCTAssertEqual(state.reserveSteps, 0)
-        XCTAssertEqual(state.rollingSteps, 900)
+        // 以前の保存データ（持ち越し・ゆきだま・作品つき）は、歩数だけ引き継ぐ
+        let json = "{\"rollingSteps\": 900, \"reserveSteps\": 100, \"totalSteps\": 5000, \"stock\": [], \"artworks\": []}"
+        let state = try decoder.decode(GameState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.rollingSteps, 1_000, "持ち越しは雪玉に足される")
+        XCTAssertEqual(state.totalSteps, 5_000)
+        let minimal = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 123}".utf8))
+        XCTAssertEqual(minimal.rollingSteps, 123)
     }
 
-    // MARK: ゆきだま
-
-    func testMakePieceMovesRollingBallToStock() {
-        var state = GameState()
-        state.addBonus(steps: 3_400)
-        var rng = SplitMix64(seed: 7)
-        let piece = state.makePiece(using: &rng)
-        XCTAssertEqual(piece?.steps, 3_400)
-        XCTAssertEqual(state.stock.count, 1)
-        XCTAssertEqual(state.rollingSteps, 0)
-        XCTAssertEqual(state.totalSteps, 3_400)
-    }
-
-    func testStepsBeyondCapAreCarriedToNextBall() {
-        var state = GameState()
-        state.addBonus(steps: Snow.maxSteps + 5_000)
-        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 5_000)
-        XCTAssertTrue(state.isAtCap)
-        state.addBonus(steps: 1_000)
-        XCTAssertEqual(state.reserveSteps, 6_000)
-        var rng = SplitMix64(seed: 5)
-        let piece = state.makePiece(using: &rng)
-        XCTAssertEqual(piece?.steps, Snow.maxSteps)
-        XCTAssertEqual(state.rollingSteps, 6_000)
-        XCTAssertEqual(state.reserveSteps, 0)
-    }
-
-    func testCarryOverIsAlsoCappedPerBall() {
-        var state = GameState()
-        state.addBonus(steps: Snow.maxSteps * 2 + 7_000)
-        var rng = SplitMix64(seed: 6)
-        _ = state.makePiece(using: &rng)
-        XCTAssertEqual(state.rollingSteps, Snow.maxSteps)
-        XCTAssertEqual(state.reserveSteps, 7_000)
-    }
-
-    func testArtworkPiecesMoveBetweenStockAndArtwork() {
-        var state = GameState()
-        state.addBonus(steps: 1_000)
-        var rng = SplitMix64(seed: 2)
-        let piece = state.makePiece(using: &rng)!
-        var art = state.newArtwork()
-        let taken = state.takeFromStock(id: piece.id)
-        XCTAssertNotNil(taken)
-        XCTAssertTrue(state.stock.isEmpty)
-        art.placements.append(Placement(piece: taken!, position: SIMD2<Float>(0, taken!.radius)))
-        state.saveArtwork(art)
-        XCTAssertEqual(state.artworks.count, 1)
-        XCTAssertEqual(state.totalPieceCount, 1)
-        // 作品を消すとゆきだまは手元に戻る
-        state.deleteArtwork(id: art.id)
-        XCTAssertEqual(state.stock.count, 1)
-        XCTAssertTrue(state.artworks.isEmpty)
-    }
-
-    func testCodableRoundTripKeepsShapesAndArtworks() throws {
+    func testCodableRoundTrip() throws {
         var state = GameState()
         state.addBonus(steps: 4_000)
-        var rng = SplitMix64(seed: 3)
-        var piece = state.makePiece(using: &rng)!
-        piece.shape.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
-        piece.shape.setTint(SIMD3<Float>(1, 0, 0))
-        state.updateStock(id: piece.id, shape: piece.shape)
-        var art = state.newArtwork()
-        art.placements = [Placement(piece: piece, position: SIMD2<Float>(1, 2), angle: 0.5)]
-        state.saveArtwork(art)
-
+        state.onboarded = true
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(GameState.self, from: try encoder.encode(state))
-        XCTAssertEqual(decoded.stock.first?.shape, piece.shape)
-        XCTAssertEqual(decoded.artworks.first?.placements.first?.position, SIMD2<Float>(1, 2))
-        XCTAssertEqual(decoded.artworks.first?.placements.first?.angle, 0.5)
+        XCTAssertEqual(decoded.rollingSteps, 4_000)
         XCTAssertEqual(decoded.totalSteps, 4_000)
-
-        // 将来の項目が足りない古いファイルでも読める
-        let old = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 123}".utf8))
-        XCTAssertEqual(old.rollingSteps, 123)
-        XCTAssertTrue(old.stock.isEmpty)
+        XCTAssertTrue(decoded.onboarded)
     }
 
-    // MARK: 成形しながら転がす
+    // MARK: 大きさの比べ方（目印）
 
-    func testRollingBallKeepsItsShapeAndGrowsWithUniformThickness() {
-        var state = GameState()
-        state.addBonus(steps: 1_000)
-        let r1 = Float(BallScale.radius(steps: 1_000))
-        var shape = state.rollingShape
-        shape.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
-        state.updateRolling(shape: shape)
-        let before = state.rollingShape
+    func testReferencesAreOrderedAndNextIsFound() {
+        let heights = ScaleReference.all.map(\.height)
+        XCTAssertEqual(heights, heights.sorted())
+        XCTAssertEqual(ScaleReference.next(after: 0.02)?.name, "はっぱ")
+        XCTAssertEqual(ScaleReference.next(after: 1.0)?.name, "ひと")
+        XCTAssertNil(ScaleReference.next(after: 100_000))
+    }
 
-        state.addBonus(steps: 4_000)
-        let r2 = Float(BallScale.radius(steps: 5_000))
-        XCTAssertGreaterThan(r2, r1)
-        for k in stride(from: 0, to: before.radii.count, by: 211) {
-            let delta = r2 * state.rollingShape.radii[k] - r1 * before.radii[k]
-            XCTAssertEqual(delta, r2 - r1, accuracy: 1e-3, "どこも同じ厚さだけ大きくなる")
+    func testStageScaleGrowsWithTheBallThenZoomsOut() {
+        let width: CGFloat = 390
+        let full = width * StageScale.maxBallFraction
+        // 小さいうちは、決まった縮尺で雪玉が育つ
+        let a = StageScale.pixelsPerMeter(diameter: 0.02, width: width)
+        let b = StageScale.pixelsPerMeter(diameter: 0.2, width: width)
+        XCTAssertEqual(a, b, accuracy: 1e-6)
+        XCTAssertEqual(0.2 * a, 0.2 * b, accuracy: 1e-6)
+        // 画面いっぱいになったあとは、雪玉の見た目の大きさは変わらず、縮尺が小さくなる
+        for d in [0.5, 1, 10, 1_000, 100_000] {
+            let s = StageScale.pixelsPerMeter(diameter: d, width: width)
+            XCTAssertEqual(CGFloat(d) * s, full, accuracy: 0.01, "d=\(d)")
         }
-        XCTAssertNotEqual(state.rollingShape, before)
+        XCTAssertLessThan(StageScale.pixelsPerMeter(diameter: 100, width: width), StageScale.pixelsPerMeter(diameter: 1, width: width))
     }
 
-    func testMakePieceTakesTheShapedBallAndStartsANewOne() {
-        var state = GameState()
-        state.addBonus(steps: 2_000)
-        var shape = state.rollingShape
-        shape.setTint(SIMD3<Float>(0, 1, 0))
-        state.updateRolling(shape: shape)
-        var rng = SplitMix64(seed: 4)
-        let piece = state.makePiece(using: &rng)
-        XCTAssertEqual(piece?.shape.tint, [0, 255, 0])
-        XCTAssertEqual(state.rollingShape.tint, [255, 255, 255], "次の雪玉は白いまっさらな玉")
-        XCTAssertEqual(state.rollingSteps, 0)
+    func testReferenceOpacityFadesWhenTooSmallOrTooBig() {
+        let limit: CGFloat = 240
+        XCTAssertEqual(StageScale.opacity(forHeightPixels: 4, limitPixels: limit), 0, accuracy: 1e-9)
+        XCTAssertEqual(StageScale.opacity(forHeightPixels: 80, limitPixels: limit), 1, accuracy: 1e-9)
+        XCTAssertEqual(StageScale.opacity(forHeightPixels: 200, limitPixels: limit), 0, accuracy: 1e-9)
+        let mid = StageScale.opacity(forHeightPixels: 24, limitPixels: limit)
+        XCTAssertGreaterThan(mid, 0)
+        XCTAssertLessThan(mid, 1)
     }
 
-    func testDiametersAreReported() {
-        var state = GameState()
-        state.addBonus(steps: 3_000)
-        XCTAssertGreaterThan(state.rollingDiameter, 0.5)
-        XCTAssertEqual(state.rollingDiameter, 2 * BallScale.radius(steps: 3_000) * Double(state.rollingShape.maxExtent), accuracy: 1e-9)
-        var rng = SplitMix64(seed: 1)
-        let piece = state.makePiece(using: &rng)!
-        XCTAssertGreaterThan(piece.diameter, 0.5)
+    func testSomeReferenceIsAlwaysVisible() {
+        // どの大きさの雪玉でも、見える目印が1つはある（大きさの比べがいがなくならない）
+        let width: CGFloat = 390
+        let limit = width * StageScale.maxBallFraction
+        var d = 0.02
+        while d < 9_000 {
+            let s = StageScale.pixelsPerMeter(diameter: d, width: width)
+            let best = ScaleReference.all.map { StageScale.opacity(forHeightPixels: CGFloat($0.height) * s, limitPixels: limit) }.max() ?? 0
+            XCTAssertGreaterThan(best, 0.3, "d=\(d)")
+            d *= 1.05
+        }
+    }
+
+    func testDiameterLabels() {
+        XCTAssertEqual(formatLength(meters: 0.58), "約58cm")
+        XCTAssertEqual(formatLength(meters: 0.02), "約2cm")
+        XCTAssertEqual(formatLength(meters: 1.24), "約1.2m")
+        XCTAssertEqual(formatLength(meters: 2_500), "約2.50km")
+    }
+
+    func testSnowShapeIsAStableBumpyCircle() {
+        let s = SnowShape.pristine(seed: 11)
+        XCTAssertEqual(s.radii.count, SnowShape.pointCount)
+        XCTAssertGreaterThan(s.radii.min() ?? 0, 0.9)
+        XCTAssertLessThan(s.radii.max() ?? 2, 1.1)
+        XCTAssertEqual(s, SnowShape.pristine(seed: 11))
     }
 }
