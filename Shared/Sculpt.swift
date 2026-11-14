@@ -78,7 +78,8 @@ struct SnowShape: Equatable, Hashable {
     /// 手を加える前の、すこしでこぼこした雪玉
     static func pristine(seed: UInt32) -> SnowShape {
         let dirs = SculptGrid.directions
-        let offset = SIMD3<Float>(Float(seed) * 3.1, Float(seed) * 1.7, Float(seed) * 0.9)
+        let small = Float(seed % 1024)
+        let offset = SIMD3<Float>(small * 3.1, small * 1.7, small * 0.9)
         var radii = [Float](repeating: 1, count: dirs.count)
         for k in 0..<dirs.count {
             radii[k] = 1 + 0.06 * SnowNoise.fbm(dirs[k] * 1.4 + offset, seed: seed)
