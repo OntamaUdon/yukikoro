@@ -15,6 +15,7 @@ final class ArtworkWorld {
     private var nodes: [UUID: SCNNode] = [:]
     private var materials: [UUID: SCNMaterial] = [:]
     private var shapes: [UUID: SnowShape] = [:]
+    private var blobs: [UUID: SCNNode] = [:]
 
     init(hour: Double, shadows: Bool) {
         rig = SkyRig(scene: scene, ground: true, shadows: shadows)
@@ -39,6 +40,8 @@ final class ArtworkWorld {
             nodes[id] = nil
             materials[id] = nil
             shapes[id] = nil
+            blobs[id]?.removeFromParentNode()
+            blobs[id] = nil
         }
         for p in placements {
             let material: SCNMaterial
@@ -62,6 +65,21 @@ final class ArtworkWorld {
             node.simdPosition = p.position
             node.simdOrientation = p.orientation
             SnowMaterial.setSelected(material, p.id == selected)
+
+            // 足元の影（高く持ち上げるほどうすく広がる）
+            let blob: SCNNode
+            if let existing = blobs[p.id] {
+                blob = existing
+            } else {
+                blob = SkyRig.shadowBlob()
+                scene.rootNode.addChildNode(blob)
+                blobs[p.id] = blob
+            }
+            let lift = max(0, p.position.y - p.piece.radius)
+            let spread = p.piece.radius * (2.6 + lift * 0.25)
+            blob.simdScale = SIMD3<Float>(spread, spread, 1)
+            blob.simdPosition = SIMD3<Float>(p.position.x, 0.012, p.position.z)
+            blob.opacity = CGFloat(max(0.15, 1 - lift / (p.piece.radius * 3 + 1)))
         }
     }
 

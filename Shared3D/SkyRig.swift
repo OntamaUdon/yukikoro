@@ -10,7 +10,7 @@ struct SkyState: Equatable {
     var lightDirection: SIMD3<Float>
     var lightColor: SIMD3<Float>
     var lightIntensity: Float
-    /// 全体を照らす空の明るさ（0.18〜1）
+    /// 全体を照らす空の明るさ（0.42〜1）
     var ambient: Float
     /// 星の見え方（0〜1）
     var stars: Float
@@ -68,17 +68,17 @@ struct SkyState: Equatable {
         let color: SIMD3<Float>
         if isSun {
             intensity = 2400 * smoothstep(0, 0.25, elev)
-            let warm = SIMD3<Float>(1.0, 0.62, 0.38)
+            let warm = SIMD3<Float>(1.0, 0.80, 0.62)
             let white = SIMD3<Float>(1.0, 0.97, 0.92)
             color = warm + (white - warm) * smoothstep(0, 0.45, elev)
         } else {
-            intensity = 170 * smoothstep(0, 0.2, elev)
+            intensity = 450 * smoothstep(0, 0.2, elev)
             color = SIMD3<Float>(0.6, 0.7, 1.0)
         }
         let dayFactor = smoothstep(-0.05, 0.35, sunElev)
         return SkyState(
             top: top, horizon: horizon, lightDirection: dir, lightColor: color, lightIntensity: intensity,
-            ambient: 0.18 + 0.82 * dayFactor,
+            ambient: 0.42 + 0.58 * dayFactor,
             stars: 1 - smoothstep(-0.2, 0.05, sunElev),
             isSun: isSun, lightElevation: elev, sunElevation: sunElev
         )
@@ -184,7 +184,7 @@ final class SkyRig {
             m.roughness.contents = 0.95
             m.emission.intensity = 0.03
             m.transparent.contents = SkyRig.groundMask
-            m.transparencyMode = .rgbZero
+            m.transparencyMode = .aOne
             plane.materials = [m]
             let node = SCNNode(geometry: plane)
             node.eulerAngles.x = -.pi / 2
@@ -312,18 +312,46 @@ final class SkyRig {
         }
     }
 
-    /// 雪原の端をなめらかに空へ溶かす（中心が不透明、外が透明）
+    /// 雪原の端をなめらかに空へ溶かす（中心が不透明、外が透明。アルファで表す）
     static let groundMask: UIImage = {
         let size = CGSize(width: 256, height: 256)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
+        format.opaque = false
         return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
-            ctx.cgContext.setFillColor(UIColor.black.cgColor)
-            ctx.cgContext.fill(CGRect(origin: .zero, size: size))
-            let colors = [UIColor.white.cgColor, UIColor.white.cgColor, UIColor.black.cgColor] as CFArray
-            guard let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.45, 0.98]) else { return }
+            let colors = [UIColor.white.cgColor, UIColor.white.cgColor, UIColor.white.withAlphaComponent(0).cgColor] as CFArray
+            guard let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.4, 0.97]) else { return }
             let center = CGPoint(x: 128, y: 128)
             ctx.cgContext.drawRadialGradient(g, startCenter: center, startRadius: 0, endCenter: center, endRadius: 128, options: [])
+        }
+    }()
+
+    /// 足元のやわらかい影（雪玉の下に敷く）
+    static func shadowBlob() -> SCNNode {
+        let plane = SCNPlane(width: 1, height: 1)
+        let m = SCNMaterial()
+        m.lightingModel = .constant
+        m.diffuse.contents = shadowImage
+        m.isDoubleSided = true
+        m.writesToDepthBuffer = false
+        plane.materials = [m]
+        let node = SCNNode(geometry: plane)
+        node.eulerAngles.x = -.pi / 2
+        node.renderingOrder = 5
+        return node
+    }
+
+    private static let shadowImage: UIImage = {
+        let size = CGSize(width: 128, height: 128)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            let colors = [UIColor(red: 0.10, green: 0.16, blue: 0.34, alpha: 0.55).cgColor,
+                          UIColor(red: 0.10, green: 0.16, blue: 0.34, alpha: 0).cgColor] as CFArray
+            guard let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0.2, 1]) else { return }
+            let c = CGPoint(x: 64, y: 64)
+            ctx.cgContext.drawRadialGradient(g, startCenter: c, startRadius: 0, endCenter: c, endRadius: 64, options: [])
         }
     }()
 }

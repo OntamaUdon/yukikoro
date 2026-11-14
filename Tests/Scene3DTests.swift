@@ -169,7 +169,7 @@ final class SculptTests: XCTestCase {
         let night = SkyState.at(hour: 0)
         XCTAssertGreaterThan(noon.top.z, night.top.z + 0.5)
         XCTAssertGreaterThan(noon.ambient, 0.95)
-        XCTAssertLessThan(night.ambient, 0.25)
+        XCTAssertLessThan(night.ambient, 0.45)
         XCTAssertGreaterThan(noon.lightIntensity, 1000)
         XCTAssertTrue(noon.isSun)
         XCTAssertFalse(night.isSun)

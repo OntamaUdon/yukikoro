@@ -44,6 +44,11 @@ final class BallScene: NSObject {
         let shape = SnowShape.pristine(seed: 11)
         ball.geometry = SculptMesh.geometry(for: shape, material: SnowMaterial.make())
         pivot.addChildNode(ball)
+        // 足元のやわらかい影（雪玉の大きさに合わせて広がる）
+        let contact = SkyRig.shadowBlob()
+        contact.simdScale = SIMD3<Float>(2.7, 2.7, 1)
+        contact.position = SCNVector3(0, -0.99, 0)
+        pivot.addChildNode(contact)
         scene.rootNode.addChildNode(pivot)
         apply(steps: 0, animated: false)
     }
