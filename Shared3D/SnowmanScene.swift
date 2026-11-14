@@ -43,7 +43,7 @@ enum SnowmanScene {
         m.lightingModel = .constant
         m.diffuse.contents = radialShadowImage
         m.isDoubleSided = true
-        m.writesToDepth = false
+        m.writesToDepthBuffer = false
         plane.materials = [m]
         let node = SCNNode(geometry: plane)
         node.eulerAngles.x = -.pi / 2
