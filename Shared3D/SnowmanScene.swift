@@ -54,16 +54,20 @@ enum SnowmanScene {
             sun.light?.shadowMapSize = CGSize(width: 2048, height: 2048)
             sun.light?.automaticallyAdjustsShadowProjection = true
         }
-        // 太陽の方向: 画面左手前の上から、右奥へ
-        let elevation: Float = daypart == .day ? -0.80 : -0.28
-        sun.eulerAngles = SCNVector3(elevation, -0.55, 0)
+        // 太陽は雪玉の奥・右上から手前へ向かう（影が雪玉の手前に落ちて見える）。サムネイルなど影を落とさないときは手前左上から。
+        let elevation: Float = daypart == .day ? -0.75 : -0.35
+        if castsShadow {
+            sun.eulerAngles = SCNVector3(elevation, Float.pi - 0.6, 0)
+        } else {
+            sun.eulerAngles = SCNVector3(elevation, -0.55, 0)
+        }
         scene.rootNode.addChildNode(sun)
     }
 
-    static func configure(camera cam: SCNCamera) {
+    static func configure(camera cam: SCNCamera, exposure: CGFloat = -0.3) {
         cam.wantsHDR = true
         cam.wantsExposureAdaptation = false
-        cam.exposureOffset = -0.3
+        cam.exposureOffset = exposure
         cam.minimumExposure = -2
         cam.maximumExposure = 2
         cam.bloomIntensity = 0.35
@@ -124,11 +128,11 @@ enum SnowmanScene {
 
         let camera = SCNNode()
         camera.camera = SCNCamera()
-        camera.camera?.fieldOfView = tight ? 22 : 25
+        camera.camera?.fieldOfView = 25
         configure(camera: camera.camera!)
-        // tight: 図鑑・共有画像・ウィジェット用に、雪だるまを大きく写す
-        camera.position = tight ? SCNVector3(0, 1.45, 5.3) : SCNVector3(0, 1.55, 5.8)
-        camera.look(at: tight ? SCNVector3(0, 1.0, 0) : SCNVector3(0, 0.98, 0))
+        // tight: 図鑑・共有画像・ウィジェット用に、少し近くから大きく写す（腕や耳が切れない範囲で）
+        camera.position = tight ? SCNVector3(0, 1.5, 5.4) : SCNVector3(0, 1.55, 5.8)
+        camera.look(at: tight ? SCNVector3(0, 1.02, 0) : SCNVector3(0, 0.98, 0))
         scene.rootNode.addChildNode(camera)
         return Built(scene: scene, camera: camera, snowman: snowman)
     }

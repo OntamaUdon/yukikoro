@@ -17,6 +17,7 @@ enum DemoMode {
     }
 
     static var hour: Int? { value("-yukikoro-hour").flatMap(Int.init) }
+    static var yaw: Float? { value("-yukikoro-yaw").flatMap(Float.init) }
     static var tab: Int { value("-yukikoro-tab").flatMap(Int.init) ?? 0 }
     static var steps: Int { value("-yukikoro-steps").flatMap(Int.init) ?? 4_200 }
 
@@ -100,7 +101,7 @@ struct BallDemoView: View {
     let steps: Int
 
     var body: some View {
-        BallSceneView(steps: steps, daypart: Daypart.now())
+        BallSceneView(steps: steps, daypart: Daypart.now(), yaw: DemoMode.yaw)
             .ignoresSafeArea()
     }
 }

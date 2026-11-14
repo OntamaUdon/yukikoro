@@ -89,7 +89,7 @@ enum PBR {
         let m = base()
         m.diffuse.contents = PhotoAssets.image("snow_albedo") ?? UIColor(white: 0.96, alpha: 1)
         m.normal.contents = PhotoAssets.image("snow_normal")
-        m.normal.intensity = 0.55
+        m.normal.intensity = 0.9
         m.roughness.contents = PhotoAssets.image("snow_rough") ?? 0.9
         m.ambientOcclusion.contents = PhotoAssets.image("snow_ao")
         m.ambientOcclusion.intensity = 0.5

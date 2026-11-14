@@ -15,13 +15,13 @@ final class BallScene: NSObject {
     /// 雪玉をカメラの正面に置く距離
     static let ballDistance: Float = 4.4
 
-    init(daypart: Daypart) {
+    init(daypart: Daypart, yaw: Float? = nil) {
         super.init()
-        SnowmanScene.applyEnvironment(to: scene, daypart: daypart, background: true, yaw: daypart.backgroundYaw)
-        SnowmanScene.addSun(to: scene, daypart: daypart, castsShadow: true, intensity: 1500)
+        SnowmanScene.applyEnvironment(to: scene, daypart: daypart, background: true, yaw: yaw ?? daypart.backgroundYaw)
+        SnowmanScene.addSun(to: scene, daypart: daypart, castsShadow: true, intensity: 700)
         buildGround()
         buildBall()
-        buildCamera()
+        buildCamera(daypart: daypart)
         buildSnowfall(daypart: daypart)
     }
 
@@ -55,13 +55,13 @@ final class BallScene: NSObject {
         apply(steps: 0, animated: false)
     }
 
-    private func buildCamera() {
+    private func buildCamera(daypart: Daypart) {
         camera.camera = SCNCamera()
         camera.camera?.projectionDirection = .horizontal
         camera.camera?.fieldOfView = 42
-        SnowmanScene.configure(camera: camera.camera!)
+        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.9 : -0.4)
         camera.position = SCNVector3(0, 1.6, 0)
-        camera.look(at: SCNVector3(0, 0.55, -BallScene.ballDistance))
+        camera.look(at: SCNVector3(0, 0.34, -BallScene.ballDistance))
         scene.rootNode.addChildNode(camera)
     }
 

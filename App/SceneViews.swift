@@ -61,9 +61,10 @@ struct SnowmanSceneView: UIViewRepresentable {
 struct BallSceneView: UIViewRepresentable {
     let steps: Int
     let daypart: Daypart
+    var yaw: Float? = nil
 
     func makeCoordinator() -> BallScene {
-        BallScene(daypart: daypart)
+        BallScene(daypart: daypart, yaw: yaw)
     }
 
     func makeUIView(context: Context) -> SCNView {
