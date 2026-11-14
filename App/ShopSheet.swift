@@ -1,26 +1,22 @@
 import SwiftUI
 
-/// おみせ。歩数で、雪玉を転がす仲間や機械を買う。
+/// おみせ。歩数と、木を倒して手に入れた資材で、雪玉を転がす仲間や機械を買う。
 struct ShopSheet: View {
     @Environment(GameStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    private func formatForce(_ newtons: Double) -> String {
-        if newtons < 1_000 { return String(format: "%.0fN", newtons) }
-        if newtons < 1e6 { return String(format: "%.1fkN", newtons / 1_000) }
-        return String(format: "%.1fMN", newtons / 1e6)
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
-                    summaryCard
+                VStack(spacing: 16) {
+                    walletRow
+                    powerCard
                     ForEach(Shop.items) { item in
-                        row(item)
+                        itemCard(item)
                     }
                 }
                 .padding(16)
+                .padding(.bottom, 12)
             }
             .background(
                 LinearGradient(colors: [Color(red: 0.84, green: 0.92, blue: 1.0), Storybook.paper], startPoint: .top, endPoint: .bottom)
@@ -38,28 +34,67 @@ struct ShopSheet: View {
         .presentationDetents([.large])
     }
 
-    private var summaryCard: some View {
+    // MARK: 持ち物
+
+    private var walletRow: some View {
+        let state = store.state
+        return HStack(spacing: 12) {
+            walletPill(symbol: "figure.walk", title: "つかえる歩数", value: "\(formatSteps(state.points))歩", tint: Storybook.accent)
+            walletPill(symbol: "tree.fill", title: "資材", value: formatSteps(state.materials), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
+        }
+    }
+
+    private func walletPill(symbol: String, title: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(tint.opacity(0.16)))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title)
+                    .font(Storybook.rounded(12, .semibold))
+                    .foregroundStyle(Storybook.ink.opacity(0.65))
+                Text(value)
+                    .font(Storybook.rounded(20))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(Storybook.ink)
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .storyCard(corner: 22)
+    }
+
+    // MARK: いまの力
+
+    private var powerCard: some View {
         let state = store.state
         let team = state.team
+        let force = team.force + team.lift * state.mass * SnowPhysics.gravity
         let resistance = SnowPhysics.rollingResistance * SnowPhysics.gravity * state.mass
-        let easiness = SnowPhysics.easiness(mass: state.mass, team: team)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("つかえる歩数")
-                    .font(Storybook.rounded(14, .semibold))
-                Spacer()
-                Text("\(formatSteps(state.points))歩")
-                    .font(Storybook.rounded(24))
-                    .monospacedDigit()
+        let needed = state.toppleForceNeeded
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("いまの力")
+                .font(Storybook.rounded(17))
+            bar("みんなの力", value: force, maximum: max(needed ?? force, force, resistance), tint: Storybook.accent)
+            bar("雪玉のおもさ（抵抗）", value: resistance, maximum: max(needed ?? force, force, resistance), tint: Color(red: 0.62, green: 0.62, blue: 0.74))
+            if let needed {
+                bar("木を倒すのに要る力", value: needed, maximum: max(needed, force, resistance), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
+                Text(state.isBlockedByTrees
+                     ? "雪玉が木にぶつかっています。みんなの力が足りないので、仲間や機械を増やしましょう。"
+                     : "木の道の幅は \(formatLength(meters: state.laneWidth).replacingOccurrences(of: "約", with: ""))。雪玉がこれより大きくなって、十分な力で押すと、木が倒れて資材が手に入ります。")
+                    .font(Storybook.rounded(12, .medium))
+                    .foregroundStyle(Storybook.ink.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("もう、雪玉をはばむ木はありません。")
+                    .font(Storybook.rounded(12, .medium))
+                    .foregroundStyle(Storybook.ink.opacity(0.75))
             }
-            Divider()
-            line("みんなの力", formatForce(team.force + team.lift * state.mass * SnowPhysics.gravity))
-            line("雪玉をころがす抵抗", formatForce(resistance))
-            line("1歩で転がる距離", formatLength(meters: SnowPhysics.pushDistance(mass: state.mass, team: team)))
-            line("いきおい", easiness >= 0.995 ? "すいすい" : String(format: "%.2f%%", easiness * 100))
-            Text("雪玉が重くなるほど、押すのに力がいります。力が足りなくなると、どんどん進まなくなります。")
-                .font(Storybook.rounded(12, .medium))
-                .foregroundStyle(Storybook.ink.opacity(0.7))
         }
         .foregroundStyle(Storybook.ink)
         .padding(18)
@@ -67,87 +102,131 @@ struct ShopSheet: View {
         .storyCard(corner: 26)
     }
 
-    private func line(_ title: String, _ value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(Storybook.rounded(14, .medium))
-                .foregroundStyle(Storybook.ink.opacity(0.75))
-            Spacer()
-            Text(value)
-                .font(Storybook.rounded(14))
-                .monospacedDigit()
+    /// 力の大きさ比べの棒（桁が大きく違うので、対数で描く）
+    private func bar(_ title: String, value: Double, maximum: Double, tint: Color) -> some View {
+        let fraction = min(1, max(0.02, log10(max(value, 1) + 1) / max(log10(maximum + 1), 1)))
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(Storybook.rounded(13, .semibold))
+                    .foregroundStyle(Storybook.ink.opacity(0.8))
+                Spacer()
+                Text(formatForce(value))
+                    .font(Storybook.rounded(13))
+                    .monospacedDigit()
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Storybook.ink.opacity(0.08))
+                    Capsule().fill(tint).frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 10)
         }
     }
 
-    private func row(_ item: ShopItem) -> some View {
+    // MARK: 商品
+
+    private func itemCard(_ item: ShopItem) -> some View {
         let state = store.state
         let unlocked = state.isUnlocked(item)
-        let price = state.price(item)
         let owned = state.ownedCount(item.id)
+        let price = state.price(item)
+        let materials = state.materialPrice(item)
         let affordable = state.canBuy(item)
-        return HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(Storybook.accent.opacity(unlocked ? 0.18 : 0.08))
-                Image(systemName: unlocked ? item.symbol : "lock.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(unlocked ? Storybook.accent : Storybook.ink.opacity(0.35))
-            }
-            .frame(width: 52, height: 52)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(unlocked ? item.name : "？？？")
-                        .font(Storybook.rounded(16))
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: unlocked ? item.symbol : "lock.fill")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(unlocked ? Storybook.accent : Storybook.ink.opacity(0.35))
+                        .frame(width: 60, height: 60)
+                        .background(Circle().fill(Storybook.accent.opacity(unlocked ? 0.16 : 0.08)))
                     if owned > 0 {
-                        Text("×\(owned)")
-                            .font(Storybook.rounded(14))
-                            .foregroundStyle(Storybook.accent)
+                        Text("\(owned)")
+                            .font(Storybook.rounded(13))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 24, minHeight: 24)
+                            .background(Circle().fill(Storybook.accent))
+                            .offset(x: 6, y: -6)
                     }
                 }
-                if unlocked {
-                    Text(item.detail)
-                        .font(Storybook.rounded(11, .medium))
-                        .foregroundStyle(Storybook.ink.opacity(0.7))
-                    Text(effectText(item))
-                        .font(Storybook.rounded(11, .semibold))
-                        .foregroundStyle(Storybook.ink.opacity(0.85))
-                } else {
-                    Text("雪玉が\(formatLength(meters: item.unlockDiameter).replacingOccurrences(of: "約", with: ""))になると、買えるようになります")
-                        .font(Storybook.rounded(11, .medium))
-                        .foregroundStyle(Storybook.ink.opacity(0.6))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(unlocked ? item.name : "？？？")
+                        .font(Storybook.rounded(18))
+                    if unlocked {
+                        Text(item.detail)
+                            .font(Storybook.rounded(13, .medium))
+                            .foregroundStyle(Storybook.ink.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                        effectChips(item)
+                    } else {
+                        Text("雪玉が \(formatLength(meters: item.unlockDiameter).replacingOccurrences(of: "約", with: "")) になると登場します")
+                            .font(Storybook.rounded(13, .medium))
+                            .foregroundStyle(Storybook.ink.opacity(0.6))
+                    }
                 }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 4)
 
             if unlocked {
                 Button {
                     store.buy(item)
                 } label: {
-                    VStack(spacing: 0) {
+                    HStack(spacing: 8) {
                         Text("買う")
-                            .font(Storybook.rounded(14))
+                        Spacer()
                         Text("\(formatSteps(price))歩")
-                            .font(Storybook.rounded(11, .semibold))
                             .monospacedDigit()
+                        if materials > 0 {
+                            Text("＋ 資材 \(formatSteps(materials))")
+                                .monospacedDigit()
+                        }
                     }
-                    .frame(minWidth: 62)
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(StoryButtonStyle(kind: affordable ? .primary : .soft, compact: true))
                 .disabled(!affordable)
+
+                if !affordable {
+                    Text(shortage(state: state, price: price, materials: materials))
+                        .font(Storybook.rounded(12, .medium))
+                        .foregroundStyle(Storybook.ink.opacity(0.6))
+                }
             }
         }
         .foregroundStyle(Storybook.ink)
-        .padding(14)
-        .storyCard(corner: 24)
-        .opacity(unlocked ? 1 : 0.8)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .storyCard(corner: 26)
+        .opacity(unlocked ? 1 : 0.75)
     }
 
-    private func effectText(_ item: ShopItem) -> String {
-        switch item.kind {
-        case .pusher:
-            return "力 +\(formatForce(item.force))　1歩で \(formatLength(meters: item.reach).replacingOccurrences(of: "約", with: ""))"
-        case .gravity:
-            return "雪玉の重さの +\(Int(Shop.liftPerGravity * 100))% の力・転がる距離が \(Shop.gravityReachGrowth) 倍"
+    private func effectChips(_ item: ShopItem) -> some View {
+        HStack(spacing: 8) {
+            switch item.kind {
+            case .pusher:
+                chip("力 +\(formatForce(item.force))")
+                chip("1歩 \(formatLength(meters: item.reach).replacingOccurrences(of: "約", with: ""))")
+            case .gravity:
+                chip("重さの +\(Int(Shop.liftPerGravity * 100))% の力")
+                chip("1歩 ×\(String(format: "%.1f", Shop.gravityReachGrowth))")
+            }
         }
+    }
+
+    private func chip(_ text: String) -> some View {
+        Text(text)
+            .font(Storybook.rounded(12))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Storybook.accent.opacity(0.12)))
+    }
+
+    private func shortage(state: GameState, price: Int, materials: Int) -> String {
+        var parts: [String] = []
+        if state.points < price { parts.append("あと \(formatSteps(price - state.points))歩") }
+        if state.materials < materials { parts.append("資材があと \(formatSteps(materials - state.materials))") }
+        return parts.isEmpty ? "" : parts.joined(separator: "、") + " 足りません"
     }
 }

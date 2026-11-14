@@ -40,6 +40,13 @@ struct RadiusAnimation {
     }
 }
 
+private struct CardHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 /// ゆきころさんぽのメイン画面。歩くと仲間が雪玉を転がして、雪玉が育つ。
 /// 雪玉の見かけの大きさはいつも同じで、大きくなるほど、まわりの木や仲間が小さく遠くなる。
 struct MainView: View {
@@ -51,6 +58,7 @@ struct MainView: View {
     @State private var squishTick = 0
     @State private var anim = RadiusAnimation.still(radius: SnowPhysics.initialRadius, mass: SnowPhysics.initialMass())
     @State private var appearedAt = Date()
+    @State private var cardHeight: CGFloat = 150
 
     private var daypart: Daypart { Daypart.current(hour: Int(SkyClock.hour())) }
 
@@ -132,27 +140,40 @@ struct MainView: View {
             blackHole: state.blackHole,
             squishTick: squishTick
         )
-        return ZStack {
-            StoryPanorama(daypart: daypart)
+        return GeometryReader { outer in
+            // 3D の舞台は、下のカードにかぶらない高さに収める
+            let inset = cardHeight + 6 + outer.safeAreaInsets.bottom
+            ZStack {
+                StoryPanorama(daypart: daypart, bottomInset: inset)
+                    .ignoresSafeArea()
+                GeometryReader { full in
+                    SnowStage(input: input)
+                        .frame(width: full.size.width, height: max(1, full.size.height - inset))
+                }
                 .ignoresSafeArea()
-            SnowStage(input: input)
-                .ignoresSafeArea()
-            SnowFall(isDark: daypart.isDark)
+                SnowFall(isDark: daypart.isDark)
 
-            VStack(spacing: 0) {
-                header(state)
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        store.packSnow()
-                        squishTick += 1
-                    }
-                infoCard(state: state, radius: radius, mass: mass)
-            }
+                VStack(spacing: 0) {
+                    header(state)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            store.packSnow()
+                            squishTick += 1
+                        }
+                    infoCard(state: state, radius: radius, mass: mass)
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(key: CardHeightKey.self, value: geo.size.height)
+                            }
+                        )
+                }
+                .onPreferenceChange(CardHeightKey.self) { cardHeight = $0 }
 
-            if state.blackHole && p >= 1 {
-                endingView
-                    .transition(.opacity)
+                if state.blackHole && p >= 1 {
+                    endingView
+                        .transition(.opacity)
+                }
             }
         }
     }
@@ -220,70 +241,81 @@ struct MainView: View {
 
     private func infoCard(state: GameState, radius: Double, mass: Double) -> some View {
         let diameter = 2 * radius
-        let next = ScaleReference.next(after: diameter)
         let easiness = SnowPhysics.easiness(mass: state.mass, team: state.team)
-        return VStack(spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("つかえる歩数")
-                        .font(Storybook.rounded(11, .semibold))
-                        .foregroundStyle(Storybook.ink.opacity(0.6))
-                    Text("\(formatSteps(state.points))歩")
-                        .font(Storybook.rounded(28))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .animation(.easeOut(duration: 0.6), value: state.points)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text("直径")
-                        .font(Storybook.rounded(11, .semibold))
-                        .foregroundStyle(Storybook.ink.opacity(0.6))
-                    Text(formatLength(meters: diameter))
-                        .font(Storybook.rounded(22))
-                        .monospacedDigit()
-                }
+        return VStack(spacing: 8) {
+            HStack(alignment: .top) {
+                stat("つかえる歩数", "\(formatSteps(state.points))歩", big: true)
+                Spacer(minLength: 8)
+                stat("資材", formatSteps(state.materials), align: .center)
+                Spacer(minLength: 8)
+                stat("直径", formatLength(meters: diameter), align: .trailing)
             }
             .foregroundStyle(Storybook.ink)
 
-            HStack {
+            HStack(spacing: 10) {
                 Label(formatMass(kg: mass), systemImage: "scalemass.fill")
-                Spacer()
                 Label(String(format: "%.0f kg/m³", state.density), systemImage: "square.stack.3d.down.right.fill")
-            }
-            .font(Storybook.rounded(13, .semibold))
-            .foregroundStyle(Storybook.ink.opacity(0.75))
-
-            HStack(spacing: 8) {
-                Text("いきおい")
-                    .font(Storybook.rounded(12, .semibold))
-                    .foregroundStyle(Storybook.ink.opacity(0.7))
-                ProgressView(value: min(1, max(0, easiness)))
-                    .tint(Storybook.accent)
+                Spacer(minLength: 0)
                 Text(easinessText(easiness))
-                    .font(Storybook.rounded(12, .semibold))
-                    .foregroundStyle(Storybook.ink.opacity(0.7))
-                    .frame(minWidth: 64, alignment: .trailing)
             }
+            .font(Storybook.rounded(12, .semibold))
+            .foregroundStyle(Storybook.ink.opacity(0.75))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
 
-            if let next {
-                HStack(spacing: 6) {
-                    Image(systemName: next.symbol)
-                    Text("つぎは「\(next.name)」くらいの大きさ（\(formatLength(meters: next.height))）")
-                }
-                .font(Storybook.rounded(12, .semibold))
-                .foregroundStyle(Storybook.ink.opacity(0.7))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Text("雪玉をタップすると、ぎゅっと固まります")
-                .font(Storybook.rounded(11, .medium))
-                .foregroundStyle(Storybook.ink.opacity(0.5))
+            laneLine(state: state, diameter: diameter)
         }
-        .padding(16)
-        .storyCard(corner: 30)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .storyCard(corner: 28)
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
+    }
+
+    private func stat(_ title: String, _ value: String, big: Bool = false, align: HorizontalAlignment = .leading) -> some View {
+        VStack(alignment: align, spacing: 0) {
+            Text(title)
+                .font(Storybook.rounded(11, .semibold))
+                .foregroundStyle(Storybook.ink.opacity(0.6))
+            Text(value)
+                .font(Storybook.rounded(big ? 26 : 20))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+    }
+
+    /// 木の道の状況（ぶつかって止まっているとき・道の幅・次の目印）
+    @ViewBuilder
+    private func laneLine(state: GameState, diameter: Double) -> some View {
+        if state.isBlockedByTrees, let needed = state.toppleForceNeeded {
+            let now = state.team.force + state.team.lift * state.mass * SnowPhysics.gravity
+            HStack(spacing: 6) {
+                Image(systemName: "tree.fill")
+                Text("木にぶつかった！ 倒すには \(formatForce(needed)) の力が要ります（いま \(formatForce(now))）")
+                    .lineLimit(2)
+            }
+            .font(Storybook.rounded(12, .bold))
+            .foregroundStyle(Color(red: 0.78, green: 0.30, blue: 0.22))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if state.laneCapMass.isFinite {
+            HStack(spacing: 6) {
+                Image(systemName: "tree.fill")
+                Text("木の道の幅は \(formatLength(meters: state.laneWidth).replacingOccurrences(of: "約", with: ""))。これより大きくなると木にぶつかります")
+                    .lineLimit(2)
+            }
+            .font(Storybook.rounded(12, .semibold))
+            .foregroundStyle(Storybook.ink.opacity(0.7))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let next = ScaleReference.next(after: diameter) {
+            HStack(spacing: 6) {
+                Image(systemName: next.symbol)
+                Text("つぎは「\(next.name)」くらいの大きさ（\(formatLength(meters: next.height))）")
+            }
+            .font(Storybook.rounded(12, .semibold))
+            .foregroundStyle(Storybook.ink.opacity(0.7))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private func easinessText(_ value: Double) -> String {

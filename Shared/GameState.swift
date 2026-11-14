@@ -22,6 +22,10 @@ struct GameState: Codable, Equatable {
     var owned: [String: Int] = [:]
     /// 買い物に使った歩数
     var spent: Int = 0
+    /// 倒した木の道の数（いま雪玉がいる道の番号）
+    var stage: Int = 0
+    /// 持っている資材（木を倒すと手に入る）
+    var materials: Int = 0
     /// これまでに加算した歩数の合計
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
@@ -38,7 +42,7 @@ struct GameState: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, mass, pack, owned, spent, totalSteps, credited
+        case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, totalSteps, credited
         case peakDiameter, seenMass, seenPack, blackHole, createdAt
     }
 
@@ -57,6 +61,15 @@ struct GameState: Codable, Equatable {
             pack = try c.decodeIfPresent(Double.self, forKey: .pack) ?? 0
             owned = try c.decodeIfPresent([String: Int].self, forKey: .owned) ?? [:]
             spent = try c.decodeIfPresent(Int.self, forKey: .spent) ?? 0
+            materials = try c.decodeIfPresent(Int.self, forKey: .materials) ?? 0
+            if let savedStage = try c.decodeIfPresent(Int.self, forKey: .stage) {
+                stage = savedStage
+            } else {
+                // 木の道ができる前の保存データ: いまの重さまでの道は、倒したことにする
+                var k = 0
+                while Lane.capMass(stage: k, pack: pack) < mass { k += 1 }
+                stage = k
+            }
             peakDiameter = try c.decodeIfPresent(Double.self, forKey: .peakDiameter) ?? 2 * SnowPhysics.initialRadius
             seenMass = try c.decodeIfPresent(Double.self, forKey: .seenMass)
             seenPack = try c.decodeIfPresent(Double.self, forKey: .seenPack)
@@ -73,6 +86,8 @@ struct GameState: Codable, Equatable {
         try c.encode(pack, forKey: .pack)
         try c.encode(owned, forKey: .owned)
         try c.encode(spent, forKey: .spent)
+        try c.encode(stage, forKey: .stage)
+        try c.encode(materials, forKey: .materials)
         try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(credited, forKey: .credited)
         try c.encode(peakDiameter, forKey: .peakDiameter)
@@ -119,9 +134,11 @@ struct GameState: Codable, Equatable {
         guard steps > 0 else { return }
         totalSteps += steps
         guard !blackHole else { return }
-        let result = SnowPhysics.advance(mass: mass, pack: pack, team: team, steps: steps)
+        let result = SnowPhysics.advance(mass: mass, pack: pack, team: team, steps: steps, stage: stage)
         mass = result.mass
         blackHole = result.blackHole
+        stage = result.stage
+        materials += result.materials
         peakDiameter = max(peakDiameter, diameter)
     }
 
@@ -164,6 +181,26 @@ struct GameState: Codable, Equatable {
         if SnowPhysics.isBlackHole(mass: mass, pack: pack) { blackHole = true }
     }
 
+    // MARK: 木の道
+
+    /// いまの道の幅（メートル）
+    var laneWidth: Double { Lane.width(stage: stage) }
+
+    /// いまの道の木に、ちょうどぶつかる重さ
+    var laneCapMass: Double { Lane.capMass(stage: stage, pack: pack) }
+
+    /// 木に雪玉がぶつかって、押す力が足りずに止まっているか
+    var isBlockedByTrees: Bool {
+        let cap = laneCapMass
+        return cap.isFinite && mass >= cap * 0.999 && !Lane.canTopple(capMass: cap, team: team)
+    }
+
+    /// 木を倒すのに要る力（ニュートン）。道がなければ nil。
+    var toppleForceNeeded: Double? {
+        let cap = laneCapMass
+        return cap.isFinite ? Lane.toppleForce(capMass: cap) : nil
+    }
+
     // MARK: 買い物
 
     /// 使える歩数
@@ -177,14 +214,17 @@ struct GameState: Codable, Equatable {
 
     func price(_ item: ShopItem) -> Int { Shop.price(item, owned: ownedCount(item.id)) }
 
+    func materialPrice(_ item: ShopItem) -> Int { Shop.materials(item, owned: ownedCount(item.id)) }
+
     func canBuy(_ item: ShopItem) -> Bool {
-        !blackHole && isUnlocked(item) && points >= price(item)
+        !blackHole && isUnlocked(item) && points >= price(item) && materials >= materialPrice(item)
     }
 
     @discardableResult
     mutating func buy(_ item: ShopItem) -> Bool {
         guard canBuy(item) else { return false }
         spent += price(item)
+        materials -= materialPrice(item)
         owned[item.id, default: 0] += 1
         return true
     }

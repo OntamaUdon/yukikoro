@@ -264,10 +264,12 @@ enum StageGeometry {
 /// 3D の舞台の後ろに置く、空と遠い山の絵
 struct StoryPanorama: View {
     let daypart: Daypart
+    /// 画面の下の、3D の舞台が使わない部分の高さ（地平線の位置を合わせるために使う）
+    var bottomInset: CGFloat = 0
 
     var body: some View {
         Canvas { ctx, size in
-            Self.draw(&ctx, size: size, daypart: daypart)
+            Self.draw(&ctx, size: size, daypart: daypart, bottomInset: bottomInset)
         }
     }
 
@@ -291,9 +293,9 @@ struct StoryPanorama: View {
         return p
     }
 
-    static func draw(_ ctx: inout GraphicsContext, size: CGSize, daypart: Daypart) {
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, daypart: Daypart, bottomInset: CGFloat) {
         let w = size.width, h = size.height
-        let horizon = h * StageGeometry.horizonFraction
+        let horizon = (h - bottomInset) * StageGeometry.horizonFraction
         let p = StoryPalette.of(daypart)
 
         // 空

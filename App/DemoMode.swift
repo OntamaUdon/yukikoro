@@ -25,6 +25,9 @@ enum DemoMode {
         s.initialized = true
         if let m = mass {
             s.mass = m
+            var k = 0
+            while Lane.capMass(stage: k, pack: s.pack) < m { k += 1 }
+            s.stage = k
             s.peakDiameter = max(s.peakDiameter, s.diameter)
             s.totalSteps = steps
         } else {

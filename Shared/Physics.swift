@@ -128,19 +128,91 @@ enum SnowPhysics {
         return m
     }
 
+    /// 進めた結果
+    struct AdvanceResult {
+        var mass: Double
+        var blackHole: Bool
+        /// 倒した木の道の数（`stage` を渡したときだけ進む）
+        var stage: Int
+        /// 木を倒して手に入れた資材
+        var materials: Int
+    }
+
     /// 歩数ぶん進める。ブラックホールになったらそこで止める。
-    static func advance(mass: Double, pack: Double, team: PushTeam, steps: Int) -> (mass: Double, blackHole: Bool) {
+    /// `stage` を渡すと、木の道の幅より大きくなれない。力が足りなければ木にぶつかって止まり、
+    /// 力が足りれば木を倒して（資材を得て）次の道に進む。
+    static func advance(mass: Double, pack: Double, team: PushTeam, steps: Int, stage: Int? = nil) -> AdvanceResult {
         var m = mass
-        guard steps > 0 else { return (m, isBlackHole(mass: m, pack: pack)) }
+        var currentStage = stage ?? 0
+        var materials = 0
+        guard steps > 0 else {
+            return AdvanceResult(mass: m, blackHole: isBlackHole(mass: m, pack: pack), stage: currentStage, materials: 0)
+        }
+        var cap = stage == nil ? Double.infinity : Lane.capMass(stage: currentStage, pack: pack)
         for _ in 0..<steps {
             m = step(mass: m, pack: pack, team: team)
-            if isBlackHole(mass: m, pack: pack) { return (m, true) }
+            while m > cap {
+                if Lane.canTopple(capMass: cap, team: team) {
+                    materials += Lane.reward(stage: currentStage)
+                    currentStage += 1
+                    cap = Lane.capMass(stage: currentStage, pack: pack)
+                } else {
+                    m = cap
+                    break
+                }
+            }
+            if isBlackHole(mass: m, pack: pack) {
+                return AdvanceResult(mass: m, blackHole: true, stage: currentStage, materials: materials)
+            }
         }
-        return (m, false)
+        return AdvanceResult(mass: m, blackHole: false, stage: currentStage, materials: materials)
     }
 
     /// 固める 1 回ぶん（残りの 0.4% ずつ。半径がほんの少し縮む）
     static func tappedPack(_ pack: Double) -> Double {
         pack + (1 - pack) * 0.004
+    }
+}
+
+/// 木の道。2列の木のあいだを雪玉が転がる。道の幅より大きくなると木にぶつかり、
+/// 十分な力があれば木が倒れて（資材が手に入り）、次の、もっと広い道に進む。
+enum Lane {
+    /// 最初の道の幅（メートル。木の列のあいだ）
+    static let baseWidth = 3.0
+    /// 1つ進むごとに、道の幅と木の大きさが何倍になるか
+    static let widthGrowth = 5.0
+    /// 木を倒すのに、雪玉を押す力の何倍の余裕が要るか
+    static let toppleFactor = 1.2
+    static let rewardBase = 600.0
+    static let rewardGrowth = 8.0
+
+    static func width(stage: Int) -> Double { baseWidth * pow(widthGrowth, Double(stage)) }
+
+    /// この道の木の大きさ（最初の道の木を 1 として）
+    static func treeScale(stage: Int) -> Double { pow(widthGrowth, Double(stage)) }
+
+    /// この道の木を倒したときに手に入る資材
+    static func reward(stage: Int) -> Int { Int(rewardBase * pow(rewardGrowth, Double(stage))) }
+
+    /// 雪玉の半径が道の幅の半分になる重さ。雪玉がとても大きい道では、ぶつからない（無限大）。
+    static func capMass(stage: Int, pack: Double) -> Double {
+        let target = width(stage: stage) / 2
+        if target > 8.7e7 { return .infinity }
+        var low = 1e-9
+        var high = 1.7e27
+        for _ in 0..<120 {
+            let mid = (low * high).squareRoot()
+            if SnowPhysics.radius(mass: mid, pack: pack) < target { low = mid } else { high = mid }
+        }
+        return high
+    }
+
+    /// その重さの雪玉を、木にぶつけて倒すのに要る力（ニュートン）
+    static func toppleForce(capMass: Double) -> Double {
+        toppleFactor * SnowPhysics.rollingResistance * SnowPhysics.gravity * capMass
+    }
+
+    static func canTopple(capMass: Double, team: PushTeam) -> Bool {
+        team.force + team.lift * capMass * SnowPhysics.gravity >= toppleForce(capMass: capMass)
     }
 }

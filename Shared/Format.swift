@@ -34,3 +34,13 @@ func formatMass(kg: Double) -> String {
     let mantissa = kg / pow(10, Double(exponent))
     return String(format: "約%.1f×10", mantissa) + superscript(exponent) + "kg"
 }
+
+/// 力の表示（N・kN・MN、とても大きいときは 10 のべき乗）
+func formatForce(_ newtons: Double) -> String {
+    if newtons < 1_000 { return String(format: "%.0fN", newtons) }
+    if newtons < 1e6 { return String(format: "%.1fkN", newtons / 1_000) }
+    if newtons < 1e9 { return String(format: "%.1fMN", newtons / 1e6) }
+    let exponent = Int(floor(log10(newtons)))
+    let mantissa = newtons / pow(10, Double(exponent))
+    return String(format: "%.1f×10", mantissa) + superscript(exponent) + "N"
+}

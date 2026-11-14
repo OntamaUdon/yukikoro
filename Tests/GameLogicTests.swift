@@ -217,6 +217,7 @@ final class GameLogicTests: XCTestCase {
     func testReachesBlackHoleAndStopsThere() {
         var state = GameState()
         state.mass = 9e32
+        state.stage = 20
         state.addBonus(steps: 200_000)
         XCTAssertTrue(state.blackHole)
         let frozen = state.mass
@@ -240,6 +241,97 @@ final class GameLogicTests: XCTestCase {
         // 同じ日の歩数をまた数えない
         var again = fresh
         XCTAssertEqual(again.apply(daily: ["2026-11-14": 3_000], todayKey: "2026-11-14"), 0)
+    }
+
+    // MARK: 木の道
+
+    func testLaneWidthsAndCaps() {
+        XCTAssertEqual(Lane.width(stage: 0), 3, accuracy: 1e-12)
+        XCTAssertEqual(Lane.width(stage: 2), 75, accuracy: 1e-9)
+        XCTAssertEqual(Lane.treeScale(stage: 1), 5, accuracy: 1e-12)
+        XCTAssertEqual(Lane.reward(stage: 0), 600)
+        XCTAssertEqual(Lane.reward(stage: 1), 4_800)
+        // 半径が道の幅の半分になる重さ（密度 300 の球）
+        XCTAssertEqual(Lane.capMass(stage: 0, pack: 0), 4_241.15, accuracy: 4)
+        XCTAssertEqual(Lane.capMass(stage: 1, pack: 0), 530_143.8, accuracy: 530_143.8 * 0.01)
+        // 固めた雪玉は同じ半径でも重いので、ぶつかる重さが大きい
+        XCTAssertEqual(Lane.capMass(stage: 0, pack: 1), 7_068.6, accuracy: 70)
+        // とても広い道には、ぶつからない
+        XCTAssertTrue(Lane.capMass(stage: 20, pack: 0).isInfinite)
+    }
+
+    func testToppleNeedsEnoughForce() {
+        let cap = Lane.capMass(stage: 0, pack: 0)
+        XCTAssertEqual(Lane.toppleForce(capMass: cap), 14_962, accuracy: 20)
+        XCTAssertTrue(Lane.canTopple(capMass: cap, team: PushTeam(force: 15_300, reach: 1.5, lift: 0)))
+        XCTAssertFalse(Lane.canTopple(capMass: cap, team: PushTeam(force: 14_000, reach: 1.5, lift: 0)))
+        // 重力そうちの力は重さに比例するので、どの大きさの木にも届く
+        let huge = Lane.capMass(stage: 10, pack: 0)
+        XCTAssertTrue(Lane.canTopple(capMass: huge, team: PushTeam(force: 0, reach: 100, lift: 0.6)))
+        XCTAssertFalse(Lane.canTopple(capMass: huge, team: Shop.team(owned: ["kid": 50, "big": 50])))
+    }
+
+    func testWeakTeamStopsAtTheTrees() {
+        let weak = Shop.team(owned: ["kid": 12, "big": 2])
+        let result = SnowPhysics.advance(mass: 4_240.9, pack: 0, team: weak, steps: 10, stage: 0)
+        XCTAssertEqual(result.mass, 4_240.917826, accuracy: 0.02)
+        XCTAssertEqual(result.stage, 0)
+        // 何歩進めても、木の道の幅より大きくならない
+        let long = SnowPhysics.advance(mass: 4_240.9, pack: 0, team: weak, steps: 5_000, stage: 0)
+        XCTAssertLessThanOrEqual(long.mass, Lane.capMass(stage: 0, pack: 0) * 1.000001)
+        XCTAssertEqual(long.stage, 0)
+        XCTAssertEqual(long.materials, 0)
+    }
+
+    func testStrongTeamFellsTheTreesAndGetsMaterials() {
+        let team = Shop.team(owned: ["kid": 12, "big": 2, "plank": 1])
+        let result = SnowPhysics.advance(mass: 4_240, pack: 0, team: team, steps: 100, stage: 0)
+        XCTAssertEqual(result.stage, 1, "木が倒れて、次の道に進む")
+        XCTAssertEqual(result.materials, 600)
+        XCTAssertEqual(result.mass, 4_293.93, accuracy: 4_293.93 * 0.02)
+    }
+
+    func testGravityTeamFellsBiggerTrees() {
+        let team = Shop.team(owned: ["kid": 20, "big": 14, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 12])
+        let result = SnowPhysics.advance(mass: 1e8, pack: 0, team: team, steps: 300, stage: 2)
+        XCTAssertEqual(result.stage, 3)
+        XCTAssertEqual(result.materials, 38_400)
+        XCTAssertEqual(result.mass, 1.89767e8, accuracy: 1.89767e8 * 0.03)
+    }
+
+    func testBlockedStateAndMaterialsInGameState() {
+        var state = GameState()
+        state.mass = state.laneCapMass
+        XCTAssertTrue(state.isBlockedByTrees, "素手では木に負ける")
+        XCTAssertEqual(state.toppleForceNeeded ?? 0, 14_962, accuracy: 20)
+        state.owned = ["kid": 12, "big": 2, "plank": 1]
+        XCTAssertFalse(state.isBlockedByTrees)
+        state.addBonus(steps: 100)
+        XCTAssertEqual(state.stage, 1)
+        XCTAssertEqual(state.materials, 600)
+        XCTAssertEqual(state.laneWidth, 15, accuracy: 1e-9)
+    }
+
+    func testMachinesNeedMaterials() {
+        var state = GameState()
+        state.totalSteps = 1_000_000
+        state.peakDiameter = 2
+        let plank = Shop.item("plank")!
+        XCTAssertFalse(state.canBuy(plank), "資材がないと買えない")
+        state.materials = 5
+        XCTAssertTrue(state.buy(plank))
+        XCTAssertEqual(state.materials, 0)
+        XCTAssertEqual(state.materialPrice(plank), 6, "2つ目は少し高い")
+    }
+
+    func testSavesFromBeforeTreesKeepTheirProgress() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        // 木の道ができる前の保存（重さ 1e6 kg）は、通り過ぎた道を倒したことにする
+        let json = "{\"version\": 4, \"onboarded\": true, \"mass\": 1e6, \"pack\": 0, \"totalSteps\": 100}"
+        let state = try decoder.decode(GameState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.stage, 2)
+        XCTAssertEqual(state.mass, 1e6, accuracy: 1)
     }
 
     // MARK: 固める（タップ）
@@ -290,10 +382,12 @@ final class GameLogicTests: XCTestCase {
         XCTAssertFalse(state.isUnlocked(Shop.item("plank")!))
         XCTAssertFalse(state.isUnlocked(gravity))
         state.totalSteps = 10_000_000
+        state.materials = 10_000
         XCTAssertFalse(state.buy(Shop.item("plank")!), "まだ解放されていない")
         state.peakDiameter = 15
         XCTAssertTrue(state.isUnlocked(gravity))
         XCTAssertTrue(state.buy(gravity))
+        XCTAssertEqual(state.materials, 10_000 - 250, "資材も使う")
     }
 
     func testTeamFromOwnedItems() {
@@ -345,6 +439,13 @@ final class GameLogicTests: XCTestCase {
         XCTAssertEqual(formatMass(kg: 150), "約150kg")
         XCTAssertEqual(formatMass(kg: 2_500), "約2.5t")
         XCTAssertEqual(formatMass(kg: 1.2e12), "約1.2×10¹²kg")
+    }
+
+    func testForceLabels() {
+        XCTAssertEqual(formatForce(120), "120N")
+        XCTAssertEqual(formatForce(15_300), "15.3kN")
+        XCTAssertEqual(formatForce(6_000_000), "6.0MN")
+        XCTAssertEqual(formatForce(2e10), "2.0×10¹⁰N")
     }
 
     func testSnowShapeIsAStableBumpyCircle() {
