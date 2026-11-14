@@ -67,7 +67,8 @@ struct SkyState: Equatable {
         let intensity: Float
         let color: SIMD3<Float>
         if isSun {
-            intensity = 2400 * smoothstep(0, 0.25, elev)
+            // 低い太陽はやや強く、高い太陽は弱めに（雪が白飛びしないように）
+            intensity = 2400 * (1 - 0.6 * smoothstep(0.3, 1.0, elev)) * smoothstep(0, 0.25, elev)
             let warm = SIMD3<Float>(1.0, 0.80, 0.62)
             let white = SIMD3<Float>(1.0, 0.97, 0.92)
             color = warm + (white - warm) * smoothstep(0, 0.45, elev)
@@ -205,7 +206,7 @@ final class SkyRig {
 
         scene?.background.contents = SkyRig.uiColor(s.horizon)
         scene?.lightingEnvironment.contents = SkyRig.environmentImage(s)
-        scene?.lightingEnvironment.intensity = CGFloat(s.ambient * 0.85)
+        scene?.lightingEnvironment.intensity = CGFloat(s.ambient * 0.7)
 
         let light = lightNode.light
         light?.color = SkyRig.uiColor(s.lightColor)

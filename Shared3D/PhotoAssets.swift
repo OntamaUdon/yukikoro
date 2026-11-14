@@ -40,6 +40,7 @@ enum PBR {
     static func snow(tile tiles: (Float, Float) = (1, 1)) -> SCNMaterial {
         let m = base()
         m.diffuse.contents = PhotoAssets.image("snow_albedo") ?? UIColor(white: 0.96, alpha: 1)
+        m.diffuse.intensity = 0.8
         m.normal.contents = PhotoAssets.image("snow_normal")
         m.normal.intensity = 0.9
         m.roughness.contents = PhotoAssets.image("snow_rough") ?? 0.9
