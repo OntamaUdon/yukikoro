@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>ゆきころはヘルスケアにデータを書き込みません。歩数は読み取りのみに使います。</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>歩いた歩数を読み取って、雪玉を大きくするために使います。データは端末の外には送信しません。</string>
 	<key>NSMotionUsageDescription</key>

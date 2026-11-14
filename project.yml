@@ -37,6 +37,7 @@ targets:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
         NSHealthShareUsageDescription: 歩いた歩数を読み取って、雪玉を大きくするために使います。データは端末の外には送信しません。
+        NSHealthUpdateUsageDescription: ゆきころはヘルスケアにデータを書き込みません。歩数は読み取りのみに使います。
         NSMotionUsageDescription: ヘルスケアの歩数が使えない場合に、歩数を読み取って雪玉を大きくするために使います。
     entitlements:
       path: App/Yukikoro.entitlements
