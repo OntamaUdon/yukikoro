@@ -16,13 +16,21 @@ enum DemoMode {
     static var hour: Double? { value("-yukikoro-hour").flatMap(Double.init) }
     static var steps: Int { value("-yukikoro-steps").flatMap(Int.init) ?? 4_200 }
 
-    /// 動作確認用の状態（歩数だけ）
+    static var mass: Double? { value("-yukikoro-mass").flatMap(Double.init) }
+
+    /// 動作確認用の状態（歩数、または重さを直接指定）
     static func state() -> GameState {
         var s = GameState()
         s.onboarded = true
         s.initialized = true
-        s.rollingSteps = steps
-        s.totalSteps = steps
+        if let m = mass {
+            s.mass = m
+            s.peakDiameter = max(s.peakDiameter, s.diameter)
+            s.totalSteps = steps
+        } else {
+            s.addBonus(steps: steps)
+        }
+        s.markSeen()
         s.credited[DayKey.key(for: Date())] = 5_200
         return s
     }

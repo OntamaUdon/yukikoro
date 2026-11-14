@@ -66,6 +66,35 @@ final class GameStore {
         persist()
     }
 
+    /// 雪玉をタップして、ぎゅっと固める
+    func packSnow() {
+        guard !state.blackHole else { return }
+        state.tapPack()
+        persist()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.6)
+    }
+
+    @discardableResult
+    func buy(_ item: ShopItem) -> Bool {
+        guard state.buy(item) else { return false }
+        persist()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        return true
+    }
+
+    /// いま見せている雪玉の状態を、「最後に見せた状態」として覚える
+    func markSeen() {
+        state.markSeen()
+        persist()
+    }
+
+    /// ブラックホールになったあと、新しい雪玉ではじめる
+    func startOver() {
+        state = state.restarted()
+        resetCount += 1
+        persist()
+    }
+
     func resetAll() {
         state = GameState()
         resetCount += 1

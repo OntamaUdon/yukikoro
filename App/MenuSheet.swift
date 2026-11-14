@@ -64,7 +64,7 @@ struct MenuSheet: View {
             }
             Button("やめる", role: .cancel) {}
         } message: {
-            Text("雪玉が0歩からやり直しになります。元に戻せません。")
+            Text("雪玉も仲間も、はじめからやり直しになります。元に戻せません。")
         }
     }
 
@@ -103,10 +103,13 @@ struct MenuSheet: View {
     }
 
     private var totalsCard: some View {
-        card("これまで", icon: "snowflake") {
-            row("雪玉の歩数", "\(formatSteps(store.state.rollingSteps))歩")
-            row("雪玉の直径", formatLength(meters: store.state.diameter * Double(SnowShape.pristine(seed: 11).maxExtent)))
-            row("転がした歩数の合計", "\(formatSteps(store.state.totalSteps))歩")
+        let state = store.state
+        return card("これまで", icon: "snowflake") {
+            row("雪玉の直径", formatLength(meters: state.diameter))
+            row("雪玉の重さ", formatMass(kg: state.mass))
+            row("雪玉の密度", String(format: "%.0f kg/m³", state.density))
+            row("歩いた歩数の合計", "\(formatSteps(state.totalSteps))歩")
+            row("買い物に使った歩数", "\(formatSteps(state.spent))歩")
         }
     }
 

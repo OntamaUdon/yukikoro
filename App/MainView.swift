@@ -1,100 +1,165 @@
 import SwiftUI
 
-/// ゆきころさんぽのメイン画面。歩くと雪玉が育つ。上限はなく、どこまでも大きくなる。
-/// 小さいうちは雪玉が育つのが見え、画面いっぱいになったら、雪玉は同じ大きさのまま、まわりの目印（人・木・山）が小さくなっていく。
+/// 雪玉の大きさの変化を、ゆっくり見せるためのアニメーション（半径と重さを、対数で補間する）
+struct RadiusAnimation {
+    var fromRadius: Double
+    var toRadius: Double
+    var fromMass: Double
+    var toMass: Double
+    var start: Date
+    var duration: TimeInterval
+    /// 変化の間に雪玉が転がる回数
+    var turns: Double
+    /// このアニメーションが始まる前までに、転がっていた角度
+    var baseAngle: Double
+
+    static func still(radius: Double, mass: Double) -> RadiusAnimation {
+        RadiusAnimation(fromRadius: radius, toRadius: radius, fromMass: mass, toMass: mass,
+                        start: Date(), duration: 0, turns: 0, baseAngle: 0)
+    }
+
+    func progress(at now: Date) -> Double {
+        guard duration > 0 else { return 1 }
+        let t = min(1, max(0, now.timeIntervalSince(start) / duration))
+        return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+    }
+
+    func radius(at now: Date) -> Double { radius(progress: progress(at: now)) }
+    func mass(at now: Date) -> Double { mass(progress: progress(at: now)) }
+
+    func radius(progress p: Double) -> Double {
+        exp(log(fromRadius) + (log(toRadius) - log(fromRadius)) * p)
+    }
+
+    func mass(progress p: Double) -> Double {
+        exp(log(fromMass) + (log(toMass) - log(fromMass)) * p)
+    }
+
+    func extraAngle(at now: Date) -> Double {
+        baseAngle + turns * 2 * Double.pi * progress(at: now)
+    }
+}
+
+/// ゆきころさんぽのメイン画面。歩くと仲間が雪玉を転がして、雪玉が育つ。
+/// 雪玉の見かけの大きさはいつも同じで、大きくなるほど、まわりの木や仲間が小さく遠くなる。
 struct MainView: View {
     @Environment(GameStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showMenu = false
-    /// 転がした分だけ回る雪玉の向き（ラジアン）
-    @State private var angle: Double = 0
+    @State private var showShop = false
+    @State private var squishTick = 0
+    @State private var anim = RadiusAnimation.still(radius: SnowPhysics.initialRadius, mass: SnowPhysics.initialMass())
+    @State private var appearedAt = Date()
 
-    private let shape = SnowShape.pristine(seed: 11)
     private var daypart: Daypart { Daypart.current(hour: Int(SkyClock.hour())) }
 
     var body: some View {
-        ZStack {
-            StoryBackground(daypart: daypart)
-                .ignoresSafeArea()
-            SnowFall(isDark: daypart.isDark)
-            GeometryReader { geo in
-                stage(size: geo.size)
-                    .frame(width: geo.size.width, height: geo.size.height)
-            }
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                header
-                Spacer()
-                infoCard
-            }
+        TimelineView(.animation) { timeline in
+            content(now: timeline.date)
+        }
+        .onAppear { prepare() }
+        .onChange(of: store.state.mass) { _, _ in retarget() }
+        .onChange(of: store.state.pack) { _, _ in retarget() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { prepare() }
         }
         .sheet(isPresented: $showMenu) { MenuSheet() }
-        .onChange(of: store.state.rollingSteps) { old, new in
-            guard new > old else { return }
-            let r = max(0.02, BallScale.radius(steps: new))
-            let turn = min(3 * Double.pi, max(0.5, Double(new - old) * 0.02 / r))
-            withAnimation(.easeInOut(duration: 1.4)) { angle -= turn }
-        }
+        .sheet(isPresented: $showShop) { ShopSheet() }
     }
 
-    // MARK: 舞台（雪玉と目印）
+    // MARK: 変化の見せ方
 
-    private var extent: Double { Double(shape.maxExtent) }
-
-    /// 雪玉のいちばん広い所の直径（メートル）
-    private var ballDiameter: Double { store.state.diameter * extent }
-
-    private func stage(size: CGSize) -> some View {
-        let scale = StageScale.pixelsPerMeter(diameter: ballDiameter, width: size.width)
-        let radius = CGFloat(store.state.radius) * scale
-        let groundY = size.height * 0.58
-        let center = CGPoint(x: size.width / 2, y: groundY - radius * 0.98)
-        let limitPx = size.width * StageScale.maxBallFraction
-        let visible = ScaleReference.all
-            .map { ref -> (ref: ScaleReference, px: CGFloat, opacity: Double) in
-                let px = CGFloat(ref.height) * scale
-                return (ref, px, StageScale.opacity(forHeightPixels: px, limitPixels: limitPx))
-            }
-            .filter { $0.opacity > 0.02 }
-            .sorted { $0.ref.height > $1.ref.height }
-        let xs: [CGFloat] = [0.14, 0.86, 0.27, 0.73]
-
-        return ZStack {
-            Canvas { ctx, _ in
-                SnowPainter.drawGroundShadow(in: &ctx, centerX: size.width / 2, groundY: groundY, width: max(radius * 2.4, 4), opacity: 0.28)
-            }
-            ForEach(Array(visible.enumerated()), id: \.element.ref.name) { index, item in
-                referenceView(item.ref, pixels: item.px, opacity: item.opacity)
-                    .position(x: size.width * xs[min(index, xs.count - 1)], y: groundY)
-            }
-            SnowBallView(shape: shape, radius: Double(radius), angle: angle)
-                .position(center)
-        }
-        .frame(width: size.width, height: size.height)
-        .animation(.easeOut(duration: 1.0), value: scale)
+    /// 開いたとき: 前に見た雪玉から始めて、1秒後に、いまの雪玉へ3秒かけて変わる。
+    private func prepare() {
+        appearedAt = Date()
+        let state = store.state
+        let seenMass = state.seenMass ?? state.mass
+        anim = .still(radius: state.seenRadius, mass: seenMass)
+        retarget()
     }
 
-    /// 目印の絵と名前。下の端が地面に立つ。
-    private func referenceView(_ ref: ScaleReference, pixels: CGFloat, opacity: Double) -> some View {
-        let tone = daypart.isDark ? Color(red: 0.80, green: 0.86, blue: 1.0) : Color(red: 0.36, green: 0.42, blue: 0.62)
-        return ZStack {
-            Image(systemName: ref.symbol)
-                .font(.system(size: 100))
-                .foregroundStyle(tone.opacity(0.8))
-                .frame(width: 100, height: 100)
-                .scaleEffect(max(0.01, pixels / 92), anchor: .bottom)
-                .offset(y: -50)
-            Text("\(ref.name) \(formatLength(meters: ref.height).replacingOccurrences(of: "約", with: ""))")
-                .font(Storybook.rounded(11, .semibold))
-                .foregroundStyle(tone)
-                .offset(y: 14)
+    private func retarget() {
+        let state = store.state
+        let now = Date()
+        let currentRadius = anim.radius(at: now)
+        let currentMass = anim.mass(at: now)
+        let radiusChange = abs(log(state.radius / max(currentRadius, 1e-12)))
+        let massChange = abs(log(state.mass / max(currentMass, 1e-12)))
+        guard radiusChange > 1e-5 || massChange > 1e-5 else { return }
+
+        let intro = now.timeIntervalSince(appearedAt) < 6
+        let start = intro ? max(now, appearedAt.addingTimeInterval(1)) : now
+        let big = max(radiusChange, massChange)
+        let duration = intro ? 3.0 : min(3.0, 0.25 + 1.5 * big)
+        let turns = big < 0.01 ? 0 : min(6, 0.5 + 1.2 * big)
+        anim = RadiusAnimation(
+            fromRadius: currentRadius, toRadius: state.radius,
+            fromMass: currentMass, toMass: state.mass,
+            start: start, duration: reduceMotion ? 0.01 : duration,
+            turns: reduceMotion ? 0 : turns,
+            baseAngle: anim.extraAngle(at: now)
+        )
+        store.markSeen()
+    }
+
+    // MARK: 画面
+
+    private func crewLook(_ state: GameState) -> CrewLook {
+        var tier = 0
+        var count = 1
+        for (index, id) in ["kid", "big", "plank", "crawler", "heavy"].enumerated() {
+            let n = state.ownedCount(id)
+            if n > 0 {
+                tier = index
+                count = n
+            }
         }
-        .opacity(opacity)
+        return CrewLook(tier: tier, count: min(count, 8), gravity: state.ownedCount("gravity"))
+    }
+
+    private func content(now: Date) -> some View {
+        let state = store.state
+        let p = anim.progress(at: now)
+        let radius = anim.radius(progress: p)
+        let mass = anim.mass(progress: p)
+        let idle = reduceMotion ? 0 : now.timeIntervalSince(appearedAt) * 0.35
+        let input = StageInput(
+            radius: radius,
+            angle: idle + anim.extraAngle(at: now),
+            daypart: daypart,
+            crew: crewLook(state),
+            blackHole: state.blackHole,
+            squishTick: squishTick
+        )
+        return ZStack {
+            StoryPanorama(daypart: daypart)
+                .ignoresSafeArea()
+            SnowStage(input: input)
+                .ignoresSafeArea()
+            SnowFall(isDark: daypart.isDark)
+
+            VStack(spacing: 0) {
+                header(state)
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        store.packSnow()
+                        squishTick += 1
+                    }
+                infoCard(state: state, radius: radius, mass: mass)
+            }
+
+            if state.blackHole && p >= 1 {
+                endingView
+                    .transition(.opacity)
+            }
+        }
     }
 
     // MARK: 上の帯
 
-    private var header: some View {
+    private func header(_ state: GameState) -> some View {
         HStack(spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "figure.walk")
@@ -126,6 +191,21 @@ struct MainView: View {
             Spacer()
 
             Button {
+                showShop = true
+            } label: {
+                Image(systemName: "cart.fill")
+                    .overlay(alignment: .topTrailing) {
+                        if Shop.items.contains(where: { state.canBuy($0) }) {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 11, height: 11)
+                                .offset(x: 6, y: -6)
+                        }
+                    }
+            }
+            .buttonStyle(StoryRoundButtonStyle())
+
+            Button {
                 showMenu = true
             } label: {
                 Image(systemName: "gearshape.fill")
@@ -138,48 +218,106 @@ struct MainView: View {
 
     // MARK: 下のカード
 
-    private var infoCard: some View {
-        let state = store.state
-        let next = ScaleReference.next(after: ballDiameter)
+    private func infoCard(state: GameState, radius: Double, mass: Double) -> some View {
+        let diameter = 2 * radius
+        let next = ScaleReference.next(after: diameter)
+        let easiness = SnowPhysics.easiness(mass: state.mass, team: state.team)
         return VStack(spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(formatSteps(state.rollingSteps))歩")
-                    .font(Storybook.rounded(34))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.6), value: state.rollingSteps)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("つかえる歩数")
+                        .font(Storybook.rounded(11, .semibold))
+                        .foregroundStyle(Storybook.ink.opacity(0.6))
+                    Text("\(formatSteps(state.points))歩")
+                        .font(Storybook.rounded(28))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.6), value: state.points)
+                }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 0) {
                     Text("直径")
                         .font(Storybook.rounded(11, .semibold))
                         .foregroundStyle(Storybook.ink.opacity(0.6))
-                    Text(formatLength(meters: ballDiameter))
+                    Text(formatLength(meters: diameter))
                         .font(Storybook.rounded(22))
                         .monospacedDigit()
-                        .contentTransition(.numericText())
                 }
             }
             .foregroundStyle(Storybook.ink)
 
+            HStack {
+                Label(formatMass(kg: mass), systemImage: "scalemass.fill")
+                Spacer()
+                Label(String(format: "%.0f kg/m³", state.density), systemImage: "square.stack.3d.down.right.fill")
+            }
+            .font(Storybook.rounded(13, .semibold))
+            .foregroundStyle(Storybook.ink.opacity(0.75))
+
+            HStack(spacing: 8) {
+                Text("いきおい")
+                    .font(Storybook.rounded(12, .semibold))
+                    .foregroundStyle(Storybook.ink.opacity(0.7))
+                ProgressView(value: min(1, max(0, easiness)))
+                    .tint(Storybook.accent)
+                Text(easinessText(easiness))
+                    .font(Storybook.rounded(12, .semibold))
+                    .foregroundStyle(Storybook.ink.opacity(0.7))
+                    .frame(minWidth: 64, alignment: .trailing)
+            }
+
             if let next {
-                let remain = max(0, BallScale.steps(forDiameter: next.height / extent) - state.rollingSteps)
                 HStack(spacing: 6) {
                     Image(systemName: next.symbol)
-                    Text("つぎは「\(next.name)」くらいの大きさ（あと \(formatSteps(remain))歩）")
+                    Text("つぎは「\(next.name)」くらいの大きさ（\(formatLength(meters: next.height))）")
                 }
-                .font(Storybook.rounded(13, .semibold))
+                .font(Storybook.rounded(12, .semibold))
                 .foregroundStyle(Storybook.ink.opacity(0.7))
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Text("「\(ScaleReference.all.last?.name ?? "やま")」よりも大きくなりました。まだまだ育ちます。")
-                    .font(Storybook.rounded(13, .semibold))
-                    .foregroundStyle(Storybook.ink.opacity(0.7))
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            Text("雪玉をタップすると、ぎゅっと固まります")
+                .font(Storybook.rounded(11, .medium))
+                .foregroundStyle(Storybook.ink.opacity(0.5))
         }
-        .padding(18)
+        .padding(16)
         .storyCard(corner: 30)
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
+    }
+
+    private func easinessText(_ value: Double) -> String {
+        if value >= 0.995 { return "すいすい" }
+        if value >= 0.01 { return "\(Int((value * 100).rounded()))%" }
+        if value >= 1e-6 { return "ほぼ動かない" }
+        return "止まって見える"
+    }
+
+    // MARK: ブラックホール
+
+    private var endingView: some View {
+        ZStack {
+            Color.black.opacity(0.78).ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image(systemName: "circle.circle.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(Color(red: 1.0, green: 0.62, blue: 0.2))
+                Text("ブラックホールになった")
+                    .font(Storybook.rounded(26))
+                    .foregroundStyle(.white)
+                Text("雪玉は、自分の重さでぎゅっとつぶれて、\nシュワルツシルト半径より小さくなりました。\nここまで育てて、ありがとう。")
+                    .font(Storybook.rounded(15, .medium))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.9))
+                Text("歩いた歩数 \(formatSteps(store.state.totalSteps))歩")
+                    .font(Storybook.rounded(14, .semibold))
+                    .foregroundStyle(.white.opacity(0.75))
+                Button("新しい雪玉ではじめる") {
+                    store.startOver()
+                }
+                .buttonStyle(StoryButtonStyle(kind: .primary))
+            }
+            .padding(24)
+        }
     }
 }

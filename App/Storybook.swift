@@ -100,7 +100,7 @@ struct StoryBackground: View {
     }
 }
 
-private struct StoryPalette {
+struct StoryPalette {
     let skyTop: Color, skyBottom: Color, sun: Color
     let hillFar: Color, hillNear: Color
     let tree: Color, treeSnow: Color
@@ -239,5 +239,104 @@ enum StoryScene {
             let rw = w * (0.10 + CGFloat(g.next() % 100) / 100 * 0.16)
             ctx.fill(Path(ellipseIn: CGRect(x: x - rw, y: y, width: rw * 2, height: rw * 0.16)), with: .color(p.snowTop.opacity(0.65)))
         }
+    }
+}
+
+/// 3D の舞台のカメラの設定（背景の地平線の位置と合わせるために共有する）
+enum StageGeometry {
+    /// 縦方向の視野角（度）
+    static let fieldOfView: Double = 70
+    /// カメラが雪玉の後ろ上 30° から、少し水平寄りに見下ろす角度（度）
+    static let pitch: Double = 24
+    /// 雪玉からカメラまでの距離（雪玉の半径を 1 として）
+    static let distance: Double = 6.5
+    /// カメラの高さの角度（雪玉から見て）
+    static let elevation: Double = 30
+
+    /// 地平線が画面の上から何割の位置か
+    static var horizonFraction: CGFloat {
+        let half = tan(fieldOfView / 2 * .pi / 180)
+        let up = tan(pitch * .pi / 180)
+        return CGFloat(0.5 - 0.5 * up / half)
+    }
+}
+
+/// 3D の舞台の後ろに置く、空と遠い山の絵
+struct StoryPanorama: View {
+    let daypart: Daypart
+
+    var body: some View {
+        Canvas { ctx, size in
+            Self.draw(&ctx, size: size, daypart: daypart)
+        }
+    }
+
+    /// 山のぎざぎざの稜線
+    private static func ridge(w: CGFloat, base: CGFloat, height: CGFloat, seed: UInt64, step: CGFloat) -> Path {
+        var g = SplitMix64(seed: seed)
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: base + 4))
+        var x: CGFloat = 0
+        var up = true
+        var y = base - height * 0.3
+        while x <= w + step {
+            let target = up ? base - height * (0.45 + CGFloat(g.next() % 100) / 100 * 0.55) : base - height * (0.10 + CGFloat(g.next() % 100) / 100 * 0.25)
+            y = target
+            p.addLine(to: CGPoint(x: x, y: y))
+            x += step * (0.7 + CGFloat(g.next() % 100) / 100 * 0.8)
+            up.toggle()
+        }
+        p.addLine(to: CGPoint(x: w, y: base + 4))
+        p.closeSubpath()
+        return p
+    }
+
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, daypart: Daypart) {
+        let w = size.width, h = size.height
+        let horizon = h * StageGeometry.horizonFraction
+        let p = StoryPalette.of(daypart)
+
+        // 空
+        ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                 with: .linearGradient(Gradient(colors: [p.skyTop, p.skyBottom]), startPoint: .zero, endPoint: CGPoint(x: 0, y: horizon)))
+
+        if daypart == .night {
+            var g = SplitMix64(seed: 77)
+            for _ in 0..<40 {
+                let x = CGFloat(g.next() % 1_000) / 1_000 * w
+                let y = CGFloat(g.next() % 1_000) / 1_000 * horizon * 0.85
+                let r = CGFloat(g.next() % 3) * 0.5 + 0.8
+                ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(.white.opacity(0.85)))
+            }
+        }
+
+        // 太陽・月
+        let sunR = w * 0.05
+        let sunCenter: CGPoint
+        switch daypart {
+        case .day: sunCenter = CGPoint(x: w * 0.78, y: horizon * 0.42)
+        case .dusk: sunCenter = CGPoint(x: w * 0.25, y: horizon * 0.72)
+        case .night: sunCenter = CGPoint(x: w * 0.8, y: horizon * 0.38)
+        }
+        ctx.fill(Path(ellipseIn: CGRect(x: sunCenter.x - sunR * 2.2, y: sunCenter.y - sunR * 2.2, width: sunR * 4.4, height: sunR * 4.4)),
+                 with: .radialGradient(Gradient(colors: [p.sun.opacity(0.55), p.sun.opacity(0)]), center: sunCenter, startRadius: sunR * 0.5, endRadius: sunR * 2.2))
+        ctx.fill(Path(ellipseIn: CGRect(x: sunCenter.x - sunR, y: sunCenter.y - sunR, width: sunR * 2, height: sunR * 2)), with: .color(p.sun))
+
+        // 雲
+        if daypart != .night {
+            let cloud = Color.white.opacity(daypart == .day ? 0.85 : 0.5)
+            for (fx, fy, fs) in [(0.2, 0.45, 1.0), (0.55, 0.3, 0.7)] as [(CGFloat, CGFloat, CGFloat)] {
+                let cx = w * fx, cy = horizon * fy, s = w * 0.07 * fs
+                for (dx, dy, r) in [(-0.7, 0.1, 0.55), (0.0, -0.1, 0.8), (0.75, 0.08, 0.6)] as [(CGFloat, CGFloat, CGFloat)] {
+                    ctx.fill(Path(ellipseIn: CGRect(x: cx + dx * s - r * s, y: cy + dy * s - r * s * 0.8, width: r * s * 2, height: r * s * 1.6)), with: .color(cloud))
+                }
+            }
+        }
+
+        // 遠い山（2枚）と、ふもと
+        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.62, seed: 5, step: w * 0.16), with: .color(p.hillFar))
+        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.34, seed: 19, step: w * 0.11), with: .color(p.hillFar.opacity(0.0)))
+        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.30, seed: 41, step: w * 0.09), with: .color(p.hillNear))
+        ctx.fill(Path(CGRect(x: 0, y: horizon - 1, width: w, height: h - horizon + 1)), with: .color(p.hillNear))
     }
 }
