@@ -223,11 +223,41 @@ final class GameLogicTests: XCTestCase {
         XCTAssertTrue(loaded.onboarded)
     }
 
-    func testBallScaleIsMonotonicAndBounded() {
-        XCTAssertEqual(BallScale.fraction(0), 0)
-        XCTAssertEqual(BallScale.fraction(20_000), 1, accuracy: 0.0001)
-        XCTAssertEqual(BallScale.fraction(1_000_000), 1)
-        XCTAssertLessThan(BallScale.fraction(500), BallScale.fraction(3_000))
-        XCTAssertLessThan(BallScale.fraction(3_000), BallScale.fraction(15_000))
+    // MARK: 雪玉の成長モデル
+
+    func testBallRadiusIsMonotonicAndBounded() {
+        var previous = BallScale.radius(steps: 0)
+        XCTAssertEqual(previous, BallScale.r0, accuracy: 0.002)
+        for steps in stride(from: 100, through: 100_000, by: 100) {
+            let r = BallScale.radius(steps: steps)
+            XCTAssertGreaterThan(r, previous, "歩数が増えたら必ず大きくなる")
+            XCTAssertLessThan(r, BallScale.maxRadius, "上限を超えない")
+            previous = r
+        }
+        XCTAssertEqual(BallScale.fraction(0), 0, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(BallScale.fraction(1_000_000), 1)
+        XCTAssertGreaterThan(BallScale.fraction(1_000_000), 0.99)
+    }
+
+    func testBallGrowthSlowsDownInRadius() {
+        // 半径の増え方は後半ほど小さくなる（べき乗 + 頭打ち）
+        let early = BallScale.radius(steps: 3_000) - BallScale.radius(steps: 500)
+        let late = BallScale.radius(steps: 15_000) - BallScale.radius(steps: 12_500)
+        XCTAssertGreaterThan(early / 2_500, late / 2_500)
+    }
+
+    func testVolumeGrowsFasterThanDistance() {
+        // 重くなるほど同じ距離で付く雪が増える: 距離が2倍なら体積は2倍より大きい（頭打ち前）
+        for s in [500, 1_000, 2_000, 4_000] {
+            let v1 = BallScale.volume(radius: BallScale.rawRadius(steps: s)) - BallScale.volume(radius: BallScale.r0)
+            let v2 = BallScale.volume(radius: BallScale.rawRadius(steps: 2 * s)) - BallScale.volume(radius: BallScale.r0)
+            XCTAssertGreaterThan(v2 / v1, 2.0, "s=\(s)")
+        }
+    }
+
+    func testTierRadiiAreReasonablySpaced() {
+        let radii = SizeTier.allCases.map { BallScale.radius(steps: $0.minSteps) }
+        for i in 1..<radii.count { XCTAssertGreaterThan(radii[i], radii[i - 1] + 0.1) }
+        XCTAssertLessThan(radii.last ?? 0, BallScale.maxRadius)
     }
 }

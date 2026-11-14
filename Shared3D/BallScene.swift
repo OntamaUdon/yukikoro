@@ -93,8 +93,7 @@ final class BallScene: NSObject {
     private func apply(steps newSteps: Int, animated: Bool) {
         let old = steps
         steps = newSteps
-        let fraction = Float(BallScale.fraction(newSteps))
-        let radius = 0.28 + 1.0 * fraction
+        let radius = Float(BallScale.radius(steps: newSteps))
         if animated {
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 1.4
