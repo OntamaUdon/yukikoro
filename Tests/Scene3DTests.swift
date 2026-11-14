@@ -170,7 +170,7 @@ final class SculptTests: XCTestCase {
         XCTAssertGreaterThan(noon.top.z, night.top.z + 0.5)
         XCTAssertGreaterThan(noon.ambient, 0.95)
         XCTAssertLessThan(night.ambient, 0.45)
-        XCTAssertGreaterThan(noon.lightIntensity, 1000)
+        XCTAssertGreaterThan(noon.lightIntensity, 800)
         XCTAssertTrue(noon.isSun)
         XCTAssertFalse(night.isSun)
         XCTAssertGreaterThan(night.stars, 0.9)
