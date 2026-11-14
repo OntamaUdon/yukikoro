@@ -1,0 +1,102 @@
+name: Yukikoro
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: ja
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    TARGETED_DEVICE_FAMILY: "1"
+    SWIFT_EMIT_LOC_STRINGS: NO
+
+targets:
+  Yukikoro:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - target: YukikoroWidget
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: ゆきころ
+        CFBundleDevelopmentRegion: ja
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+        NSHealthShareUsageDescription: 歩いた歩数を読み取って、雪玉を大きくするために使います。データは端末の外には送信しません。
+        NSMotionUsageDescription: ヘルスケアの歩数が使えない場合に、歩数を読み取って雪玉を大きくするために使います。
+    entitlements:
+      path: App/Yukikoro.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.security.application-groups:
+          - group.com.example.yukikoro
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.yukikoro
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  YukikoroWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+      - Shared
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: ゆきころ
+        CFBundleDevelopmentRegion: ja
+        NSHealthShareUsageDescription: 歩いた歩数を読み取って、ウィジェットの雪玉を最新にするために使います。
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/YukikoroWidget.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.security.application-groups:
+          - group.com.example.yukikoro
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.yukikoro.widget
+        SKIP_INSTALL: YES
+
+  YukikoroTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+      - Shared
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.yukikoro.tests
+
+schemes:
+  Yukikoro:
+    build:
+      targets:
+        Yukikoro: all
+        YukikoroWidget: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - YukikoroTests
+    archive:
+      config: Release
