@@ -14,7 +14,7 @@ enum BladeSize: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 刃の高さ（雪玉の大きさ＝直径約2 を基準とした長さ）
+    /// 刃の高さ（雪玉の半径 = 1 としたときの長さ）
     var height: Float {
         switch self {
         case .small: return 0.45
@@ -24,51 +24,36 @@ enum BladeSize: String, CaseIterable, Identifiable {
     }
 }
 
-/// 雪玉の網目（緯度×経度の格子）。形の編集はこの格子の頂点ごとに行う。
-enum SculptGrid {
-    static let rings = 56
-    static let segments = 112
-    static let rowCount = segments + 1
-    static let vertexCount = (rings + 1) * (segments + 1)
-
-    static func index(_ i: Int, _ j: Int) -> Int { i * rowCount + j }
-
-    /// 頂点ごとの向き（単位ベクトル）
-    static let directions: [SIMD3<Float>] = {
-        var out: [SIMD3<Float>] = []
-        out.reserveCapacity(vertexCount)
-        for i in 0...rings {
-            let theta = Float(i) / Float(rings) * .pi
-            for j in 0...segments {
-                let phi = Float(j) / Float(segments) * 2 * .pi
-                out.append(SIMD3<Float>(sin(theta) * sin(phi), cos(theta), sin(theta) * cos(phi)))
-            }
-        }
-        return out
-    }()
-}
-
-/// 雪玉の形と色。半径1の球を基準に、頂点ごとの半径の倍率を持つ。色は雪玉ぜんたいで1色。
+/// 雪玉の輪郭（横から見た形）と色。中心からの距離を、角度ごとの「基準の半径に対する倍率」で持つ。
+/// 色は雪玉ぜんたいで1色。
 struct SnowShape: Equatable, Hashable {
     var seed: UInt32
-    /// 頂点ごとの半径の倍率（1 が元の球の大きさ）
+    /// 角度ごとの半径の倍率（1 が元の円の大きさ）
     var radii: [Float]
     /// 雪玉の色（RGB。255,255,255 が白）
     var tint: [UInt8]
 
+    static let pointCount = 180
     static let minRadius: Float = 0.05
     static let maxRadius: Float = 2.5
     /// 刃は、中心からこれより近くには入れない（雪玉が消えてしまわないように）
     static let minCutDepth: Float = 0.2
 
+    /// 角度ごとの向き（x が右、y が上。0 番は右向きで、反時計回り）
+    static let directions: [SIMD2<Float>] = (0..<pointCount).map { k -> SIMD2<Float> in
+        let a = Float(k) / Float(pointCount) * 2 * Float.pi
+        return SIMD2<Float>(cos(a), sin(a))
+    }
+
     /// 手を加える前の、すこしでこぼこした白い雪玉
     static func pristine(seed: UInt32) -> SnowShape {
-        let dirs = SculptGrid.directions
-        let small = Float(seed % 1024)
-        let offset = SIMD3<Float>(small * 3.1, small * 1.7, small * 0.9)
-        var radii = [Float](repeating: 1, count: dirs.count)
-        for k in 0..<dirs.count {
-            radii[k] = 1 + 0.06 * SnowNoise.fbm(dirs[k] * 1.4 + offset, seed: seed)
+        let p1 = Float(seed % 97) * 0.37
+        let p2 = Float((seed / 97) % 89) * 0.41
+        let p3 = Float((seed / 8_633) % 83) * 0.53
+        var radii = [Float](repeating: 1, count: pointCount)
+        for k in 0..<pointCount {
+            let a = Float(k) / Float(pointCount) * 2 * Float.pi
+            radii[k] = 1 + 0.035 * sin(3 * a + p1) + 0.02 * sin(5 * a + p2) + 0.012 * sin(9 * a + p3)
         }
         return SnowShape(seed: seed, radii: radii, tint: [255, 255, 255])
     }
@@ -89,29 +74,33 @@ struct SnowShape: Equatable, Hashable {
         tint = [0, 1, 2].map { UInt8(max(0, min(255, (rgb[$0] * 255).rounded()))) }
     }
 
+    /// 雪玉を `angle`（ラジアン。反時計回り）だけ回したときの、角度ごとの向き
+    static func rotated(_ k: Int, by angle: Float) -> SIMD2<Float> {
+        let d = directions[k]
+        let c = cos(angle), s = sin(angle)
+        return SIMD2<Float>(d.x * c - d.y * s, d.x * s + d.y * c)
+    }
+
     // MARK: 刃で削る
 
-    /// 刃で削る。刃は地面に垂直な板で、画面の横方向（x）に `planeX` の位置にあり、
-    /// 高さは `bandLow`〜`bandHigh`、奥行きは雪玉の端まで。
-    /// 雪玉は `rotation` だけ回っている（形はその回転を含めて、画面の座標で刃と交わる）。
-    /// 刃が通った側（刃より外側）の雪が、刃の面ぴったりまで取り除かれる。
+    /// 刃で削る。刃は縦の板で、画面の横方向（x）の `planeX` にあり、高さは `bandLow`〜`bandHigh`。
+    /// 雪玉は `angle` だけ回っている。刃が通った側（刃より左）の雪が、刃の面ぴったりまで取り除かれる。
     /// 刃は x<0（左側）から入る。中心を含む側が残るので、半径の倍率だけで形を表せる。
     /// - Returns: 形が変わったか
     @discardableResult
-    mutating func cutBlade(rotation: simd_quatf, planeX: Float, bandLow y0: Float, bandHigh y1: Float) -> Bool {
+    mutating func cutBlade(angle: Float, planeX: Float, bandLow y0: Float, bandHigh y1: Float) -> Bool {
         guard y1 > y0 else { return false }
         let a = max(SnowShape.minCutDepth, abs(planeX))
         let s: Float = planeX < 0 ? -1 : 1
-        let dirs = SculptGrid.directions
         var changed = false
-        for k in 0..<dirs.count {
-            let dw = rotation.act(dirs[k])
+        for k in 0..<radii.count {
+            let dw = SnowShape.rotated(k, by: angle)
             let dx = s * dw.x
             guard dx > 1e-4 else { continue }
             let r = radii[k]
             let rx = a / dx
             guard r > rx else { continue }
-            // 今の表面が、刃の高さの範囲に入っているか
+            // 今の輪郭の点が、刃の高さの範囲に入っているか
             let py = r * dw.y
             guard py >= y0, py <= y1 else { continue }
             // その向きの線が、刃の高さの範囲に入る所までの距離（上面・下面で平らに切れる）
@@ -152,9 +141,10 @@ extension SnowShape: Codable {
         radii.withUnsafeMutableBytes { _ = rData.copyBytes(to: $0) }
         var tint = [UInt8](repeating: 255, count: 3)
         if let tData = try c.decodeIfPresent(Data.self, forKey: .tint), tData.count == 3 { tint = [UInt8](tData) }
-        if radii.count == SculptGrid.vertexCount {
+        if radii.count == SnowShape.pointCount {
             self.init(seed: seed, radii: radii, tint: tint)
         } else {
+            // 以前の形式（3D）のデータは、まっさらな玉にする
             self = SnowShape.pristine(seed: seed)
         }
     }
@@ -164,5 +154,110 @@ extension SnowShape: Codable {
         try c.encode(seed, forKey: .seed)
         try c.encode(radii.withUnsafeBufferPointer { Data(buffer: $0) }, forKey: .radii)
         try c.encode(Data(tint), forKey: .tint)
+    }
+}
+
+/// 雪玉を成形する操作の状態（画面とは独立していて、単体テストできる）。
+/// 刃は雪玉の左側に浮いていて、指で上下左右に動かす。刃が雪玉に当たると、通った側が自動で削れる。
+final class SculptModel: ObservableObject {
+    @Published var shape: SnowShape
+    /// 雪玉の向き（ラジアン。反時計回り）
+    @Published var angle: Float = 0
+    @Published var bladeSize: BladeSize = .medium
+    @Published private(set) var bladeX: Float = -1.6
+    @Published private(set) var bladeY: Float = 0
+    @Published private(set) var bladeActive = false
+    @Published private(set) var undoCount = 0
+    /// 回転ボタン: -1 = 右回り、0 = 止まっている、1 = 左回り
+    @Published var spin: Int = 0
+
+    let baseRadius: Float
+    private let original: SnowShape
+    private var undoStack: [SnowShape] = []
+    private var strokeStartBlade = SIMD2<Float>(0, 0)
+    private var strokeUndoPushed = false
+    private var lastTick: Date?
+
+    static let bladeXRange: ClosedRange<Float> = -2.0 ... -0.2
+    static let bladeYRange: ClosedRange<Float> = -1.8 ... 1.8
+    static let spinSpeed: Float = 1.6
+
+    init(shape: SnowShape, baseRadius: Float) {
+        self.shape = shape
+        self.baseRadius = baseRadius
+        original = shape
+    }
+
+    var hasChanges: Bool { shape != original }
+
+    /// 雪玉の直径（メートル）。削った形の最大幅で測る。
+    var diameter: Double { 2 * Double(baseRadius) * Double(shape.maxExtent) }
+
+    // MARK: 刃
+
+    func beginBlade() {
+        bladeActive = true
+        strokeStartBlade = SIMD2<Float>(bladeX, bladeY)
+        strokeUndoPushed = false
+    }
+
+    /// 指の動き（雪玉の半径を 1 とした長さ。右と上が正）で、刃を動かす
+    func dragBlade(translation t: SIMD2<Float>) {
+        guard bladeActive else { return }
+        let x = strokeStartBlade.x + t.x
+        let y = strokeStartBlade.y + t.y
+        bladeX = min(Self.bladeXRange.upperBound, max(Self.bladeXRange.lowerBound, x))
+        bladeY = min(Self.bladeYRange.upperBound, max(Self.bladeYRange.lowerBound, y))
+        applyCut()
+    }
+
+    func endBlade() { bladeActive = false }
+
+    /// 刃が当たっている所を削る
+    func applyCut() {
+        guard bladeActive else { return }
+        var next = shape
+        let half = bladeSize.height / 2
+        guard next.cutBlade(angle: angle, planeX: bladeX, bandLow: bladeY - half, bandHigh: bladeY + half) else { return }
+        if !strokeUndoPushed {
+            pushUndo()
+            strokeUndoPushed = true
+        }
+        shape = next
+    }
+
+    // MARK: 回転
+
+    /// 一定の間隔で呼ぶ。回転ボタンを押している間、雪玉を回す（刃を押さえていれば、回りながらも削れる）。
+    func tick(now: Date = Date()) {
+        defer { lastTick = now }
+        guard spin != 0, let last = lastTick else { return }
+        let dt = Float(min(0.05, now.timeIntervalSince(last)))
+        angle += Float(spin) * Self.spinSpeed * dt
+        applyCut()
+    }
+
+    // MARK: 色・やり直し
+
+    func setTint(_ rgb: SIMD3<Float>) {
+        pushUndo()
+        shape.setTint(rgb)
+    }
+
+    private func pushUndo() {
+        undoStack.append(shape)
+        if undoStack.count > 25 { undoStack.removeFirst() }
+        undoCount = undoStack.count
+    }
+
+    func undo() {
+        guard let last = undoStack.popLast() else { return }
+        shape = last
+        undoCount = undoStack.count
+    }
+
+    func reset() {
+        pushUndo()
+        shape = SnowShape.pristine(seed: shape.seed)
     }
 }

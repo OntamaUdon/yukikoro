@@ -2,8 +2,8 @@ import Foundation
 
 /// 雪玉の大きさに関する定数
 enum Snow {
-    /// ゆきだまにできる最小の歩数
-    static let minimumSteps = 300
+    /// 作品に使える最小の歩数（0 = いつでも取り出せる）
+    static let minimumSteps = 0
     /// 達成上限: 雪玉はこの歩数で最大サイズに到達し、これ以上は大きくならない（超えた歩数は次の雪玉へ持ち越す）
     static let maxSteps = 30_000
 }

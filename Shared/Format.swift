@@ -11,12 +11,11 @@ import CoreGraphics
 ///
 /// 式そのものには収束する上限（漸近線）は無く、半径は距離^0.4 で伸び、体積は距離よりも速く増える。
 /// ゲームとしては「達成上限」（30,000歩）で最大サイズに到達して止まる。
-/// 画面からはみ出さないよう、大きくなったらカメラ側（雪玉を置く距離）を引いて見せる。
 enum BallScale {
     /// 指数 q（β = 0.5 のとき 2.5。接地幅が √r に比例する想定）
     static let q = 2.5
-    /// 歩数 0 のときの半径（場面の単位）
-    static let r0 = 0.28
+    /// 歩数 0 のときの半径（メートル。1cm）
+    static let r0 = 0.01
     /// 係数。S/M/L/XL の4段階（500・3,000・8,000・15,000歩）の見た目の差が偏らないよう決めた値
     static let k = 1.329e-4
 
@@ -39,18 +38,12 @@ enum BallScale {
     /// 体積（半径³に比例。比較用）
     static func volume(radius r: Double) -> Double { 4.0 / 3.0 * Double.pi * r * r * r }
 
-    /// 画面の幅に対する雪玉の見かけの半径（0〜1）。大きくなるほどゆっくり増えて 0.85 に近づく。
-    /// 横画角 42° のとき、距離 d での画面の半幅は d × tan(21°) ≒ 0.384 d。
-    static func apparentFraction(radius r: Double, baseDistance: Double) -> Double {
-        let natural = r / (baseDistance * 0.384)
-        let softLimit = 0.71
-        if natural <= softLimit { return natural }
-        return softLimit + 0.14 * (1 - exp(-(natural - softLimit) / 0.25))
-    }
+    /// 最大の大きさ（達成上限）のときの半径
+    static var maxRadius: Double { radius(steps: Snow.maxSteps) }
 
-    /// 雪玉を置く距離。半径が大きいほど遠くへ置いて、画面からはみ出さないようにする。
-    static func distance(radius r: Double, baseDistance: Double) -> Double {
-        r / (0.384 * apparentFraction(radius: r, baseDistance: baseDistance))
+    /// 画面に描く大きさの割合（0〜1）。半径の平方根に比例させて、小さい玉も見えるようにする。
+    static func displayFraction(radius r: Double) -> Double {
+        min(1, max(0, (r / maxRadius).squareRoot()))
     }
 }
 

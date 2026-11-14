@@ -1,10 +1,10 @@
-# ゆきころ
+# ゆきころさんぽ
 
 ![ホーム](docs/screenshots/home-day.png) ![ずかん](docs/screenshots/collection.png) ![完成](docs/screenshots/complete.png)
 
 （上の画像は、CI のシミュレーターで撮ったデモ表示です。）
 
-歩くと雪玉がころころ大きくなり、好きな大きさで雪だるまにして図鑑を集める、のんびり系の iOS アプリ（iOS 17+、SwiftUI）。
+歩くと雪玉がころころ大きくなる。転がしながら刃で削って形を整え、色を付けて、複数の雪玉を組み合わせて雪の彫刻（作品）を作る、のんびり系の iOS アプリ（iOS 17+、SwiftUI）。
 
 - 企画の背景と設計方針: [DESIGN.md](DESIGN.md)
 - プライバシー: [PRIVACY.md](PRIVACY.md)
@@ -13,13 +13,14 @@
 
 | 場所 | 役割 |
 |---|---|
-| `Shared/` | ゲームロジック（歩数の台帳・サイズ段階・種類と飾りの抽選）、保存、HealthKit。アプリ・テストで共有 |
-| `Shared3D/` | 3D の雪だるま・雪玉（SceneKit、写真素材の PBR 質感）。アプリとテストで共有 |
-| `Resources/Photoreal/` | 実写の素材（CC0: 雪道・雪原の HDRI、雪・樹皮・布のテクスチャ）。出典は `CREDITS.md`。`tools/prepare_assets.py` で加工 |
-| `App/` | 画面（ホーム・ずかん・せってい・最初の説明・完成シート・共有画像） |
-| `Tests/` | ゲームロジックの単体テスト |
+| `Shared/` | ゲームロジック（歩数の台帳、雪玉の形と削り・成長、作品の組み立て）、保存、HealthKit。アプリ・テストで共有 |
+| `App/` | 画面（ホーム・ゆきだま・さくひん・きろく・せってい・整える画面）と、雪玉の2D描画 |
+| `Resources/Backgrounds/` | 背景の写真（CC0。昼・夕方・夜）。出典は `CREDITS.md`。`tools/make_backgrounds.py` で作成 |
+| `Tests/` | 単体テスト |
 | `project.yml` | [XcodeGen](https://github.com/yonaskolb/XcodeGen) の設定（`Yukikoro.xcodeproj` はここから生成） |
 | `tools/make_icon.py` | アプリアイコンの生成スクリプト |
+
+雪玉・作品はすべて2D（横から見た絵）で描いているので、軽く動きます。
 
 ## 開く・動かす（Mac）
 
@@ -50,13 +51,13 @@ xcodegen generate
 
 push のたびに GitHub Actions（macOS）が、アプリのビルドと単体テストを実行します。ローカルに Mac がなくても、コンパイルとロジックの確認ができます。画面の見た目と実機の歩数取得は、実機（TestFlight）でしか確認できません。
 
-## 自前の写真に差し替える
+## 背景を自前の写真に差し替える
 
-`Resources/Photoreal/custom_background.jpg` を置くと、ホームの背景がその写真になります（横長の写真でも 360° パノラマでも可）。ライティングは同梱の HDRI のままです。雪や布のテクスチャを差し替える場合は、同じファイル名で置き換えてください（`snow_albedo.jpg` など）。
+`Resources/Backgrounds/bg_day.jpg` `bg_dusk.jpg` `bg_night.jpg` を、同じ名前の画像で置き換えてください（縦横比は自由。画面いっぱいに拡大して表示します）。
 
 ## 既知の制限
 
-- 背景の空・雪道は 1k の HDR なので、拡大するとぼけて見えます。より精細にするには 2k/4k に差し替えてください。
+- 背景は 1k の写真から作った画像なので、拡大するとぼけて見えます。より精細にするには、高解像度の画像に差し替えてください。
 
 - ホーム画面ウィジェットは、最初の TestFlight では外しました（実装は Git のタグ `with-widget` に残してあります）。
 - 歩数の追加は、アプリを開いたとき（15秒ごと）に行います。開いていない間に歩いた分は、次に開いたときにまとめて加算されます（直近7日分まで）。

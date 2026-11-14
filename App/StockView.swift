@@ -42,7 +42,7 @@ struct StockView: View {
 
     private func card(_ piece: SnowPiece) -> some View {
         VStack(spacing: 8) {
-            PieceThumbnail(piece: piece, size: CGSize(width: 300, height: 300))
+            PieceThumbnail(piece: piece)
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             VStack(spacing: 2) {

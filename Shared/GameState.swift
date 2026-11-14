@@ -41,12 +41,12 @@ struct GameState: Codable, Equatable {
         onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
         initialized = try c.decodeIfPresent(Bool.self, forKey: .initialized) ?? false
         rollingSteps = try c.decodeIfPresent(Int.self, forKey: .rollingSteps) ?? 0
-        rollingShape = try c.decodeIfPresent(SnowShape.self, forKey: .rollingShape) ?? .pristine(seed: 11)
+        rollingShape = (try? c.decodeIfPresent(SnowShape.self, forKey: .rollingShape)) ?? .pristine(seed: 11)
         reserveSteps = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
-        stock = try c.decodeIfPresent([SnowPiece].self, forKey: .stock) ?? []
-        artworks = try c.decodeIfPresent([Artwork].self, forKey: .artworks) ?? []
+        stock = (try? c.decodeIfPresent([SnowPiece].self, forKey: .stock)) ?? []
+        artworks = (try? c.decodeIfPresent([Artwork].self, forKey: .artworks)) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 

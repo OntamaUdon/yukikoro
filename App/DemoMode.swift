@@ -36,20 +36,19 @@ enum DemoMode {
         s.onboarded = true
         s.initialized = true
 
-        let identity = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
         // 赤い胴体（左を刃で平らに削る）
         let body = shaped(seed: 3) { b in
-            b.cutBlade(rotation: identity, planeX: -0.7, bandLow: -0.4, bandHigh: 0.6)
+            b.cutBlade(angle: 0, planeX: -0.7, bandLow: -0.4, bandHigh: 0.6)
             b.setTint(SIMD3<Float>(0.98, 0.62, 0.62))
         }
-        // 頭（上を平らに）
+        // 頭（斜めに平らに）
         let head = shaped(seed: 8) { h in
-            h.cutBlade(rotation: simd_quatf(angle: 0.6, axis: SIMD3<Float>(0, 0, 1)), planeX: -0.8, bandLow: -3, bandHigh: 3)
+            h.cutBlade(angle: 0.6, planeX: -0.8, bandLow: -3, bandHigh: 3)
             h.setTint(SIMD3<Float>(0.99, 0.93, 0.55))
         }
         let base = shaped(seed: 21) { b in
-            b.cutBlade(rotation: identity, planeX: -0.75, bandLow: -3, bandHigh: 3)
-            b.cutBlade(rotation: simd_quatf(angle: 1.2, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.8, bandLow: -3, bandHigh: 3)
+            b.cutBlade(angle: 0, planeX: -0.75, bandLow: -3, bandHigh: 3)
+            b.cutBlade(angle: 1.2, planeX: -0.8, bandLow: -3, bandHigh: 3)
         }
 
         let big = SnowPiece(id: UUID(), steps: 15_000, madeAt: Date(), shape: base)
@@ -57,18 +56,16 @@ enum DemoMode {
         let small = SnowPiece(id: UUID(), steps: 1_600, madeAt: Date(), shape: head)
 
         var art = Artwork(name: "ゆきころ像", createdAt: Date(), updatedAt: Date())
-        func place(_ piece: SnowPiece, x: Float, z: Float, yaw: Float = 0) {
-            let y = Artwork.settleHeight(x: x, z: z, radius: piece.radius, among: art.placements)
-            var p = Placement(piece: piece, position: SIMD3<Float>(x, y, z))
-            p.orientation = simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
-            art.placements.append(p)
+        func place(_ piece: SnowPiece, x: Float, angle: Float = 0) {
+            let y = Artwork.settleHeight(x: x, radius: piece.radius, among: art.placements)
+            art.placements.append(Placement(piece: piece, position: SIMD2<Float>(x, y), angle: angle))
         }
-        place(big, x: 0, z: 0, yaw: 0.6)
-        place(mid, x: 0.05, z: 0, yaw: 0)
-        place(small, x: 0.05, z: 0.05, yaw: 0)
+        place(big, x: 0, angle: 0.6)
+        place(mid, x: 0.05)
+        place(small, x: 0.05, angle: -0.4)
         // 隣に並べた小さな雪玉
-        place(SnowPiece(id: UUID(), steps: 900, madeAt: Date(), shape: SnowShape.pristine(seed: 40)), x: 2.4, z: 0.6)
-        place(SnowPiece(id: UUID(), steps: 500, madeAt: Date(), shape: SnowShape.pristine(seed: 41)), x: -2.1, z: 0.9)
+        place(SnowPiece(id: UUID(), steps: 900, madeAt: Date(), shape: SnowShape.pristine(seed: 40)), x: 2.4)
+        place(SnowPiece(id: UUID(), steps: 500, madeAt: Date(), shape: SnowShape.pristine(seed: 41)), x: -2.1)
         s.artworks = [art]
 
         s.stock = [
@@ -77,12 +74,12 @@ enum DemoMode {
                 b.setTint(SIMD3<Float>(0.62, 0.84, 0.98))
             }),
             SnowPiece(id: UUID(), steps: 6_500, madeAt: Date(), shape: shaped(seed: 17) { b in
-                b.cutBlade(rotation: identity, planeX: -0.6, bandLow: -3, bandHigh: 3)
+                b.cutBlade(angle: 0, planeX: -0.6, bandLow: -3, bandHigh: 3)
             }),
         ]
         s.rollingSteps = steps
         s.rollingShape = shaped(seed: 11) { b in
-            b.cutBlade(rotation: identity, planeX: -0.8, bandLow: -0.3, bandHigh: 0.9)
+            b.cutBlade(angle: 0, planeX: -0.8, bandLow: -0.3, bandHigh: 0.9)
         }
         s.totalSteps = 38_000 + steps
         s.credited[DayKey.key(for: Date())] = 5_200

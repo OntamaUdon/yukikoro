@@ -3,14 +3,19 @@ import SwiftUI
 struct HomeView: View {
     @Environment(GameStore.self) private var store
     @State private var confirming = false
+    /// 転がした分だけ回る雪玉の向き（ラジアン）
+    @State private var rollAngle: Double = 0
 
     var body: some View {
         let state = store.state
         let daypart = Daypart.current(hour: Int(SkyClock.hour()))
         ZStack(alignment: .bottom) {
-            BallSceneView(steps: state.rollingSteps, shape: state.rollingShape, daypart: daypart, yaw: nil)
-                .id(daypart)
+            DaypartBackground(daypart: daypart)
                 .ignoresSafeArea()
+            SnowFall(isDark: daypart.isDark)
+            GeometryReader { geo in
+                ballStage(state: state, size: geo.size)
+            }
 
             VStack {
                 header(state: state)
@@ -18,6 +23,29 @@ struct HomeView: View {
             }
 
             panel(state: state)
+        }
+    }
+
+    // MARK: 雪玉（横から見た2D）
+
+    private func ballStage(state: GameState, size: CGSize) -> some View {
+        let maxRadius = size.width * 0.34
+        let fraction = BallScale.displayFraction(radius: BallScale.radius(steps: state.rollingSteps))
+        let radius = max(4, maxRadius * fraction / Double(max(1, state.rollingShape.maxExtent)))
+        let groundY = size.height * 0.56
+        return ZStack {
+            Canvas { ctx, _ in
+                SnowPainter.drawGroundShadow(in: &ctx, centerX: size.width / 2, groundY: groundY, width: CGFloat(radius) * 2.3, opacity: 0.3)
+            }
+            SnowBallView(shape: state.rollingShape, radius: radius, angle: rollAngle)
+                .position(x: size.width / 2, y: groundY - CGFloat(radius) * 0.98)
+        }
+        .animation(.easeOut(duration: 1.0), value: radius)
+        .onChange(of: state.rollingSteps) { old, new in
+            guard new > old else { return }
+            let r = max(0.02, BallScale.radius(steps: new))
+            let turn = min(3 * Double.pi, max(0.5, Double(new - old) * 0.02 / r))
+            withAnimation(.easeInOut(duration: 1.4)) { rollAngle -= turn }
         }
     }
 
@@ -132,9 +160,6 @@ struct HomeView: View {
     }
 
     private func hint(for state: GameState) -> String {
-        if state.rollingSteps < Snow.minimumSteps {
-            return "\(Snow.minimumSteps)歩から、ゆきだまにできます。"
-        }
         if state.isAtCap {
             let carry = state.reserveSteps > 0 ? "（持ち越し \(formatSteps(state.reserveSteps))歩）" : ""
             return "最大の大きさに達しました。作品に使うと、次の雪玉へ歩数を持ち越せます。\(carry)"

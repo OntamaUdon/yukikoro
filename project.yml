@@ -23,7 +23,6 @@ targets:
     sources:
       - App
       - Shared
-      - Shared3D
       - Resources
     info:
       path: App/Info.plist
@@ -56,7 +55,6 @@ targets:
     sources:
       - Tests
       - Shared
-      - Shared3D
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

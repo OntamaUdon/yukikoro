@@ -122,20 +122,6 @@ final class GameLogicTests: XCTestCase {
         }
     }
 
-    func testBallStaysOnScreenAndKeepsGrowingVisually() {
-        let base = 4.4
-        var previous = 0.0
-        for steps in [0, 500, 3_000, 8_000, 15_000, 22_000, Snow.maxSteps] {
-            let r = BallScale.radius(steps: steps)
-            let apparent = BallScale.apparentFraction(radius: r, baseDistance: base)
-            XCTAssertLessThan(apparent, 0.86, "画面の幅に収まる")
-            XCTAssertGreaterThan(apparent, previous, "見かけも大きくなり続ける")
-            let d = BallScale.distance(radius: r, baseDistance: base)
-            XCTAssertEqual(r / (d * 0.384), apparent, accuracy: 0.0001)
-            previous = apparent
-        }
-    }
-
     // MARK: 達成上限と持ち越し
 
     func testSyncedStepsFillTheBallBeforeReserve() {
@@ -156,15 +142,6 @@ final class GameLogicTests: XCTestCase {
     }
 
     // MARK: ゆきだま
-
-    func testCannotMakePieceBelowMinimum() {
-        var state = GameState()
-        state.addBonus(steps: Snow.minimumSteps - 1)
-        var rng = SplitMix64(seed: 1)
-        XCTAssertNil(state.makePiece(using: &rng))
-        XCTAssertTrue(state.stock.isEmpty)
-        XCTAssertEqual(state.rollingSteps, Snow.minimumSteps - 1)
-    }
 
     func testMakePieceMovesRollingBallToStock() {
         var state = GameState()
@@ -210,7 +187,7 @@ final class GameLogicTests: XCTestCase {
         let taken = state.takeFromStock(id: piece.id)
         XCTAssertNotNil(taken)
         XCTAssertTrue(state.stock.isEmpty)
-        art.placements.append(Placement(piece: taken!, position: SIMD3<Float>(0, taken!.radius, 0)))
+        art.placements.append(Placement(piece: taken!, position: SIMD2<Float>(0, taken!.radius)))
         state.saveArtwork(art)
         XCTAssertEqual(state.artworks.count, 1)
         XCTAssertEqual(state.totalPieceCount, 1)
@@ -225,11 +202,11 @@ final class GameLogicTests: XCTestCase {
         state.addBonus(steps: 4_000)
         var rng = SplitMix64(seed: 3)
         var piece = state.makePiece(using: &rng)!
-        piece.shape.cutBlade(rotation: simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.5, bandLow: -3, bandHigh: 3)
+        piece.shape.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3)
         piece.shape.setTint(SIMD3<Float>(1, 0, 0))
         state.updateStock(id: piece.id, shape: piece.shape)
         var art = state.newArtwork()
-        art.placements = [Placement(piece: piece, position: SIMD3<Float>(1, 2, 3), rotation: SIMD4<Float>(0, 0.7071, 0, 0.7071))]
+        art.placements = [Placement(piece: piece, position: SIMD2<Float>(1, 2), angle: 0.5)]
         state.saveArtwork(art)
 
         let encoder = JSONEncoder()
@@ -238,7 +215,8 @@ final class GameLogicTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(GameState.self, from: try encoder.encode(state))
         XCTAssertEqual(decoded.stock.first?.shape, piece.shape)
-        XCTAssertEqual(decoded.artworks.first?.placements.first?.position, SIMD3<Float>(1, 2, 3))
+        XCTAssertEqual(decoded.artworks.first?.placements.first?.position, SIMD2<Float>(1, 2))
+        XCTAssertEqual(decoded.artworks.first?.placements.first?.angle, 0.5)
         XCTAssertEqual(decoded.totalSteps, 4_000)
 
         // 将来の項目が足りない古いファイルでも読める
@@ -254,7 +232,7 @@ final class GameLogicTests: XCTestCase {
         state.addBonus(steps: 1_000)
         let r1 = Float(BallScale.radius(steps: 1_000))
         var shape = state.rollingShape
-        shape.cutBlade(rotation: simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.5, bandLow: -3, bandHigh: 3)
+        shape.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3)
         state.updateRolling(shape: shape)
         let before = state.rollingShape
 

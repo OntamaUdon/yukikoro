@@ -13,7 +13,7 @@ struct OnboardingView: View {
             SnowFall()
             VStack(spacing: 22) {
                 Spacer()
-                PieceThumbnail(piece: SnowPiece(steps: 3_000, madeAt: Date(), shape: .pristine(seed: 5)), size: CGSize(width: 360, height: 360))
+                PieceThumbnail(piece: SnowPiece(steps: 3_000, madeAt: Date(), shape: .pristine(seed: 5)))
                     .frame(width: 240, height: 240)
                     .clipShape(Circle())
                 Text("ゆきころさんぽ")

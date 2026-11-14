@@ -73,7 +73,7 @@ struct ArtworksView: View {
 
     private func card(_ artwork: Artwork) -> some View {
         VStack(spacing: 8) {
-            ArtworkThumbnail(artwork: artwork, size: CGSize(width: 300, height: 300))
+            ArtworkThumbnail(artwork: artwork)
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             VStack(spacing: 2) {
