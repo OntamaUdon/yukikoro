@@ -11,16 +11,35 @@ final class Scene3DTests: XCTestCase {
                     let decorations = SnowmanFactory.pickDecorations(species: species, tier: tier, using: &rng)
                     let node = SnowmanBuilder.make(species: species, decorations: decorations)
                     XCTAssertGreaterThan(node.childNodes.count, 6, "\(species) \(tier)")
-                    let (mn, mx) = node.boundingBox
-                    _ = (mn, mx)
-                    let flat = node.flattenedClone()
-                    let (fmin, fmax) = flat.boundingBox
-                    XCTAssertGreaterThan(fmax.y - fmin.y, 1.5, "背が低すぎる \(species)")
-                    XCTAssertLessThan(fmax.y - fmin.y, 2.8, "背が高すぎる \(species)")
-                    XCTAssertLessThan(fmax.x - fmin.x, 2.6, "横に広すぎる \(species)")
+                    let (low, high) = Scene3DTests.extent(of: node)
+                    XCTAssertGreaterThan(high.y - low.y, 1.5, "背が低すぎる \(species)")
+                    XCTAssertLessThan(high.y - low.y, 2.8, "背が高すぎる \(species)")
+                    XCTAssertLessThan(high.x - low.x, 2.6, "横に広すぎる \(species)")
                 }
             }
         }
+    }
+
+    /// 子孫すべての図形をまとめた、ワールド座標での範囲
+    static func extent(of root: SCNNode) -> (SIMD3<Float>, SIMD3<Float>) {
+        var low = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var high = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        root.enumerateHierarchy { node, _ in
+            guard node.geometry != nil else { return }
+            let (mn, mx) = node.boundingBox
+            let m = node.simdWorldTransform
+            for x in [mn.x, mx.x] {
+                for y in [mn.y, mx.y] {
+                    for z in [mn.z, mx.z] {
+                        let p = m * SIMD4<Float>(x, y, z, 1)
+                        let q = SIMD3<Float>(p.x, p.y, p.z)
+                        low = simd_min(low, q)
+                        high = simd_max(high, q)
+                    }
+                }
+            }
+        }
+        return (low, high)
     }
 
     func testLatheGeometryHasConsistentBuffers() {
