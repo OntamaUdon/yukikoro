@@ -35,8 +35,7 @@ jobs:
           P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p "$RUNNER_TEMP/keys"
-          body=$(printf '%s' "$P8" | tr -d '' | sed -e 's/\n//g' -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' | tr -d ' 
-	')
+          body=$(printf '%s' "$P8" | tr -d '\r' | sed -e 's/\n//g' -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' | tr -d ' \n\t')
           if [ -z "$body" ]; then echo "::error::ASC_KEY_P8 の中身が空か、.p8 の形式ではありません"; exit 1; fi
           { echo "-----BEGIN PRIVATE KEY-----"; echo "$body" | fold -w 64; echo "-----END PRIVATE KEY-----"; } > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
           # 形式の確認（中身は表示しない）
