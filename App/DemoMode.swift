@@ -100,8 +100,7 @@ struct BallDemoView: View {
     let steps: Int
 
     var body: some View {
-        let theme = SkyTheme.current()
-        BallSceneView(steps: steps, isDark: theme.isDark, skyTop: UIColor(theme.top), skyBottom: UIColor(theme.bottom))
+        BallSceneView(steps: steps, daypart: Daypart.now())
             .ignoresSafeArea()
     }
 }

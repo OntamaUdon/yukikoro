@@ -1,29 +1,13 @@
 import SwiftUI
 
-/// 時間帯で変わる空の色
-struct SkyTheme {
-    let top: Color
-    let bottom: Color
-    let isDark: Bool
-
-    var text: Color { isDark ? .white : Palette.ink }
-    var secondaryText: Color { isDark ? Color.white.opacity(0.75) : Palette.ink.opacity(0.65) }
-
-    static func current(_ date: Date = Date()) -> SkyTheme {
+extension Daypart {
+    /// いまの時間帯（デバッグ起動時は引数で上書きできる）
+    static func now(_ date: Date = Date()) -> Daypart {
         var hour = Calendar.current.component(.hour, from: date)
         #if DEBUG
         if let override = DemoMode.hour { hour = override }
         #endif
-        switch hour {
-        case 5..<8:
-            return SkyTheme(top: Color(red: 0.99, green: 0.84, blue: 0.80), bottom: Color(red: 0.80, green: 0.89, blue: 0.98), isDark: false)
-        case 8..<16:
-            return SkyTheme(top: Color(red: 0.74, green: 0.88, blue: 0.98), bottom: Color(red: 0.92, green: 0.96, blue: 1.0), isDark: false)
-        case 16..<19:
-            return SkyTheme(top: Color(red: 0.96, green: 0.78, blue: 0.72), bottom: Color(red: 0.62, green: 0.71, blue: 0.90), isDark: false)
-        default:
-            return SkyTheme(top: Color(red: 0.11, green: 0.17, blue: 0.33), bottom: Color(red: 0.30, green: 0.37, blue: 0.62), isDark: true)
-        }
+        return Daypart.current(hour: hour)
     }
 }
 

@@ -5,17 +5,12 @@ struct HomeView: View {
     @State private var confirming = false
 
     var body: some View {
-        let theme = SkyTheme.current()
+        let daypart = Daypart.now()
         let state = store.state
         ZStack(alignment: .bottom) {
-            BallSceneView(
-                steps: state.rollingSteps,
-                isDark: theme.isDark,
-                skyTop: UIColor(theme.top),
-                skyBottom: UIColor(theme.bottom)
-            )
-            .id(theme.isDark)
-            .ignoresSafeArea()
+            BallSceneView(steps: state.rollingSteps, daypart: daypart)
+                .id(daypart)
+                .ignoresSafeArea()
 
             VStack {
                 header(state: state)

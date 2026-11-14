@@ -60,12 +60,10 @@ struct SnowmanSceneView: UIViewRepresentable {
 /// ホームの「転がる雪玉」
 struct BallSceneView: UIViewRepresentable {
     let steps: Int
-    let isDark: Bool
-    let skyTop: UIColor
-    let skyBottom: UIColor
+    let daypart: Daypart
 
     func makeCoordinator() -> BallScene {
-        BallScene(isDark: isDark, skyTop: skyTop, skyBottom: skyBottom)
+        BallScene(daypart: daypart)
     }
 
     func makeUIView(context: Context) -> SCNView {

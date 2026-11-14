@@ -24,6 +24,7 @@ targets:
       - App
       - Shared
       - Shared3D
+      - Resources
     dependencies:
       - target: YukikoroWidget
     info:

@@ -3,7 +3,7 @@ import UIKit
 import Metal
 import simd
 
-/// 光源・カメラ・足元の影をそろえた、雪だるま1体ぶんのシーン。
+/// 写真の空（HDRI）で照らした、雪だるま1体ぶんのシーン。
 enum SnowmanScene {
     struct Built {
         let scene: SCNScene
@@ -11,29 +11,68 @@ enum SnowmanScene {
         let snowman: SCNNode
     }
 
-    static func addLights(to scene: SCNScene, ambientIntensity: CGFloat = 880, keyIntensity: CGFloat = 900, ambientColor: UIColor = UIColor(red: 0.72, green: 0.82, blue: 1.0, alpha: 1)) {
-        let ambient = SCNNode()
-        ambient.light = SCNLight()
-        ambient.light?.type = .ambient
-        ambient.light?.color = ambientColor
-        ambient.light?.intensity = ambientIntensity
-        scene.rootNode.addChildNode(ambient)
+    /// 空の写真（HDRI）で全体を照らす。写真が無い環境（テスト等）では環境光で代用する。
+    static func applyEnvironment(to scene: SCNScene, daypart: Daypart, background: Bool, yaw: Float = 0) {
+        let transform = SCNMatrix4MakeRotation(yaw, 0, 1, 0)
+        if let url = PhotoAssets.hdr(daypart.hdrName) {
+            scene.lightingEnvironment.contents = url
+            scene.lightingEnvironment.intensity = daypart.environmentIntensity
+            scene.lightingEnvironment.contentsTransform = transform
+            if background {
+                if let custom = PhotoAssets.customBackground() {
+                    scene.background.contents = custom
+                } else {
+                    scene.background.contents = url
+                }
+                scene.background.intensity = daypart == .night ? 0.2 : 1.0
+                scene.background.contentsTransform = transform
+            }
+        } else {
+            let ambient = SCNNode()
+            ambient.light = SCNLight()
+            ambient.light?.type = .ambient
+            ambient.light?.intensity = 900
+            ambient.light?.color = UIColor(red: 0.8, green: 0.88, blue: 1.0, alpha: 1)
+            scene.rootNode.addChildNode(ambient)
+        }
+    }
 
-        let key = SCNNode()
-        key.light = SCNLight()
-        key.light?.type = .directional
-        key.light?.color = UIColor(red: 1.0, green: 0.97, blue: 0.92, alpha: 1)
-        key.light?.intensity = keyIntensity
-        key.eulerAngles = SCNVector3(-0.85, -0.55, 0)
-        scene.rootNode.addChildNode(key)
+    /// 太陽（影を落とす光）。向きは写真の太陽の方向に合わせる。
+    static func addSun(to scene: SCNScene, daypart: Daypart, castsShadow: Bool, intensity: CGFloat = 1200) {
+        let sun = SCNNode()
+        sun.light = SCNLight()
+        sun.light?.type = .directional
+        sun.light?.color = daypart == .dusk ? UIColor(red: 1.0, green: 0.86, blue: 0.70, alpha: 1) : UIColor(red: 1.0, green: 0.97, blue: 0.93, alpha: 1)
+        sun.light?.intensity = daypart == .night ? intensity * 0.12 : intensity
+        sun.light?.temperature = 6500
+        if castsShadow {
+            sun.light?.castsShadow = true
+            sun.light?.shadowMode = .deferred
+            sun.light?.shadowRadius = 8
+            sun.light?.shadowSampleCount = 8
+            sun.light?.shadowColor = UIColor(red: 0.12, green: 0.18, blue: 0.32, alpha: 0.55)
+            sun.light?.shadowMapSize = CGSize(width: 2048, height: 2048)
+            sun.light?.automaticallyAdjustsShadowProjection = true
+        }
+        // 太陽の方向: 画面左手前の上から、右奥へ
+        let elevation: Float = daypart == .day ? -0.80 : -0.28
+        sun.eulerAngles = SCNVector3(elevation, -0.55, 0)
+        scene.rootNode.addChildNode(sun)
+    }
 
-        let rim = SCNNode()
-        rim.light = SCNLight()
-        rim.light?.type = .directional
-        rim.light?.color = UIColor(red: 0.80, green: 0.88, blue: 1.0, alpha: 1)
-        rim.light?.intensity = keyIntensity * 0.35
-        rim.eulerAngles = SCNVector3(-0.4, 2.6, 0)
-        scene.rootNode.addChildNode(rim)
+    static func configure(camera cam: SCNCamera) {
+        cam.wantsHDR = true
+        cam.wantsExposureAdaptation = false
+        cam.exposureOffset = -0.3
+        cam.minimumExposure = -2
+        cam.maximumExposure = 2
+        cam.bloomIntensity = 0.35
+        cam.bloomThreshold = 1.0
+        cam.bloomBlurRadius = 8
+        cam.vignettingIntensity = 0.25
+        cam.vignettingPower = 1.0
+        cam.zNear = 0.05
+        cam.zFar = 200
     }
 
     /// 足元のやわらかい影（板に放射状のグラデーションを貼る）
@@ -55,8 +94,8 @@ enum SnowmanScene {
         let size = CGSize(width: 128, height: 128)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
-            let colors = [UIColor(red: 0.30, green: 0.40, blue: 0.62, alpha: 0.38).cgColor,
-                          UIColor(red: 0.30, green: 0.40, blue: 0.62, alpha: 0.0).cgColor] as CFArray
+            let colors = [UIColor(red: 0.20, green: 0.28, blue: 0.45, alpha: 0.5).cgColor,
+                          UIColor(red: 0.20, green: 0.28, blue: 0.45, alpha: 0.0).cgColor] as CFArray
             let space = CGColorSpaceCreateDeviceRGB()
             guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: [0, 1]) else { return }
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -67,15 +106,17 @@ enum SnowmanScene {
     static func make(species: Species, decorations: [Decoration], background: UIColor? = nil, animated: Bool = true, tight: Bool = false) -> Built {
         let scene = SCNScene()
         scene.background.contents = background ?? UIColor.clear
-        addLights(to: scene)
+        applyEnvironment(to: scene, daypart: .day, background: false)
+        addSun(to: scene, daypart: .day, castsShadow: false, intensity: 700)
 
         let snowman = SnowmanBuilder.make(species: species, decorations: decorations)
         scene.rootNode.addChildNode(snowman)
         scene.rootNode.addChildNode(shadowBlob())
 
         if animated {
-            let breathe = SCNAction.customAction(duration: 2.6) { node, t in
-                let s = sin(Float(t) / 2.6 * 2 * .pi) * 0.016
+            // ごくゆっくり息をするように伸び縮みする
+            let breathe = SCNAction.customAction(duration: 3.2) { node, t in
+                let s = sin(Float(t) / 3.2 * 2 * .pi) * 0.008
                 node.scale = SCNVector3(1 - s * 0.6, 1 + s, 1 - s * 0.6)
             }
             snowman.runAction(.repeatForever(breathe))
@@ -84,8 +125,7 @@ enum SnowmanScene {
         let camera = SCNNode()
         camera.camera = SCNCamera()
         camera.camera?.fieldOfView = tight ? 22 : 25
-        camera.camera?.zNear = 0.1
-        camera.camera?.zFar = 100
+        configure(camera: camera.camera!)
         // tight: 図鑑・共有画像・ウィジェット用に、雪だるまを大きく写す
         camera.position = tight ? SCNVector3(0, 1.45, 5.3) : SCNVector3(0, 1.55, 5.8)
         camera.look(at: tight ? SCNVector3(0, 1.0, 0) : SCNVector3(0, 0.98, 0))
