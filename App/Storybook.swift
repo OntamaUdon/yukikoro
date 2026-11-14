@@ -264,12 +264,13 @@ enum StageGeometry {
 /// 3D の舞台の後ろに置く、空と遠い山の絵
 struct StoryPanorama: View {
     let daypart: Daypart
-    /// 画面の下の、3D の舞台が使わない部分の高さ（地平線の位置を合わせるために使う）
+    /// 画面の上と下の、3D の舞台が使わない部分の高さ（地平線の位置を合わせるために使う）
+    var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
 
     var body: some View {
         Canvas { ctx, size in
-            Self.draw(&ctx, size: size, daypart: daypart, bottomInset: bottomInset)
+            Self.draw(&ctx, size: size, daypart: daypart, topInset: topInset, bottomInset: bottomInset)
         }
     }
 
@@ -293,9 +294,10 @@ struct StoryPanorama: View {
         return p
     }
 
-    static func draw(_ ctx: inout GraphicsContext, size: CGSize, daypart: Daypart, bottomInset: CGFloat) {
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, daypart: Daypart, topInset: CGFloat, bottomInset: CGFloat) {
         let w = size.width, h = size.height
-        let horizon = (h - bottomInset) * StageGeometry.horizonFraction
+        let horizon = topInset + (h - topInset - bottomInset) * StageGeometry.horizonFraction
+        let skyHeight = horizon - topInset
         let p = StoryPalette.of(daypart)
 
         // 空
@@ -306,7 +308,7 @@ struct StoryPanorama: View {
             var g = SplitMix64(seed: 77)
             for _ in 0..<40 {
                 let x = CGFloat(g.next() % 1_000) / 1_000 * w
-                let y = CGFloat(g.next() % 1_000) / 1_000 * horizon * 0.85
+                let y = topInset + CGFloat(g.next() % 1_000) / 1_000 * skyHeight * 0.85
                 let r = CGFloat(g.next() % 3) * 0.5 + 0.8
                 ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(.white.opacity(0.85)))
             }
@@ -316,9 +318,9 @@ struct StoryPanorama: View {
         let sunR = w * 0.05
         let sunCenter: CGPoint
         switch daypart {
-        case .day: sunCenter = CGPoint(x: w * 0.78, y: horizon * 0.42)
-        case .dusk: sunCenter = CGPoint(x: w * 0.25, y: horizon * 0.72)
-        case .night: sunCenter = CGPoint(x: w * 0.8, y: horizon * 0.38)
+        case .day: sunCenter = CGPoint(x: w * 0.78, y: topInset + skyHeight * 0.42)
+        case .dusk: sunCenter = CGPoint(x: w * 0.25, y: topInset + skyHeight * 0.72)
+        case .night: sunCenter = CGPoint(x: w * 0.8, y: topInset + skyHeight * 0.38)
         }
         ctx.fill(Path(ellipseIn: CGRect(x: sunCenter.x - sunR * 2.2, y: sunCenter.y - sunR * 2.2, width: sunR * 4.4, height: sunR * 4.4)),
                  with: .radialGradient(Gradient(colors: [p.sun.opacity(0.55), p.sun.opacity(0)]), center: sunCenter, startRadius: sunR * 0.5, endRadius: sunR * 2.2))
@@ -328,7 +330,7 @@ struct StoryPanorama: View {
         if daypart != .night {
             let cloud = Color.white.opacity(daypart == .day ? 0.85 : 0.5)
             for (fx, fy, fs) in [(0.2, 0.45, 1.0), (0.55, 0.3, 0.7)] as [(CGFloat, CGFloat, CGFloat)] {
-                let cx = w * fx, cy = horizon * fy, s = w * 0.07 * fs
+                let cx = w * fx, cy = topInset + skyHeight * fy, s = w * 0.07 * fs
                 for (dx, dy, r) in [(-0.7, 0.1, 0.55), (0.0, -0.1, 0.8), (0.75, 0.08, 0.6)] as [(CGFloat, CGFloat, CGFloat)] {
                     ctx.fill(Path(ellipseIn: CGRect(x: cx + dx * s - r * s, y: cy + dy * s - r * s * 0.8, width: r * s * 2, height: r * s * 1.6)), with: .color(cloud))
                 }
@@ -336,9 +338,9 @@ struct StoryPanorama: View {
         }
 
         // 遠い山（2枚）と、ふもと
-        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.62, seed: 5, step: w * 0.16), with: .color(p.hillFar))
-        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.34, seed: 19, step: w * 0.11), with: .color(p.hillFar.opacity(0.0)))
-        ctx.fill(ridge(w: w, base: horizon, height: horizon * 0.30, seed: 41, step: w * 0.09), with: .color(p.hillNear))
+        ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.62, seed: 5, step: w * 0.16), with: .color(p.hillFar))
+        ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.34, seed: 19, step: w * 0.11), with: .color(p.hillFar.opacity(0.0)))
+        ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.30, seed: 41, step: w * 0.09), with: .color(p.hillNear))
         ctx.fill(Path(CGRect(x: 0, y: horizon - 1, width: w, height: h - horizon + 1)), with: .color(p.hillNear))
     }
 }

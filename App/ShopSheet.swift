@@ -78,22 +78,10 @@ struct ShopSheet: View {
         let resistance = SnowPhysics.rollingResistance * SnowPhysics.gravity * state.mass
         let needed = state.toppleForceNeeded
         return VStack(alignment: .leading, spacing: 12) {
-            Text("いまの力")
-                .font(Storybook.rounded(17))
             bar("みんなの力", value: force, maximum: max(needed ?? force, force, resistance), tint: Storybook.accent)
-            bar("雪玉のおもさ（抵抗）", value: resistance, maximum: max(needed ?? force, force, resistance), tint: Color(red: 0.62, green: 0.62, blue: 0.74))
+            bar("雪玉の重さ", value: resistance, maximum: max(needed ?? force, force, resistance), tint: Color(red: 0.62, green: 0.62, blue: 0.74))
             if let needed {
-                bar("木を倒すのに要る力", value: needed, maximum: max(needed, force, resistance), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
-                Text(state.isBlockedByTrees
-                     ? "雪玉が木にぶつかっています。みんなの力が足りないので、仲間や機械を増やしましょう。"
-                     : "木の道の幅は \(formatLength(meters: state.laneWidth).replacingOccurrences(of: "約", with: ""))。雪玉がこれより大きくなって、十分な力で押すと、木が倒れて資材が手に入ります。")
-                    .font(Storybook.rounded(12, .medium))
-                    .foregroundStyle(Storybook.ink.opacity(0.75))
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("もう、雪玉をはばむ木はありません。")
-                    .font(Storybook.rounded(12, .medium))
-                    .foregroundStyle(Storybook.ink.opacity(0.75))
+                bar("木を倒す力", value: needed, maximum: max(needed, force, resistance), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
             }
         }
         .foregroundStyle(Storybook.ink)
@@ -155,13 +143,9 @@ struct ShopSheet: View {
                     Text(unlocked ? item.name : "？？？")
                         .font(Storybook.rounded(18))
                     if unlocked {
-                        Text(item.detail)
-                            .font(Storybook.rounded(13, .medium))
-                            .foregroundStyle(Storybook.ink.opacity(0.75))
-                            .fixedSize(horizontal: false, vertical: true)
                         effectChips(item)
                     } else {
-                        Text("雪玉が \(formatLength(meters: item.unlockDiameter).replacingOccurrences(of: "約", with: "")) になると登場します")
+                        Text("\(formatLength(meters: item.unlockDiameter).replacingOccurrences(of: "約", with: "")) で解放")
                             .font(Storybook.rounded(13, .medium))
                             .foregroundStyle(Storybook.ink.opacity(0.6))
                     }
@@ -188,11 +172,6 @@ struct ShopSheet: View {
                 .buttonStyle(StoryButtonStyle(kind: affordable ? .primary : .soft, compact: true))
                 .disabled(!affordable)
 
-                if !affordable {
-                    Text(shortage(state: state, price: price, materials: materials))
-                        .font(Storybook.rounded(12, .medium))
-                        .foregroundStyle(Storybook.ink.opacity(0.6))
-                }
             }
         }
         .foregroundStyle(Storybook.ink)
@@ -221,12 +200,5 @@ struct ShopSheet: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Capsule().fill(Storybook.accent.opacity(0.12)))
-    }
-
-    private func shortage(state: GameState, price: Int, materials: Int) -> String {
-        var parts: [String] = []
-        if state.points < price { parts.append("あと \(formatSteps(price - state.points))歩") }
-        if state.materials < materials { parts.append("資材があと \(formatSteps(materials - state.materials))") }
-        return parts.isEmpty ? "" : parts.joined(separator: "、") + " 足りません"
     }
 }

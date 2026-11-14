@@ -32,6 +32,9 @@ struct GameState: Codable, Equatable {
     var credited: [String: Int] = [:]
     /// これまでで一番大きかったときの直径（メートル）。買い物の解放に使う。
     var peakDiameter: Double = 2 * SnowPhysics.initialRadius
+    /// 今日の最初の雪玉の重さ（今日ふえた分を見せるため）
+    var dayKey: String = ""
+    var dayStartMass: Double = SnowPhysics.initialMass()
     /// 最後に画面で見せた重さと固さ（開いたときの変化のアニメーション用）
     var seenMass: Double? = nil
     var seenPack: Double? = nil
@@ -43,7 +46,7 @@ struct GameState: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, totalSteps, credited
-        case peakDiameter, seenMass, seenPack, blackHole, createdAt
+        case peakDiameter, seenMass, seenPack, dayKey, dayStartMass, blackHole, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -71,6 +74,8 @@ struct GameState: Codable, Equatable {
                 stage = k
             }
             peakDiameter = try c.decodeIfPresent(Double.self, forKey: .peakDiameter) ?? 2 * SnowPhysics.initialRadius
+            dayKey = try c.decodeIfPresent(String.self, forKey: .dayKey) ?? ""
+            dayStartMass = try c.decodeIfPresent(Double.self, forKey: .dayStartMass) ?? mass
             seenMass = try c.decodeIfPresent(Double.self, forKey: .seenMass)
             seenPack = try c.decodeIfPresent(Double.self, forKey: .seenPack)
             blackHole = try c.decodeIfPresent(Bool.self, forKey: .blackHole) ?? false
@@ -91,6 +96,8 @@ struct GameState: Codable, Equatable {
         try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(credited, forKey: .credited)
         try c.encode(peakDiameter, forKey: .peakDiameter)
+        try c.encode(dayKey, forKey: .dayKey)
+        try c.encode(dayStartMass, forKey: .dayStartMass)
         try c.encodeIfPresent(seenMass, forKey: .seenMass)
         try c.encodeIfPresent(seenPack, forKey: .seenPack)
         try c.encode(blackHole, forKey: .blackHole)
@@ -119,6 +126,7 @@ struct GameState: Codable, Equatable {
                 credited[key] = value
             }
         }
+        rollDay(todayKey)
         addSteps(gained)
         prune()
         return gained
@@ -127,7 +135,20 @@ struct GameState: Codable, Equatable {
     /// テストやデバッグ用に歩数を直接足す
     mutating func addBonus(steps: Int) {
         guard steps > 0 else { return }
+        rollDay(DayKey.key(for: Date()))
         addSteps(steps)
+    }
+
+    /// 日が変わったら、その日の最初の雪玉の重さを覚える
+    private mutating func rollDay(_ key: String) {
+        guard dayKey != key else { return }
+        dayKey = key
+        dayStartMass = mass
+    }
+
+    /// 今日、雪玉の直径がふえた長さ（メートル）
+    var todayGrowth: Double {
+        max(0, diameter - 2 * SnowPhysics.radius(mass: dayStartMass, pack: pack))
     }
 
     private mutating func addSteps(_ steps: Int) {

@@ -40,15 +40,18 @@ struct RadiusAnimation {
     }
 }
 
-private struct CardHeightKey: PreferenceKey {
+private struct TopBlockHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct BottomPanelHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// ゆきころさんぽのメイン画面。歩くと仲間が雪玉を転がして、雪玉が育つ。
-/// 雪玉の見かけの大きさはいつも同じで、大きくなるほど、まわりの木や仲間が小さく遠くなる。
+/// 主役は、今日の歩数。雪玉の見かけの大きさはいつも同じで、大きくなるほど、まわりの木や仲間が小さく遠くなる。
 struct MainView: View {
     @Environment(GameStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
@@ -58,13 +61,56 @@ struct MainView: View {
     @State private var squishTick = 0
     @State private var anim = RadiusAnimation.still(radius: SnowPhysics.initialRadius, mass: SnowPhysics.initialMass())
     @State private var appearedAt = Date()
-    @State private var cardHeight: CGFloat = 150
+    @State private var topHeight: CGFloat = 170
+    @State private var bottomHeight: CGFloat = 130
 
     private var daypart: Daypart { Daypart.current(hour: Int(SkyClock.hour())) }
+    private let gold = Color(red: 0.98, green: 0.72, blue: 0.20)
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            content(now: timeline.date)
+        GeometryReader { outer in
+            let top = outer.safeAreaInsets.top + topHeight
+            let bottom = bottomHeight + outer.safeAreaInsets.bottom
+            ZStack {
+                // 動く絵だけを、毎フレーム描き直す（メニューなどの部品は描き直さない）
+                TimelineView(.animation) { timeline in
+                    scene(now: timeline.date, top: top, bottom: bottom)
+                }
+                .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    VStack(spacing: 10) {
+                        topBar
+                        hero
+                    }
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(key: TopBlockHeightKey.self, value: geo.size.height)
+                        }
+                    )
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            store.packSnow()
+                            squishTick += 1
+                        }
+                    bottomPanel
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(key: BottomPanelHeightKey.self, value: geo.size.height)
+                            }
+                        )
+                }
+
+                // ブラックホールになったあと（変化の動きが終わってから）、いちばん手前に出す
+                TimelineView(.periodic(from: .now, by: 0.5)) { timeline in
+                    if store.state.blackHole && timeline.date >= anim.start.addingTimeInterval(anim.duration) {
+                        endingView
+                    }
+                }
+            }
+            .onPreferenceChange(TopBlockHeightKey.self) { topHeight = $0 }
+            .onPreferenceChange(BottomPanelHeightKey.self) { bottomHeight = $0 }
         }
         .onAppear { prepare() }
         .onChange(of: store.state.mass) { _, _ in retarget() }
@@ -111,7 +157,7 @@ struct MainView: View {
         store.markSeen()
     }
 
-    // MARK: 画面
+    // MARK: 動く絵（空・3Dの舞台・雪）
 
     private func crewLook(_ state: GameState) -> CrewLook {
         var tier = 0
@@ -126,11 +172,10 @@ struct MainView: View {
         return CrewLook(tier: tier, count: min(count, 8), gravity: state.ownedCount("gravity"))
     }
 
-    private func content(now: Date) -> some View {
+    private func scene(now: Date, top: CGFloat, bottom: CGFloat) -> some View {
         let state = store.state
         let p = anim.progress(at: now)
         let radius = anim.radius(progress: p)
-        let mass = anim.mass(progress: p)
         let idle = reduceMotion ? 0 : now.timeIntervalSince(appearedAt) * 0.35
         let input = StageInput(
             radius: radius,
@@ -140,59 +185,21 @@ struct MainView: View {
             blackHole: state.blackHole,
             squishTick: squishTick
         )
-        return GeometryReader { outer in
-            // 3D の舞台は、下のカードにかぶらない高さに収める
-            let inset = cardHeight + 6 + outer.safeAreaInsets.bottom
-            ZStack {
-                StoryPanorama(daypart: daypart, bottomInset: inset)
-                    .ignoresSafeArea()
-                GeometryReader { full in
-                    SnowStage(input: input)
-                        .frame(width: full.size.width, height: max(1, full.size.height - inset))
-                }
-                .ignoresSafeArea()
-                SnowFall(isDark: daypart.isDark)
-
-                VStack(spacing: 0) {
-                    header(state)
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            store.packSnow()
-                            squishTick += 1
-                        }
-                    infoCard(state: state, radius: radius, mass: mass)
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(key: CardHeightKey.self, value: geo.size.height)
-                            }
-                        )
-                }
-                .onPreferenceChange(CardHeightKey.self) { cardHeight = $0 }
-
-                if state.blackHole && p >= 1 {
-                    endingView
-                        .transition(.opacity)
-                }
+        return ZStack {
+            StoryPanorama(daypart: daypart, topInset: top, bottomInset: bottom)
+            GeometryReader { full in
+                SnowStage(input: input)
+                    .frame(width: full.size.width, height: max(1, full.size.height - top - bottom))
+                    .padding(.top, top)
             }
+            SnowFall(isDark: daypart.isDark)
         }
     }
 
-    // MARK: 上の帯
+    // MARK: 上: 今日の歩数
 
-    private func header(_ state: GameState) -> some View {
+    private var topBar: some View {
         HStack(spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "figure.walk")
-                Text("今日 \(formatSteps(store.todaySteps))歩")
-                    .monospacedDigit()
-            }
-            .font(Storybook.rounded(15))
-            .foregroundStyle(Storybook.ink)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .storyCard(corner: 20)
-
             // 一時的なテスト用（歩数を増やす）
             Menu {
                 Button("+100歩") { store.addDebugSteps(100) }
@@ -212,117 +219,224 @@ struct MainView: View {
             Spacer()
 
             Button {
-                showShop = true
-            } label: {
-                Image(systemName: "cart.fill")
-                    .overlay(alignment: .topTrailing) {
-                        if Shop.items.contains(where: { state.canBuy($0) }) {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 11, height: 11)
-                                .offset(x: 6, y: -6)
-                        }
-                    }
-            }
-            .buttonStyle(StoryRoundButtonStyle())
-
-            Button {
                 showMenu = true
             } label: {
                 Image(systemName: "gearshape.fill")
             }
-            .buttonStyle(StoryRoundButtonStyle())
+            .buttonStyle(StoryRoundButtonStyle(size: 40))
         }
         .padding(.horizontal, 16)
-        .padding(.top, 6)
+        .padding(.top, 4)
     }
 
-    // MARK: 下のカード
-
-    private func infoCard(state: GameState, radius: Double, mass: Double) -> some View {
-        let diameter = 2 * radius
-        let easiness = SnowPhysics.easiness(mass: state.mass, team: state.team)
-        return VStack(spacing: 8) {
-            HStack(alignment: .top) {
-                stat("つかえる歩数", "\(formatSteps(state.points))歩", big: true)
-                Spacer(minLength: 8)
-                stat("資材", formatSteps(state.materials), align: .center)
-                Spacer(minLength: 8)
-                stat("直径", formatLength(meters: diameter), align: .trailing)
+    private var hero: some View {
+        let state = store.state
+        let steps = store.todaySteps
+        let fraction = DailyGoal.fraction(steps: steps)
+        let reached = fraction >= 1
+        let tint = reached ? gold : Storybook.accent
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(tint.opacity(0.18), lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: min(1, fraction))
+                    .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeOut(duration: 0.8), value: fraction)
+                Image(systemName: reached ? "star.fill" : "figure.walk")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(tint)
             }
-            .foregroundStyle(Storybook.ink)
+            .frame(width: 76, height: 76)
 
-            HStack(spacing: 10) {
-                Label(formatMass(kg: mass), systemImage: "scalemass.fill")
-                Label(String(format: "%.0f kg/m³", state.density), systemImage: "square.stack.3d.down.right.fill")
-                Spacer(minLength: 0)
-                Text(easinessText(easiness))
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(formatSteps(steps))
+                        .font(Storybook.rounded(54))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.6), value: steps)
+                    Text("歩")
+                        .font(Storybook.rounded(20))
+                }
+                .foregroundStyle(Storybook.ink)
+
+                HStack(spacing: 10) {
+                    growthChip(state)
+                    Spacer(minLength: 0)
+                    weekBars(state)
+                }
             }
-            .font(Storybook.rounded(12, .semibold))
-            .foregroundStyle(Storybook.ink.opacity(0.75))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-
-            laneLine(state: state, diameter: diameter)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .storyCard(corner: 28)
+        .storyCard(corner: 30)
+        .padding(.horizontal, 12)
+    }
+
+    /// 今日ふえた分
+    @ViewBuilder
+    private func growthChip(_ state: GameState) -> some View {
+        let growth = state.todayGrowth
+        if growth >= 0.005 {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up.forward.circle.fill")
+                Text("+" + formatLength(meters: growth).replacingOccurrences(of: "約", with: ""))
+                    .monospacedDigit()
+            }
+            .font(Storybook.rounded(14))
+            .foregroundStyle(Color(red: 0.22, green: 0.58, blue: 0.40))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color(red: 0.22, green: 0.58, blue: 0.40).opacity(0.14)))
+        }
+    }
+
+    /// 過去 7 日の歩数（右が今日。目標に届いた日は金色）
+    private func weekBars(_ state: GameState) -> some View {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let days: [(steps: Int, isToday: Bool)] = (0..<7).reversed().map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today) ?? today
+            let steps = offset == 0 ? store.todaySteps : state.creditedSteps(on: DayKey.key(for: date))
+            return (steps, offset == 0)
+        }
+        return HStack(alignment: .bottom, spacing: 4) {
+            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
+                let fraction = min(1, DailyGoal.fraction(steps: day.steps))
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(day.steps >= DailyGoal.steps ? gold : Storybook.accent.opacity(day.isToday ? 1 : 0.5))
+                    .frame(width: 9, height: 5 + 25 * fraction)
+            }
+        }
+        .frame(height: 30, alignment: .bottom)
+    }
+
+    // MARK: 下: 雪玉の大きさと、おみせ
+
+    private var bottomPanel: some View {
+        HStack(alignment: .bottom, spacing: 12) {
+            TimelineView(.animation) { timeline in
+                statsCard(now: timeline.date)
+            }
+            shopButton
+        }
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
     }
 
-    private func stat(_ title: String, _ value: String, big: Bool = false, align: HorizontalAlignment = .leading) -> some View {
-        VStack(alignment: align, spacing: 0) {
-            Text(title)
-                .font(Storybook.rounded(11, .semibold))
-                .foregroundStyle(Storybook.ink.opacity(0.6))
-            Text(value)
-                .font(Storybook.rounded(big ? 26 : 20))
+    private var shopButton: some View {
+        let state = store.state
+        return VStack(spacing: 4) {
+            Button {
+                showShop = true
+            } label: {
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 64, height: 64)
+                    .background(Circle().fill(Storybook.accent))
+                    .overlay(alignment: .topTrailing) {
+                        if Shop.items.contains(where: { state.canBuy($0) }) {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 16, height: 16)
+                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        }
+                    }
+                    .shadow(color: Storybook.shadow, radius: 6, y: 3)
+            }
+            .buttonStyle(.plain)
+            Text(formatSteps(state.points))
+                .font(Storybook.rounded(13))
                 .monospacedDigit()
+                .foregroundStyle(Storybook.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .frame(width: 72)
         }
     }
 
-    /// 木の道の状況（ぶつかって止まっているとき・道の幅・次の目印）
+    private func statsCard(now: Date) -> some View {
+        let state = store.state
+        let p = anim.progress(at: now)
+        let radius = anim.radius(progress: p)
+        let mass = anim.mass(progress: p)
+        let diameter = 2 * radius
+        return VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                stat("arrow.left.and.right.circle.fill", formatLength(meters: diameter))
+                stat("scalemass.fill", formatMass(kg: mass))
+                stat("shippingbox.fill", formatSteps(state.materials))
+            }
+            laneBar(state: state, diameter: diameter)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .storyCard(corner: 26)
+    }
+
+    private func stat(_ symbol: String, _ value: String) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Storybook.accent)
+            Text(value.replacingOccurrences(of: "約", with: ""))
+                .font(Storybook.rounded(16))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+                .foregroundStyle(Storybook.ink)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 雪玉が木の道の幅にどれだけ近づいたか。ぶつかって止まっているときは赤で、必要な力を出す。
     @ViewBuilder
-    private func laneLine(state: GameState, diameter: Double) -> some View {
-        if state.isBlockedByTrees, let needed = state.toppleForceNeeded {
-            let now = state.team.force + state.team.lift * state.mass * SnowPhysics.gravity
-            HStack(spacing: 6) {
-                Image(systemName: "tree.fill")
-                Text("木にぶつかった！ 倒すには \(formatForce(needed)) の力が要ります（いま \(formatForce(now))）")
-                    .lineLimit(2)
+    private func laneBar(state: GameState, diameter: Double) -> some View {
+        if state.laneCapMass.isFinite {
+            let blocked = state.isBlockedByTrees
+            let fraction = min(1, diameter / state.laneWidth)
+            let tint = blocked ? Color(red: 0.88, green: 0.32, blue: 0.26) : Storybook.accent
+            VStack(spacing: 4) {
+                HStack(spacing: 8) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Storybook.ink.opacity(0.5))
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Storybook.ink.opacity(0.10))
+                            Capsule().fill(tint).frame(width: max(8, geo.size.width * fraction))
+                        }
+                    }
+                    .frame(height: 12)
+                    Image(systemName: "tree.fill")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Color(red: 0.28, green: 0.52, blue: 0.38))
+                }
+                if blocked, let needed = state.toppleForceNeeded {
+                    let now = state.team.force + state.team.lift * state.mass * SnowPhysics.gravity
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.fill")
+                        Text("\(formatForce(now)) / \(formatForce(needed))")
+                            .monospacedDigit()
+                    }
+                    .font(Storybook.rounded(12))
+                    .foregroundStyle(tint)
+                }
             }
-            .font(Storybook.rounded(12, .bold))
-            .foregroundStyle(Color(red: 0.78, green: 0.30, blue: 0.22))
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else if state.laneCapMass.isFinite {
-            HStack(spacing: 6) {
-                Image(systemName: "tree.fill")
-                Text("木の道の幅は \(formatLength(meters: state.laneWidth).replacingOccurrences(of: "約", with: ""))。これより大きくなると木にぶつかります")
-                    .lineLimit(2)
-            }
-            .font(Storybook.rounded(12, .semibold))
-            .foregroundStyle(Storybook.ink.opacity(0.7))
-            .frame(maxWidth: .infinity, alignment: .leading)
         } else if let next = ScaleReference.next(after: diameter) {
             HStack(spacing: 6) {
+                Image(systemName: "arrow.right")
                 Image(systemName: next.symbol)
-                Text("つぎは「\(next.name)」くらいの大きさ（\(formatLength(meters: next.height))）")
+                Text(next.name)
             }
-            .font(Storybook.rounded(12, .semibold))
+            .font(Storybook.rounded(13))
             .foregroundStyle(Storybook.ink.opacity(0.7))
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private func easinessText(_ value: Double) -> String {
-        if value >= 0.995 { return "すいすい" }
-        if value >= 0.01 { return "\(Int((value * 100).rounded()))%" }
-        if value >= 1e-6 { return "ほぼ動かない" }
-        return "止まって見える"
     }
 
     // MARK: ブラックホール

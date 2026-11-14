@@ -54,6 +54,7 @@ struct SnowStage: UIViewRepresentable {
 final class StageCoordinator {
     let scene = SCNScene()
 
+    private let camera = SCNCamera()
     private let ball = SCNNode()
     private let ballMaterial = SCNMaterial()
     private let ring = SCNNode()
@@ -65,19 +66,17 @@ final class StageCoordinator {
     private let ambient = SCNNode()
     private let sun = SCNNode()
 
-    // 木の道に使う材料（夜に光らせるため、まとめて持つ）
+    // 木の道に使う材料
     private let trunkMaterial = SCNMaterial()
     private let leafMaterial = SCNMaterial()
     private let snowCapMaterial = SCNMaterial()
-    private let lampMaterial = SCNMaterial()
-    private let glowMaterial = SCNMaterial()
+    /// イルミネーションの電球（4色）
+    private var bulbMaterials: [SCNMaterial] = []
 
     /// 木の道 1 本ぶん（左右 2 列、等間隔）
     private struct LaneLayer {
         let root: SCNNode
         let holders: [SCNNode]
-        let lamps: [SCNNode]
-        let glows: [SCNNode]
     }
     private var layers: [LaneLayer] = []
 
@@ -100,11 +99,13 @@ final class StageCoordinator {
         scene.fogDensityExponent = 1
 
         // カメラ（雪玉の後ろ上 30°から、少し水平寄りに見下ろす）
-        let camera = SCNCamera()
         camera.fieldOfView = StageGeometry.fieldOfView
         camera.zNear = 0.1
         camera.zFar = 3_000_000
         camera.projectionDirection = .vertical
+        camera.bloomThreshold = 0.8
+        camera.bloomBlurRadius = 12
+        camera.bloomIntensity = 0
         let cameraNode = SCNNode()
         cameraNode.camera = camera
         let elevation = StageGeometry.elevation * .pi / 180
@@ -174,8 +175,9 @@ final class StageCoordinator {
 
         setUpMaterials()
         // 左右 2 列の木の道。落ちていく道・いまの道・次の道の 3 本ぶんを用意しておく。
+        let variants = (0..<3).map { makeTreeGeometry(seed: UInt64($0 + 1) * 7_919) }
         for _ in 0..<3 {
-            let layer = makeLane()
+            let layer = makeLane(variants: variants)
             world.addChildNode(layer.root)
             layers.append(layer)
         }
@@ -231,83 +233,158 @@ final class StageCoordinator {
 
     private func setUpMaterials() {
         trunkMaterial.lightingModel = .lambert
-        trunkMaterial.diffuse.contents = UIColor(red: 0.45, green: 0.32, blue: 0.24, alpha: 1)
+        trunkMaterial.diffuse.contents = UIColor(red: 0.30, green: 0.21, blue: 0.15, alpha: 1)
         leafMaterial.lightingModel = .lambert
-        leafMaterial.diffuse.contents = UIColor(red: 0.30, green: 0.52, blue: 0.46, alpha: 1)
+        leafMaterial.diffuse.contents = UIColor(red: 0.10, green: 0.27, blue: 0.20, alpha: 1)
         snowCapMaterial.lightingModel = .lambert
-        snowCapMaterial.diffuse.contents = UIColor(white: 0.97, alpha: 1)
-        lampMaterial.lightingModel = .constant
-        lampMaterial.diffuse.contents = UIColor(red: 1.0, green: 0.86, blue: 0.55, alpha: 1)
-        glowMaterial.lightingModel = .constant
-        glowMaterial.diffuse.contents = Self.glowImage(size: 128)
-        glowMaterial.blendMode = .add
-        glowMaterial.writesToDepthBuffer = false
-        glowMaterial.isDoubleSided = true
-    }
+        snowCapMaterial.diffuse.contents = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 1)
 
-    /// 高さ 8 の木（最初の道の大きさ）
-    private func makeTree() -> SCNNode {
-        let root = SCNNode()
-        let trunk = SCNNode(geometry: SCNCylinder(radius: 0.28, height: 1.4))
-        trunk.geometry?.materials = [trunkMaterial]
-        trunk.position = SCNVector3(0, 0.7, 0)
-        root.addChildNode(trunk)
-        let tiers: [(radius: CGFloat, height: CGFloat, y: Float)] = [(2.5, 3.6, 3.0), (1.9, 3.2, 4.9), (1.3, 2.8, 6.5)]
-        for tier in tiers {
-            let cone = SCNNode(geometry: SCNCone(topRadius: 0, bottomRadius: tier.radius, height: tier.height))
-            cone.geometry?.materials = [leafMaterial]
-            cone.position = SCNVector3(0, tier.y, 0)
-            root.addChildNode(cone)
-            let cap = SCNNode(geometry: SCNCone(topRadius: 0, bottomRadius: tier.radius * 0.45, height: tier.height * 0.42))
-            cap.geometry?.materials = [snowCapMaterial]
-            cap.position = SCNVector3(0, tier.y + Float(tier.height) * 0.30, 0)
-            root.addChildNode(cap)
+        let bulbColors: [UIColor] = [
+            UIColor(red: 1.0, green: 0.84, blue: 0.52, alpha: 1),
+            UIColor(red: 1.0, green: 0.52, blue: 0.74, alpha: 1),
+            UIColor(red: 0.50, green: 0.86, blue: 1.0, alpha: 1),
+            UIColor(red: 0.70, green: 1.0, blue: 0.62, alpha: 1),
+        ]
+        for color in bulbColors {
+            let material = SCNMaterial()
+            material.lightingModel = .constant
+            material.diffuse.contents = color
+            material.emission.contents = color
+            material.emission.intensity = 0
+            bulbMaterials.append(material)
         }
-        return root
     }
 
-    /// 道を照らす街灯（高さ約 2.2）
-    private func makeLamp() -> SCNNode {
-        let root = SCNNode()
-        let pole = SCNNode(geometry: SCNCylinder(radius: 0.07, height: 1.8))
-        pole.geometry?.materials = [trunkMaterial]
-        pole.position = SCNVector3(0, 0.9, 0)
-        root.addChildNode(pole)
-        let bulb = SCNNode(geometry: SCNSphere(radius: 0.34))
-        bulb.geometry?.materials = [lampMaterial]
-        bulb.position = SCNVector3(0, 2.0, 0)
-        root.addChildNode(bulb)
-        return root
+    /// 木の形（頂点を直接つくる）。高さは約 8。幹・葉・雪・電球 4 色の 7 つの面に分けて、材料を共有する。
+    /// 針葉樹らしく、段ごとに少し不ぞろいで、枝先がたれ、上に雪がのる。
+    private func makeTreeGeometry(seed: UInt64) -> SCNGeometry {
+        var generator = SplitMix64(seed: seed)
+        func random() -> Float { Float(generator.next() % 10_000) / 10_000 }
+
+        var vertices: [SCNVector3] = []
+        var normals: [SCNVector3] = []
+        var trunk: [UInt32] = []
+        var leaf: [UInt32] = []
+        var snow: [UInt32] = []
+        var bulbs: [[UInt32]] = [[], [], [], []]
+
+        func add(_ p: SCNVector3, _ n: SCNVector3) -> UInt32 {
+            vertices.append(p)
+            normals.append(n)
+            return UInt32(vertices.count - 1)
+        }
+        func normalized(_ x: Float, _ y: Float, _ z: Float) -> SCNVector3 {
+            let length = max((x * x + y * y + z * z).squareRoot(), 1e-6)
+            return SCNVector3(x / length, y / length, z / length)
+        }
+
+        // 幹（8 角形の、先が細い柱）
+        let sides = 8
+        for i in 0..<sides {
+            let a0 = Float(i) / Float(sides) * 2 * .pi
+            let a1 = Float(i + 1) / Float(sides) * 2 * .pi
+            let n0 = normalized(cos(a0), 0.1, sin(a0))
+            let n1 = normalized(cos(a1), 0.1, sin(a1))
+            let b0 = add(SCNVector3(cos(a0) * 0.42, 0, sin(a0) * 0.42), n0)
+            let b1 = add(SCNVector3(cos(a1) * 0.42, 0, sin(a1) * 0.42), n1)
+            let t0 = add(SCNVector3(cos(a0) * 0.22, 2.6, sin(a0) * 0.22), n0)
+            let t1 = add(SCNVector3(cos(a1) * 0.22, 2.6, sin(a1) * 0.22), n1)
+            trunk += [b0, t1, b1, b0, t0, t1]
+        }
+
+        // 葉の段（下の段ほど大きい）
+        let tierCount = 9
+        let segments = 18
+        for k in 0..<tierCount {
+            let t = Float(k) / Float(tierCount - 1)
+            let baseY = 1.5 + 5.4 * t
+            let height = 3.1 - 2.1 * t
+            let radius = 2.7 * (1 - 0.88 * t) + 0.2 + random() * 0.15
+            let midY = baseY + height * 0.45
+            let apexY = baseY + height
+            var jitter: [Float] = (0..<segments).map { _ in 0.84 + random() * 0.30 }
+            jitter.append(jitter[0])
+            let apex = SCNVector3(0, apexY, 0)
+
+            for i in 0..<segments {
+                let a0 = Float(i) / Float(segments) * 2 * .pi
+                let a1 = Float(i + 1) / Float(segments) * 2 * .pi
+                let r0 = radius * jitter[i]
+                let r1 = radius * jitter[i + 1]
+                // 枝先が、1 つおきに少したれる
+                let droop0: Float = i % 2 == 0 ? -0.16 * height : 0
+                let droop1: Float = (i + 1) % 2 == 0 ? -0.16 * height : 0
+                let n0 = normalized(cos(a0) * height, radius, sin(a0) * height)
+                let n1 = normalized(cos(a1) * height, radius, sin(a1) * height)
+
+                let p0 = add(SCNVector3(cos(a0) * r0, baseY + droop0, sin(a0) * r0), n0)
+                let p1 = add(SCNVector3(cos(a1) * r1, baseY + droop1, sin(a1) * r1), n1)
+                let m0 = add(SCNVector3(cos(a0) * r0 * 0.55, midY, sin(a0) * r0 * 0.55), n0)
+                let m1 = add(SCNVector3(cos(a1) * r1 * 0.55, midY, sin(a1) * r1 * 0.55), n1)
+                leaf += [p0, m1, p1, p0, m0, m1]
+
+                // 上の部分は雪
+                let s0 = add(SCNVector3(cos(a0) * r0 * 0.55, midY, sin(a0) * r0 * 0.55), normalized(n0.x, n0.y + 0.6, n0.z))
+                let s1 = add(SCNVector3(cos(a1) * r1 * 0.55, midY, sin(a1) * r1 * 0.55), normalized(n1.x, n1.y + 0.6, n1.z))
+                let top = add(apex, SCNVector3(0, 1, 0))
+                snow += [s0, top, s1]
+
+                // 下から見えるふた
+                let c = add(SCNVector3(0, baseY, 0), SCNVector3(0, -1, 0))
+                let q0 = add(SCNVector3(cos(a0) * r0, baseY + droop0, sin(a0) * r0), SCNVector3(0, -1, 0))
+                let q1 = add(SCNVector3(cos(a1) * r1, baseY + droop1, sin(a1) * r1), SCNVector3(0, -1, 0))
+                leaf += [c, q0, q1]
+            }
+        }
+
+        // イルミネーション: 木にらせん状に巻いた電球と、道のふちに並ぶ足元の電球
+        func addBulb(_ center: SCNVector3, size: Float, color: Int) {
+            let corners: [SCNVector3] = [
+                SCNVector3(center.x + size, center.y, center.z), SCNVector3(center.x - size, center.y, center.z),
+                SCNVector3(center.x, center.y + size, center.z), SCNVector3(center.x, center.y - size, center.z),
+                SCNVector3(center.x, center.y, center.z + size), SCNVector3(center.x, center.y, center.z - size),
+            ]
+            let ids = corners.map { add($0, normalized($0.x - center.x, $0.y - center.y, $0.z - center.z)) }
+            // +x -x +y -y +z -z
+            let faces: [[Int]] = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [4, 3, 0], [1, 3, 4], [5, 3, 1], [0, 3, 5]]
+            for face in faces {
+                bulbs[color % 4] += [ids[face[0]], ids[face[1]], ids[face[2]]]
+            }
+        }
+        for j in 0..<16 {
+            let t = Float(j) / 15
+            let y = 1.9 + 5.4 * t
+            let coneRadius = (2.7 * (1 - 0.88 * ((y - 1.5) / 5.4)) + 0.2) * 0.78
+            let angle = Float(j) * 2.3
+            addBulb(SCNVector3(cos(angle) * coneRadius, y, sin(angle) * coneRadius), size: 0.13, color: j)
+        }
+        let groundZs: [Float] = [-3.4, 0, 3.4]
+        for (index, z) in groundZs.enumerated() {
+            addBulb(SCNVector3(-1.6, 0.22, z), size: 0.14, color: index)
+            addBulb(SCNVector3(1.6, 0.22, z), size: 0.14, color: index + 2)
+        }
+
+        let geometry = SCNGeometry(
+            sources: [SCNGeometrySource(vertices: vertices), SCNGeometrySource(normals: normals)],
+            elements: ([trunk, leaf, snow] + bulbs).map { SCNGeometryElement(indices: $0, primitiveType: .triangles) }
+        )
+        geometry.materials = [trunkMaterial, leafMaterial, snowCapMaterial] + bulbMaterials
+        return geometry
     }
 
-    private func makeLane() -> LaneLayer {
+    private func makeLane(variants: [SCNGeometry]) -> LaneLayer {
         let root = SCNNode()
-        let treeTemplate = makeTree()
-        let lampTemplate = makeLamp()
-        let glowPlane = SCNPlane(width: 7, height: 7)
-        glowPlane.materials = [glowMaterial]
         var holders: [SCNNode] = []
-        var lamps: [SCNNode] = []
-        var glows: [SCNNode] = []
         for index in 0..<(Self.pairsPerLane * 2) {
             let holder = SCNNode()
-            let tree = treeTemplate.clone()
+            let tree = SCNNode(geometry: variants[index % variants.count])
             tree.eulerAngles = SCNVector3(0, Float(index) * 0.9, 0)
             holder.addChildNode(tree)
             root.addChildNode(holder)
             holders.append(holder)
-
-            let lamp = lampTemplate.clone()
-            root.addChildNode(lamp)
-            lamps.append(lamp)
-
-            let glow = SCNNode(geometry: glowPlane)
-            glow.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
-            root.addChildNode(glow)
-            glows.append(glow)
         }
         root.isHidden = true
-        return LaneLayer(root: root, holders: holders, lamps: lamps, glows: glows)
+        return LaneLayer(root: root, holders: holders)
     }
 
     /// 雪玉の大きさに合わせて、見せる道を決める。
@@ -358,16 +435,6 @@ final class StageCoordinator {
             holder.scale = SCNVector3(fs, fs, fs)
             holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
             holder.isHidden = fall >= 1
-
-            let lamp = layer.lamps[index]
-            lamp.position = SCNVector3(Float(side * (half + 0.35 * f)), 0, Float(z))
-            lamp.scale = SCNVector3(fs, fs, fs)
-            lamp.isHidden = fall > 0.4
-
-            let glow = layer.glows[index]
-            glow.position = SCNVector3(Float(side * (half - 1.2 * f)), 0.03 * fs, Float(z))
-            glow.scale = SCNVector3(fs, fs, fs)
-            glow.isHidden = fall > 0.4
         }
     }
 
@@ -569,34 +636,37 @@ final class StageCoordinator {
 
     private func applyDaypart(_ daypart: Daypart) {
         func color(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> UIColor { UIColor(red: r, green: g, blue: b, alpha: 1) }
+        var bulbGlow: CGFloat = 0
         switch daypart {
         case .day:
             ambient.light?.color = color(0.60, 0.66, 0.78)
             ambient.light?.intensity = 1000
             sun.light?.color = color(1.0, 0.96, 0.88)
             sun.light?.intensity = 800
-            lampMaterial.emission.contents = UIColor.black
-            lampMaterial.diffuse.contents = color(0.92, 0.88, 0.78)
-            glowMaterial.transparency = 0
-            leafMaterial.emission.contents = UIColor.black
+            camera.wantsHDR = false
+            camera.bloomIntensity = 0
         case .dusk:
             ambient.light?.color = color(0.55, 0.48, 0.62)
             ambient.light?.intensity = 1000
             sun.light?.color = color(1.0, 0.70, 0.50)
             sun.light?.intensity = 750
-            lampMaterial.emission.contents = color(0.7, 0.55, 0.25)
-            lampMaterial.diffuse.contents = color(1.0, 0.86, 0.55)
-            glowMaterial.transparency = 0.45
-            leafMaterial.emission.contents = color(0.04, 0.03, 0.01)
+            bulbGlow = 0.8
+            camera.wantsHDR = false
+            camera.bloomIntensity = 0
         case .night:
-            ambient.light?.color = color(0.30, 0.36, 0.58)
+            // 雪玉が見えるくらいには明るく。電球だけがにじんで光る。
+            ambient.light?.color = color(0.50, 0.56, 0.78)
             ambient.light?.intensity = 1000
-            sun.light?.color = color(0.50, 0.60, 0.95)
-            sun.light?.intensity = 450
-            lampMaterial.emission.contents = color(1.0, 0.82, 0.45)
-            lampMaterial.diffuse.contents = color(1.0, 0.9, 0.6)
-            glowMaterial.transparency = 1
-            leafMaterial.emission.contents = color(0.10, 0.09, 0.03)
+            sun.light?.color = color(0.62, 0.70, 1.0)
+            sun.light?.intensity = 500
+            bulbGlow = 2.4
+            camera.wantsHDR = true
+            camera.bloomThreshold = 0.85
+            camera.bloomBlurRadius = 14
+            camera.bloomIntensity = 1.1
+        }
+        for material in bulbMaterials {
+            material.emission.intensity = bulbGlow
         }
         scene.fogColor = UIColor(StoryPalette.of(daypart).hillNear)
     }
@@ -644,22 +714,14 @@ final class StageCoordinator {
         }
     }
 
-    private static func radialImage(size: Int, color: UIColor, alpha: CGFloat) -> UIImage {
+    private static func shadowImage(size: Int) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
         return renderer.image { context in
             let cg = context.cgContext
-            let colors = [color.withAlphaComponent(alpha).cgColor, color.withAlphaComponent(0).cgColor] as CFArray
+            let colors = [UIColor(white: 0, alpha: 0.36).cgColor, UIColor(white: 0, alpha: 0).cgColor] as CFArray
             guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) else { return }
             let center = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
             cg.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: CGFloat(size) / 2, options: [])
         }
-    }
-
-    private static func shadowImage(size: Int) -> UIImage {
-        radialImage(size: size, color: UIColor.black, alpha: 0.36)
-    }
-
-    private static func glowImage(size: Int) -> UIImage {
-        radialImage(size: size, color: UIColor(red: 1.0, green: 0.78, blue: 0.38, alpha: 1), alpha: 0.85)
     }
 }

@@ -334,6 +334,26 @@ final class GameLogicTests: XCTestCase {
         XCTAssertEqual(state.mass, 1e6, accuracy: 1)
     }
 
+    // MARK: 今日のがんばり
+
+    func testTodayGrowthCountsOnlyToday() {
+        var state = GameState()
+        state.owned = ["kid": 5]
+        state.apply(daily: ["2026-11-14": 3_000], todayKey: "2026-11-14")
+        let first = state.todayGrowth
+        XCTAssertGreaterThan(first, 0.1, "今日歩いた分だけ、直径がふえる")
+        // 次の日になると、その日の最初から数え直す
+        state.apply(daily: ["2026-11-14": 3_000, "2026-11-15": 10], todayKey: "2026-11-15")
+        XCTAssertLessThan(state.todayGrowth, first)
+        XCTAssertGreaterThanOrEqual(state.todayGrowth, 0)
+    }
+
+    func testDailyGoalFraction() {
+        XCTAssertEqual(DailyGoal.fraction(steps: 4_000), 0.5, accuracy: 1e-12)
+        XCTAssertEqual(DailyGoal.fraction(steps: 0), 0)
+        XCTAssertGreaterThan(DailyGoal.fraction(steps: 12_000), 1)
+    }
+
     // MARK: 固める（タップ）
 
     func testTappingPacksTheSnowTighter() {
