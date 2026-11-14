@@ -17,11 +17,26 @@ final class GameStore {
     @ObservationIgnored private var lastSaved: GameState
     @ObservationIgnored private var lastHaptic = Date.distantPast
     @ObservationIgnored private var lastWidgetReload = Date.distantPast
+    /// デバッグ用のデモ表示中は、歩数の取得も保存もしない
+    @ObservationIgnored private var isDemo = false
 
     init() {
-        let loaded = GameStorage.load()
-        state = loaded
-        lastSaved = loaded
+        var initial = GameStorage.load()
+        var demo = false
+        #if DEBUG
+        if DemoMode.isOn {
+            initial = DemoMode.state()
+            demo = true
+        }
+        #endif
+        state = initial
+        lastSaved = initial
+        isDemo = demo
+        #if DEBUG
+        if demo, DemoMode.showsCompletion, let last = initial.snowmen.last {
+            pendingResult = CompletionResult(snowman: last, isNewKind: true)
+        }
+        #endif
     }
 
     var todayKey: String { DayKey.key(for: Date()) }
@@ -30,7 +45,7 @@ final class GameStore {
     // MARK: 同期
 
     func refresh() async {
-        guard state.onboarded else { return }
+        guard state.onboarded, !isDemo else { return }
         var daily = await HealthSteps.dailySteps(days: 7)
         if daily.values.reduce(0, +) == 0, let fallback = await MotionSteps.dailySteps(days: 7) {
             daily = fallback
@@ -78,7 +93,7 @@ final class GameStore {
     // MARK: 内部
 
     private func persist(forceWidget: Bool = false) {
-        guard state != lastSaved else { return }
+        guard !isDemo, state != lastSaved else { return }
         GameStorage.save(state)
         lastSaved = state
         let now = Date()

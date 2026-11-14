@@ -44,6 +44,20 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | tee test.log | tail -n 80
 
+      - name: Screenshots (simulator)
+        run: |
+          APP=$(find build/Build/Products -maxdepth 3 -name Yukikoro.app | head -1)
+          echo "App: $APP"
+          tools/screenshots.sh "$APP" shots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots
+          if-no-files-found: ignore
+
       - name: Upload build logs
         if: failure()
         uses: actions/upload-artifact@v4

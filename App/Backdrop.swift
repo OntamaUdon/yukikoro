@@ -10,7 +10,10 @@ struct SkyTheme {
     var secondaryText: Color { isDark ? Color.white.opacity(0.75) : Palette.ink.opacity(0.65) }
 
     static func current(_ date: Date = Date()) -> SkyTheme {
-        let hour = Calendar.current.component(.hour, from: date)
+        var hour = Calendar.current.component(.hour, from: date)
+        #if DEBUG
+        if let override = DemoMode.hour { hour = override }
+        #endif
         switch hour {
         case 5..<8:
             return SkyTheme(top: Color(red: 0.99, green: 0.84, blue: 0.80), bottom: Color(red: 0.80, green: 0.89, blue: 0.98), isDark: false)

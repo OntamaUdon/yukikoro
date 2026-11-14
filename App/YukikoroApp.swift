@@ -6,9 +6,19 @@ struct YukikoroApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if let page = DemoMode.galleryPage {
+                GalleryView(page: page)
+            } else {
+                RootView()
+                    .environment(store)
+                    .tint(Palette.tint)
+            }
+            #else
             RootView()
                 .environment(store)
                 .tint(Palette.tint)
+            #endif
         }
     }
 }
