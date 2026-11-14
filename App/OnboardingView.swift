@@ -6,28 +6,24 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.74, green: 0.88, blue: 0.98), Color(red: 0.96, green: 0.98, blue: 1.0)],
-                startPoint: .top, endPoint: .bottom
-            ).ignoresSafeArea()
+            StoryBackground(daypart: .day)
+                .ignoresSafeArea()
             SnowFall()
             VStack(spacing: 22) {
                 Spacer()
-                PieceThumbnail(piece: SnowPiece(steps: 3_000, madeAt: Date(), shape: .pristine(seed: 5)))
-                    .frame(width: 240, height: 240)
-                    .clipShape(Circle())
+                SnowBallView(shape: .pristine(seed: 5), radius: 84, angle: 0)
+                    .padding(.bottom, 4)
                 Text("ゆきころさんぽ")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(Palette.ink)
+                    .font(Storybook.rounded(34))
+                    .foregroundStyle(Storybook.ink)
                 VStack(spacing: 10) {
                     Text("歩くと、足元の雪玉がころころ大きくなります。")
-                    Text("できた雪玉を削ったり色を塗ったりして形を整え、\nいくつも組み合わせて雪の彫刻を作ろう。")
-                    Text("ノルマも期限もありません。のんびりどうぞ。")
-                        .foregroundStyle(.secondary)
+                    Text("指でなぞって切ったり、色をつけたりして、\n形を整えよう。")
+                    Text("いくつも並べて、雪の彫刻をつくろう。")
                 }
-                .font(.system(.body, design: .rounded))
+                .font(Storybook.rounded(16, .medium))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(Palette.ink)
+                .foregroundStyle(Storybook.ink)
                 Spacer()
                 VStack(spacing: 10) {
                     Button {
@@ -38,20 +34,19 @@ struct OnboardingView: View {
                         }
                     } label: {
                         Text("はじめる")
-                            .font(.system(.headline, design: .rounded))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(StoryButtonStyle(kind: .primary))
                     .disabled(busy)
                     Text("歩数を読み取るために、ヘルスケアへのアクセスをおたずねします。データは端末の外には送信されません。")
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(.secondary)
+                        .font(Storybook.rounded(12, .medium))
+                        .foregroundStyle(Storybook.ink.opacity(0.7))
                         .multilineTextAlignment(.center)
                 }
+                .padding(18)
+                .storyCard(corner: 30)
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 20)
             .padding(.bottom, 24)
         }
     }

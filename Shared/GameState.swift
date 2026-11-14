@@ -174,6 +174,21 @@ struct GameState: Codable, Equatable {
         artworks.remove(at: i)
     }
 
+    /// 飾る舞台（作品はひとつ）。まだなければ作る。
+    mutating func ensureStage(now: Date = Date()) -> Artwork {
+        if let first = artworks.first { return first }
+        return newArtwork(now: now)
+    }
+
+    /// 舞台を片付ける。置いていたゆきだまは手元に戻る。
+    mutating func clearStage(now: Date = Date()) {
+        guard var stage = artworks.first else { return }
+        for p in stage.placements { returnToStock(p.piece) }
+        stage.placements = []
+        stage.updatedAt = now
+        artworks[0] = stage
+    }
+
     /// 手元とすべての作品にあるゆきだまの数
     var totalPieceCount: Int { stock.count + artworks.reduce(0) { $0 + $1.placements.count } }
 }

@@ -1,29 +1,6 @@
 import Foundation
 import simd
 
-/// 刃（ヘラ）の大きさ。縦の板の高さで、一度に削れる幅が変わる。
-enum BladeSize: String, CaseIterable, Identifiable {
-    case small, medium, large
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .small: return "小"
-        case .medium: return "中"
-        case .large: return "大"
-        }
-    }
-
-    /// 刃の高さ（雪玉の半径 = 1 としたときの長さ）
-    var height: Float {
-        switch self {
-        case .small: return 0.45
-        case .medium: return 1.0
-        case .large: return 3.2
-        }
-    }
-}
-
 /// 雪玉の輪郭（横から見た形）と色。中心からの距離を、角度ごとの「基準の半径に対する倍率」で持つ。
 /// 色は雪玉ぜんたいで1色。
 struct SnowShape: Equatable, Hashable {
@@ -36,7 +13,7 @@ struct SnowShape: Equatable, Hashable {
     static let pointCount = 180
     static let minRadius: Float = 0.05
     static let maxRadius: Float = 2.5
-    /// 刃は、中心からこれより近くには入れない（雪玉が消えてしまわないように）
+    /// 切る線は、中心からこれより近くには入れない（雪玉が消えてしまわないように）
     static let minCutDepth: Float = 0.2
 
     /// 角度ごとの向き（x が右、y が上。0 番は右向きで、反時計回り）
@@ -81,36 +58,21 @@ struct SnowShape: Equatable, Hashable {
         return SIMD2<Float>(d.x * c - d.y * s, d.x * s + d.y * c)
     }
 
-    // MARK: 刃で削る
+    // MARK: 線で切る
 
-    /// 刃で削る。刃は縦の板で、画面の横方向（x）の `planeX` にあり、高さは `bandLow`〜`bandHigh`。
-    /// 雪玉は `angle` だけ回っている。刃が通った側（刃より左）の雪が、刃の面ぴったりまで取り除かれる。
-    /// 刃は x<0（左側）から入る。中心を含む側が残るので、半径の倍率だけで形を表せる。
+    /// 直線で切り落とす。`normal`（単位ベクトル）の向きの側、つまり `normal · p > depth` の側を取り除く。
+    /// 取り除く側は中心を含まないので、残った形は中心から見て必ず見渡せる（半径の倍率だけで表せる）。
     /// - Returns: 形が変わったか
     @discardableResult
-    mutating func cutBlade(angle: Float, planeX: Float, bandLow y0: Float, bandHigh y1: Float) -> Bool {
-        guard y1 > y0 else { return false }
-        let a = max(SnowShape.minCutDepth, abs(planeX))
-        let s: Float = planeX < 0 ? -1 : 1
+    mutating func cutLine(normal n: SIMD2<Float>, depth rawDepth: Float) -> Bool {
+        let depth = max(SnowShape.minCutDepth, rawDepth)
         var changed = false
         for k in 0..<radii.count {
-            let dw = SnowShape.rotated(k, by: angle)
-            let dx = s * dw.x
-            guard dx > 1e-4 else { continue }
-            let r = radii[k]
-            let rx = a / dx
-            guard r > rx else { continue }
-            // 今の輪郭の点が、刃の高さの範囲に入っているか
-            let py = r * dw.y
-            guard py >= y0, py <= y1 else { continue }
-            // その向きの線が、刃の高さの範囲に入る所までの距離（上面・下面で平らに切れる）
-            var lower: Float = 0
-            if abs(dw.y) > 1e-5 {
-                lower = max(0, min(y0 / dw.y, y1 / dw.y))
-            }
-            let newR = max(SnowShape.minRadius, max(rx, lower))
-            if newR < r - 1e-6 {
-                radii[k] = newR
+            let dn = simd_dot(SnowShape.directions[k], n)
+            guard dn > 1e-4 else { continue }
+            let limit = depth / dn
+            if radii[k] > limit {
+                radii[k] = max(SnowShape.minRadius, limit)
                 changed = true
             }
         }
@@ -157,107 +119,71 @@ extension SnowShape: Codable {
     }
 }
 
-/// 雪玉を成形する操作の状態（画面とは独立していて、単体テストできる）。
-/// 刃は雪玉の左側に浮いていて、指で上下左右に動かす。刃が雪玉に当たると、通った側が自動で削れる。
-final class SculptModel: ObservableObject {
-    @Published var shape: SnowShape
-    /// 雪玉の向き（ラジアン。反時計回り）
-    @Published var angle: Float = 0
-    @Published var bladeSize: BladeSize = .medium
-    @Published private(set) var bladeX: Float = -1.6
-    @Published private(set) var bladeY: Float = 0
-    @Published private(set) var bladeActive = false
-    @Published private(set) var undoCount = 0
-    /// 回転ボタン: -1 = 右回り、0 = 止まっている、1 = 左回り
-    @Published var spin: Int = 0
-
-    let baseRadius: Float
-    private let original: SnowShape
-    private var undoStack: [SnowShape] = []
-    private var strokeStartBlade = SIMD2<Float>(0, 0)
-    private var strokeUndoPushed = false
-    private var lastTick: Date?
-
-    static let bladeXRange: ClosedRange<Float> = -2.0 ... -0.2
-    static let bladeYRange: ClosedRange<Float> = -1.8 ... 1.8
-    static let spinSpeed: Float = 1.6
-
-    init(shape: SnowShape, baseRadius: Float) {
-        self.shape = shape
-        self.baseRadius = baseRadius
-        original = shape
+/// 指でなぞった線で雪玉を切る。
+/// 画面の座標は「雪玉の中心が原点、右が x、上が y、基準の半径が 1」の長さで渡す。
+enum LineCut {
+    struct Result {
+        /// 切ったあとの形
+        var shape: SnowShape
+        /// 切り落とされる破片の輪郭（雪玉の座標。回転前）
+        var fragment: [SIMD2<Float>]
     }
 
-    var hasChanges: Bool { shape != original }
+    /// これより短いなぞりは、切らない
+    static let minLength: Float = 0.25
 
-    /// 雪玉の直径（メートル）。削った形の最大幅で測る。
-    var diameter: Double { 2 * Double(baseRadius) * Double(shape.maxExtent) }
-
-    // MARK: 刃
-
-    func beginBlade() {
-        bladeActive = true
-        strokeStartBlade = SIMD2<Float>(bladeX, bladeY)
-        strokeUndoPushed = false
-    }
-
-    /// 指の動き（雪玉の半径を 1 とした長さ。右と上が正）で、刃を動かす
-    func dragBlade(translation t: SIMD2<Float>) {
-        guard bladeActive else { return }
-        let x = strokeStartBlade.x + t.x
-        let y = strokeStartBlade.y + t.y
-        bladeX = min(Self.bladeXRange.upperBound, max(Self.bladeXRange.lowerBound, x))
-        bladeY = min(Self.bladeYRange.upperBound, max(Self.bladeYRange.lowerBound, y))
-        applyCut()
-    }
-
-    func endBlade() { bladeActive = false }
-
-    /// 刃が当たっている所を削る
-    func applyCut() {
-        guard bladeActive else { return }
-        var next = shape
-        let half = bladeSize.height / 2
-        guard next.cutBlade(angle: angle, planeX: bladeX, bandLow: bladeY - half, bandHigh: bladeY + half) else { return }
-        if !strokeUndoPushed {
-            pushUndo()
-            strokeUndoPushed = true
+    /// `a` から `b` までなぞった線で、雪玉を切る。切れなければ nil。
+    /// 切り落とすのは、中心がない側。線が中心のすぐそばを通るときは、中心の手前（深さ 0.2）で止める。
+    static func apply(to shape: SnowShape, angle: Float, from a: SIMD2<Float>, to b: SIMD2<Float>) -> Result? {
+        let length = simd_length(b - a)
+        guard length >= minLength else { return nil }
+        // 雪玉の座標（回転前）に直す
+        let c = cos(-angle), s = sin(-angle)
+        func local(_ p: SIMD2<Float>) -> SIMD2<Float> { SIMD2<Float>(p.x * c - p.y * s, p.x * s + p.y * c) }
+        let la = local(a), lb = local(b)
+        let dir = (lb - la) / length
+        var normal = SIMD2<Float>(-dir.y, dir.x)
+        var depth = simd_dot(normal, la)
+        if depth < 0 {
+            normal = -normal
+            depth = -depth
         }
-        shape = next
+        depth = max(SnowShape.minCutDepth, depth)
+
+        var next = shape
+        guard next.cutLine(normal: normal, depth: depth) else { return nil }
+
+        // 切り落とされる破片: 元の輪郭の弧と、切り口の線で囲まれた形
+        let n = shape.radii.count
+        let changed = (0..<n).filter { next.radii[$0] < shape.radii[$0] - 1e-6 }
+        guard !changed.isEmpty else { return nil }
+        let set = Set(changed)
+        let start = changed.first { !set.contains(($0 - 1 + n) % n) } ?? changed[0]
+        var ordered: [Int] = []
+        var k = start
+        while set.contains(k), ordered.count < n {
+            ordered.append(k)
+            k = (k + 1) % n
+        }
+        let outer = ordered.map { SnowShape.directions[$0] * shape.radii[$0] }
+        let inner = ordered.reversed().map { SnowShape.directions[$0] * next.radii[$0] }
+        return Result(shape: next, fragment: outer + inner)
+    }
+}
+
+/// 元に戻すための履歴
+struct ShapeHistory {
+    private(set) var stack: [SnowShape] = []
+    static let limit = 25
+
+    var count: Int { stack.count }
+    var canUndo: Bool { !stack.isEmpty }
+
+    mutating func push(_ shape: SnowShape) {
+        stack.append(shape)
+        if stack.count > Self.limit { stack.removeFirst() }
     }
 
-    // MARK: 回転
-
-    /// 一定の間隔で呼ぶ。回転ボタンを押している間、雪玉を回す（刃を押さえていれば、回りながらも削れる）。
-    func tick(now: Date = Date()) {
-        defer { lastTick = now }
-        guard spin != 0, let last = lastTick else { return }
-        let dt = Float(min(0.05, now.timeIntervalSince(last)))
-        angle += Float(spin) * Self.spinSpeed * dt
-        applyCut()
-    }
-
-    // MARK: 色・やり直し
-
-    func setTint(_ rgb: SIMD3<Float>) {
-        pushUndo()
-        shape.setTint(rgb)
-    }
-
-    private func pushUndo() {
-        undoStack.append(shape)
-        if undoStack.count > 25 { undoStack.removeFirst() }
-        undoCount = undoStack.count
-    }
-
-    func undo() {
-        guard let last = undoStack.popLast() else { return }
-        shape = last
-        undoCount = undoStack.count
-    }
-
-    func reset() {
-        pushUndo()
-        shape = SnowShape.pristine(seed: shape.seed)
-    }
+    mutating func pop() -> SnowShape? { stack.popLast() }
+    mutating func clear() { stack.removeAll() }
 }

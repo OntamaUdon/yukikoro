@@ -8,14 +8,8 @@ final class GameStore {
     var state: GameState
     /// 直近の同期で増えた歩数（画面の演出用）
     var lastGain = 0
-    /// 選んでいるタブ（0:ホーム 1:ゆきだま 2:さくひん 3:きろく 4:せってい）
-    var tab = 0
-    /// 整える画面を開いているゆきだま（手元のもの）
-    var sculptingPieceID: UUID?
-    /// 転がしている雪玉を成形する画面を開いているか
-    var sculptingRolling = false
-    /// 設定画面のバージョンを5回タップすると有効になる検証用メニュー
-    var developerMode = false
+    /// 「データをリセット」「舞台を片付ける」のたびに増える（画面を作り直すための印）
+    var resetCount = 0
 
     @ObservationIgnored private var lastSaved: GameState
     @ObservationIgnored private var lastHaptic = Date.distantPast
@@ -31,15 +25,11 @@ final class GameStore {
             demo = true
         }
         #endif
+        // 飾る舞台（作品はひとつ）は、いつも1つ用意しておく
+        _ = initial.ensureStage()
         state = initial
         lastSaved = initial
         isDemo = demo
-        #if DEBUG
-        if demo {
-            tab = DemoMode.tab
-            if DemoMode.sculpts { sculptingPieceID = initial.stock.first?.id }
-        }
-        #endif
     }
 
     var todayKey: String { DayKey.key(for: Date()) }
@@ -73,11 +63,13 @@ final class GameStore {
 
     // MARK: ゆきだま・作品
 
-    /// 転がしている雪玉を「ゆきだま」として取り出す（作品に使えるようになる）
-    func makePiece() {
-        guard state.makePiece() != nil else { return }
+    /// 転がしている雪玉を「ゆきだま」として取り出す（飾れるようになる）
+    @discardableResult
+    func makePiece() -> SnowPiece? {
+        guard let piece = state.makePiece() else { return nil }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         persist()
+        return piece
     }
 
     /// 転がしている雪玉の形を更新する（成形したとき）
@@ -102,10 +94,11 @@ final class GameStore {
         persist()
     }
 
-    func newArtwork() -> Artwork {
-        let artwork = state.newArtwork()
+    /// 飾る舞台（作品はひとつ）
+    func ensureStage() -> Artwork {
+        let stage = state.ensureStage()
         persist()
-        return artwork
+        return stage
     }
 
     func saveArtwork(_ artwork: Artwork) {
@@ -113,9 +106,11 @@ final class GameStore {
         persist()
     }
 
-    func deleteArtwork(id: UUID) {
-        state.deleteArtwork(id: id)
+    /// 舞台を片付ける。置いていたゆきだまは手元に戻る。
+    func clearStage() {
+        state.clearStage()
         persist()
+        resetCount += 1
     }
 
     // MARK: 検証用
@@ -126,9 +121,10 @@ final class GameStore {
     }
 
     func resetAll() {
-        state = GameState()
-        sculptingPieceID = nil
-        sculptingRolling = false
+        var fresh = GameState()
+        _ = fresh.ensureStage()
+        state = fresh
+        resetCount += 1
         persist()
     }
 

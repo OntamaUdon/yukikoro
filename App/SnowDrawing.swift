@@ -88,40 +88,6 @@ struct SnowBallView: View, Animatable {
     }
 }
 
-/// 背景の写真（時間帯ごと）
-enum BackgroundImages {
-    private static var cache: [String: UIImage] = [:]
-
-    static func image(_ daypart: Daypart) -> UIImage? {
-        if let hit = cache[daypart.imageName] { return hit }
-        guard let path = Bundle.main.path(forResource: daypart.imageName, ofType: "jpg"),
-              let image = UIImage(contentsOfFile: path) else { return nil }
-        cache[daypart.imageName] = image
-        return image
-    }
-}
-
-struct DaypartBackground: View {
-    let daypart: Daypart
-
-    var body: some View {
-        Color.clear
-            .overlay {
-                if let image = BackgroundImages.image(daypart) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(colors: daypart.isDark
-                                   ? [Color(red: 0.08, green: 0.10, blue: 0.25), Color(red: 0.25, green: 0.30, blue: 0.50)]
-                                   : [Color(red: 0.70, green: 0.84, blue: 0.97), Color(red: 0.96, green: 0.98, blue: 1.0)],
-                                   startPoint: .top, endPoint: .bottom)
-                }
-            }
-            .clipped()
-    }
-}
-
 /// ゆきだまの小さな絵
 struct PieceThumbnail: View {
     let piece: SnowPiece
@@ -145,10 +111,12 @@ struct ArtworkStageView: View {
     var selectedID: UUID?
     let camera: ArtworkCamera
     let daypart: Daypart
+    /// 背景を自分で描くか（メイン画面では、背景は別に描くので false）
+    var showsBackground = true
 
     var body: some View {
         ZStack {
-            DaypartBackground(daypart: daypart)
+            if showsBackground { StoryBackground(daypart: daypart) }
             Canvas { ctx, size in
                 for p in placements {
                     let lift = max(0, p.position.y - p.piece.radius)

@@ -76,8 +76,10 @@ struct ArtworkCamera {
     }
 
     /// 置いたゆきだま全体が画面に収まるカメラ
-    static func fitting(_ placements: [Placement], size: CGSize) -> ArtworkCamera {
-        let groundY = size.height * 0.74
+    /// - Parameter bottomInset: 下に重なる操作パネルの高さ（点）。その分を避けて収める。
+    static func fitting(_ placements: [Placement], size: CGSize, bottomInset: CGFloat = 0) -> ArtworkCamera {
+        let usable = size.height - bottomInset
+        let groundY = usable * 0.72
         guard !placements.isEmpty else {
             return ArtworkCamera(scale: 180, centerX: 0, groundY: groundY, width: size.width)
         }
@@ -88,7 +90,7 @@ struct ArtworkCamera {
             top = max(top, p.position.y + p.reach)
         }
         let spanX = max(0.2, maxX - minX)
-        let availH = groundY - size.height * 0.16
+        let availH = groundY - usable * 0.14
         let sx = size.width * 0.86 / CGFloat(spanX)
         let sy = availH / CGFloat(max(0.2, top))
         let scale = min(260, max(15, min(sx, sy)))
@@ -200,6 +202,12 @@ final class ComposeModel: ObservableObject {
         guard let id = selectedID, let i = index(of: id) else { return }
         let p = artwork.placements[i]
         artwork.placements[i].position.y = Artwork.settleHeight(x: p.position.x, radius: p.piece.radius, among: artwork.placements, excluding: id)
+        commit()
+    }
+
+    func setAngle(id: UUID, angle: Float) {
+        guard let i = index(of: id) else { return }
+        artwork.placements[i].angle = angle
         commit()
     }
 

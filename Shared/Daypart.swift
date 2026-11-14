@@ -12,14 +12,8 @@ enum Daypart: String {
         }
     }
 
-    /// 背景画像のファイル名（Resources/Backgrounds）
-    var imageName: String {
-        switch self {
-        case .day: return "bg_day"
-        case .dusk: return "bg_dusk"
-        case .night: return "bg_night"
-        }
-    }
+    /// 背景イラストのファイル名（Resources/Backgrounds）
+    var imageName: String { "ill_" + rawValue }
 
     var isDark: Bool { self == .night }
 }

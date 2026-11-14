@@ -7,11 +7,9 @@ import simd
 enum DemoMode {
     static var args: [String] { CommandLine.arguments }
     static var isOn: Bool { args.contains("-yukikoro-demo") }
-    /// 整える画面を開いて起動する
-    static var sculpts: Bool { args.contains("-yukikoro-sculpt") }
-    /// 作品の編集画面を開いて起動する
-    static var composes: Bool { args.contains("-yukikoro-compose") }
-    /// 作品の編集画面でゆきだまを1つ選んで起動する
+    /// 「飾る」画面で起動する
+    static var decorates: Bool { args.contains("-yukikoro-decorate") }
+    /// 「飾る」画面でゆきだまを1つ選んで起動する
     static var selectsPiece: Bool { args.contains("-yukikoro-select") }
 
     static func value(_ key: String) -> String? {
@@ -20,7 +18,6 @@ enum DemoMode {
     }
 
     static var hour: Double? { value("-yukikoro-hour").flatMap(Double.init) }
-    static var tab: Int { value("-yukikoro-tab").flatMap(Int.init) ?? 0 }
     static var steps: Int { value("-yukikoro-steps").flatMap(Int.init) ?? 4_200 }
 
     /// デモ用に刃と色で整えたゆきだま
@@ -38,17 +35,17 @@ enum DemoMode {
 
         // 赤い胴体（左を刃で平らに削る）
         let body = shaped(seed: 3) { b in
-            b.cutBlade(angle: 0, planeX: -0.7, bandLow: -0.4, bandHigh: 0.6)
+            b.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.7)
             b.setTint(SIMD3<Float>(0.98, 0.62, 0.62))
         }
         // 頭（斜めに平らに）
         let head = shaped(seed: 8) { h in
-            h.cutBlade(angle: 0.6, planeX: -0.8, bandLow: -3, bandHigh: 3)
+            h.cutLine(normal: SIMD2<Float>(-0.8, 0.6), depth: 0.8)
             h.setTint(SIMD3<Float>(0.99, 0.93, 0.55))
         }
         let base = shaped(seed: 21) { b in
-            b.cutBlade(angle: 0, planeX: -0.75, bandLow: -3, bandHigh: 3)
-            b.cutBlade(angle: 1.2, planeX: -0.8, bandLow: -3, bandHigh: 3)
+            b.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.75)
+            b.cutLine(normal: SIMD2<Float>(0, 1), depth: 0.8)
         }
 
         let big = SnowPiece(id: UUID(), steps: 15_000, madeAt: Date(), shape: base)
@@ -74,12 +71,12 @@ enum DemoMode {
                 b.setTint(SIMD3<Float>(0.62, 0.84, 0.98))
             }),
             SnowPiece(id: UUID(), steps: 6_500, madeAt: Date(), shape: shaped(seed: 17) { b in
-                b.cutBlade(angle: 0, planeX: -0.6, bandLow: -3, bandHigh: 3)
+                b.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.6)
             }),
         ]
         s.rollingSteps = steps
         s.rollingShape = shaped(seed: 11) { b in
-            b.cutBlade(angle: 0, planeX: -0.8, bandLow: -0.3, bandHigh: 0.9)
+            b.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.8)
         }
         s.totalSteps = 38_000 + steps
         s.credited[DayKey.key(for: Date())] = 5_200

@@ -25,56 +25,104 @@ final class SculptTests: XCTestCase {
 
     // MARK: 刃
 
-    func testBladeCutsTheSideItPassedThrough() {
+
+    // MARK: 線で切る
+
+    func testLineCutRemovesTheFarSideAndLeavesAFlatEdge() {
         var s = SnowShape.pristine(seed: 1)
         let left = index(of: SIMD2<Float>(-1, 0))
         let right = index(of: SIMD2<Float>(1, 0))
         let rightBefore = s.radii[right]
-        XCTAssertTrue(s.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3))
-        XCTAssertEqual(s.radii[left], 0.5, accuracy: 0.02, "刃の面ぴったりまで削れる")
+        XCTAssertTrue(s.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5))
+        XCTAssertEqual(s.radii[left], 0.5, accuracy: 0.02, "線の位置まで削れる")
         XCTAssertEqual(s.radii[right], rightBefore, accuracy: 1e-6, "反対側は変わらない")
-        XCTAssertTrue(s.isModified)
-    }
-
-    func testCutLeavesAFlatEdgeAtThePlane() {
-        var s = SnowShape.pristine(seed: 2)
-        s.cutBlade(angle: 0, planeX: -0.6, bandLow: -3, bandHigh: 3)
         for (k, d) in SnowShape.directions.enumerated() where d.x < -0.4 {
-            XCTAssertGreaterThanOrEqual(s.radii[k] * d.x, -0.6 - 0.01, "刃の面より外へは出ない")
+            XCTAssertGreaterThanOrEqual(s.radii[k] * -d.x, -0.01)
+            XCTAssertLessThanOrEqual(s.radii[k] * -d.x, 0.5 + 0.01, "切り口の外へは出ない")
         }
-        let k = index(of: SIMD2<Float>(-1, 0.2))
-        XCTAssertEqual(s.radii[k] * SnowShape.directions[k].x, -0.6, accuracy: 0.01)
     }
 
-    func testBladeOnlyCutsWithinItsHeight() {
-        var s = SnowShape.pristine(seed: 3)
-        let before = s
-        // 上のほう（y=0.6〜0.9）だけの小さな刃
-        s.cutBlade(angle: 0, planeX: -0.4, bandLow: 0.6, bandHigh: 0.9)
-        let high = index(of: SIMD2<Float>(-0.6, 0.8))
-        let low = index(of: SIMD2<Float>(-1, -0.6))
-        XCTAssertLessThan(s.radii[high], before.radii[high] - 0.1)
-        XCTAssertEqual(s.radii[low], before.radii[low], accuracy: 1e-6, "刃の高さの外は削れない")
-    }
-
-    func testBladeKeepsTheCenterSide() {
+    func testLineCutNeverGoesCloserThanTheMinimumDepth() {
         var s = SnowShape.pristine(seed: 5)
-        s.cutBlade(angle: 0, planeX: -0.01, bandLow: -3, bandHigh: 3)
-        let left = index(of: SIMD2<Float>(-1, 0))
-        XCTAssertGreaterThanOrEqual(s.radii[left], SnowShape.minCutDepth - 0.01)
-        XCTAssertGreaterThanOrEqual(s.radii.min() ?? 0, SnowShape.minRadius)
+        s.cutLine(normal: SIMD2<Float>(0, 1), depth: 0.0)
+        XCTAssertGreaterThanOrEqual(s.radii.min() ?? 0, SnowShape.minCutDepth - 0.01)
     }
 
-    func testBladeFollowsTheBallRotation() {
-        // 雪玉を回すと、刃に当たる面が変わる
-        var s = SnowShape.pristine(seed: 6)
-        let turn: Float = .pi / 2   // 反時計回りに90°
-        s.cutBlade(angle: turn, planeX: -0.5, bandLow: -3, bandHigh: 3)
-        // 画面の左(-x)に来ているのは、元の形の「上向き(0,1)」の面
-        let hit = index(of: SIMD2<Float>(0, 1))
-        XCTAssertEqual(s.radii[hit], 0.5, accuracy: 0.03)
-        let unaffected = index(of: SIMD2<Float>(-1, 0))
-        XCTAssertGreaterThan(s.radii[unaffected], 0.9)
+    func testStrokeCutsTheSideAwayFromTheCenter() {
+        let shape = SnowShape.pristine(seed: 2)
+        // 雪玉の左側を、上から下へなぞる（x = -0.5 の縦線）
+        let result = LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(-0.5, 1.5), to: SIMD2<Float>(-0.5, -1.5))
+        XCTAssertNotNil(result)
+        let left = index(of: SIMD2<Float>(-1, 0))
+        let right = index(of: SIMD2<Float>(1, 0))
+        XCTAssertEqual(result?.shape.radii[left] ?? 0, 0.5, accuracy: 0.02)
+        XCTAssertEqual(result?.shape.radii[right] ?? 0, shape.radii[right], accuracy: 1e-6)
+        // 破片は、切り口の線と元の輪郭で囲まれている
+        let fragment = result?.fragment ?? []
+        XCTAssertGreaterThan(fragment.count, 6)
+        XCTAssertLessThanOrEqual(fragment.map(\.x).max() ?? 9, -0.49)
+    }
+
+    func testStrokeDirectionDoesNotMatterAndCenterSideIsKept() {
+        let shape = SnowShape.pristine(seed: 2)
+        let down = LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(0.6, 1.5), to: SIMD2<Float>(0.6, -1.5))
+        let up = LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(0.6, -1.5), to: SIMD2<Float>(0.6, 1.5))
+        XCTAssertEqual(down?.shape, up?.shape, "どちら向きになぞっても、中心がない側が切れる")
+        let right = index(of: SIMD2<Float>(1, 0))
+        XCTAssertEqual(down?.shape.radii[right] ?? 0, 0.6, accuracy: 0.02)
+    }
+
+    func testStrokeThroughTheCenterStopsAtTheMinimumDepth() {
+        let shape = SnowShape.pristine(seed: 2)
+        let result = LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(0, 1.5), to: SIMD2<Float>(0, -1.5))
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result?.shape.radii.min() ?? 0, SnowShape.minCutDepth - 0.01, "雪玉は消えない")
+    }
+
+    func testStrokeFollowsTheBallRotation() {
+        // 雪玉が反時計回りに90°回っているとき、画面の左側の面は、元の形の「上向き」の面
+        let shape = SnowShape.pristine(seed: 6)
+        let result = LineCut.apply(to: shape, angle: .pi / 2, from: SIMD2<Float>(-0.5, 1.5), to: SIMD2<Float>(-0.5, -1.5))
+        let top = index(of: SIMD2<Float>(0, 1))
+        XCTAssertEqual(result?.shape.radii[top] ?? 0, 0.5, accuracy: 0.03)
+        let left = index(of: SIMD2<Float>(-1, 0))
+        XCTAssertGreaterThan(result?.shape.radii[left] ?? 0, 0.9)
+    }
+
+    func testTinyStrokesAndMissesDoNothing() {
+        let shape = SnowShape.pristine(seed: 2)
+        XCTAssertNil(LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(0, 0), to: SIMD2<Float>(0.05, 0)))
+        // 雪玉から遠く離れた線は、何も切らない
+        XCTAssertNil(LineCut.apply(to: shape, angle: 0, from: SIMD2<Float>(-3, 1), to: SIMD2<Float>(-3, -1)))
+    }
+
+    func testHistoryUndoesInOrderAndIsLimited() {
+        var history = ShapeHistory()
+        XCTAssertFalse(history.canUndo)
+        let a = SnowShape.pristine(seed: 1), b = SnowShape.pristine(seed: 2)
+        history.push(a)
+        history.push(b)
+        XCTAssertEqual(history.pop(), b)
+        XCTAssertEqual(history.pop(), a)
+        XCTAssertNil(history.pop())
+        for i in 0..<40 { history.push(SnowShape.pristine(seed: UInt32(i))) }
+        XCTAssertEqual(history.count, ShapeHistory.limit)
+    }
+
+    func testStageIsCreatedOnceAndClearedBackToTheTray() {
+        var state = GameState()
+        XCTAssertTrue(state.artworks.isEmpty)
+        var stage = state.ensureStage()
+        XCTAssertEqual(state.artworks.count, 1)
+        XCTAssertEqual(state.ensureStage().id, stage.id, "舞台は1つだけ")
+        let piece = SnowPiece(steps: 800, madeAt: Date(), shape: .pristine(seed: 1))
+        stage.placements = [Placement(piece: piece, position: SIMD2<Float>(0, piece.radius))]
+        state.saveArtwork(stage)
+        XCTAssertEqual(state.stock.count, 0)
+        state.clearStage()
+        XCTAssertEqual(state.stock.count, 1, "片付けると手元に戻る")
+        XCTAssertTrue(state.artworks[0].placements.isEmpty)
+        XCTAssertEqual(state.artworks.count, 1)
     }
 
     // MARK: 色
@@ -91,7 +139,7 @@ final class SculptTests: XCTestCase {
 
     func testGrowAddsUniformThickness() {
         var s = SnowShape.pristine(seed: 7)
-        s.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        s.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
         let before = s
         let old: Float = 0.5, new: Float = 0.7
         s.grow(fromRadius: old, toRadius: new)
@@ -104,7 +152,7 @@ final class SculptTests: XCTestCase {
 
     func testShapeCodableRoundTrip() throws {
         var s = SnowShape.pristine(seed: 6)
-        s.cutBlade(angle: 0.3, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        s.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
         s.setTint(SIMD3<Float>(0, 0, 1))
         let decoded = try JSONDecoder().decode(SnowShape.self, from: JSONEncoder().encode(s))
         XCTAssertEqual(decoded, s)
@@ -120,64 +168,6 @@ final class SculptTests: XCTestCase {
     }
 
     // MARK: 成形の操作
-
-    func testBladeDragCutsInRealTimeAndCanBeUndone() {
-        let model = SculptModel(shape: .pristine(seed: 2), baseRadius: 0.5)
-        let before = model.shape
-        model.beginBlade()
-        model.dragBlade(translation: SIMD2<Float>(0.4, 0))     // -1.6 から 0.4 進める → -1.2（まだ当たらない）
-        XCTAssertEqual(model.shape, before, "雪玉に届くまでは削れない")
-        model.dragBlade(translation: SIMD2<Float>(1.2, 0))     // → -0.4
-        XCTAssertNotEqual(model.shape, before, "当たると自動で削れる")
-        let left = index(of: SIMD2<Float>(-1, 0))
-        XCTAssertEqual(model.shape.radii[left], 0.4, accuracy: 0.03)
-        model.endBlade()
-        XCTAssertEqual(model.undoCount, 1, "1回の操作は1回のやり直しにまとまる")
-        model.undo()
-        XCTAssertEqual(model.shape, before)
-    }
-
-    func testBladeCannotGoPastTheCenter() {
-        let model = SculptModel(shape: .pristine(seed: 2), baseRadius: 0.5)
-        model.beginBlade()
-        model.dragBlade(translation: SIMD2<Float>(5, 0))
-        XCTAssertLessThanOrEqual(model.bladeX, SculptModel.bladeXRange.upperBound + 1e-6)
-        XCTAssertGreaterThan(model.shape.radii.min() ?? 0, 0.15, "雪玉は消えない")
-    }
-
-    func testSpinKeepsCuttingWhileTheBladeIsHeld() {
-        let model = SculptModel(shape: .pristine(seed: 2), baseRadius: 0.5)
-        model.beginBlade()
-        model.dragBlade(translation: SIMD2<Float>(1.4, 0))     // -0.2 の位置に刃を置く
-        let t0 = Date()
-        model.spin = 1
-        model.tick(now: t0)
-        var cuts = 0
-        for i in 1...30 {
-            let before = model.shape
-            model.tick(now: t0.addingTimeInterval(Double(i) / 60))
-            if model.shape != before { cuts += 1 }
-        }
-        XCTAssertGreaterThan(model.angle, 0.3, "左回りに回る")
-        XCTAssertGreaterThan(cuts, 0, "回りながらも削れる")
-        model.endBlade()
-        model.spin = 0
-    }
-
-    func testDiameterTracksTheCutShape() {
-        let model = SculptModel(shape: .pristine(seed: 2), baseRadius: 0.5)
-        let d0 = model.diameter
-        XCTAssertEqual(d0, 2 * 0.5 * Double(model.shape.maxExtent), accuracy: 1e-6)
-        model.beginBlade()
-        model.dragBlade(translation: SIMD2<Float>(1.4, 0))
-        model.endBlade()
-        XCTAssertLessThanOrEqual(model.diameter, d0)
-    }
-
-    func testBladeSizesAreOrdered() {
-        XCTAssertLessThan(BladeSize.small.height, BladeSize.medium.height)
-        XCTAssertLessThan(BladeSize.medium.height, BladeSize.large.height)
-    }
 
     // MARK: 直径
 

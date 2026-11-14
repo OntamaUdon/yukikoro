@@ -202,7 +202,7 @@ final class GameLogicTests: XCTestCase {
         state.addBonus(steps: 4_000)
         var rng = SplitMix64(seed: 3)
         var piece = state.makePiece(using: &rng)!
-        piece.shape.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        piece.shape.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
         piece.shape.setTint(SIMD3<Float>(1, 0, 0))
         state.updateStock(id: piece.id, shape: piece.shape)
         var art = state.newArtwork()
@@ -232,7 +232,7 @@ final class GameLogicTests: XCTestCase {
         state.addBonus(steps: 1_000)
         let r1 = Float(BallScale.radius(steps: 1_000))
         var shape = state.rollingShape
-        shape.cutBlade(angle: 0, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        shape.cutLine(normal: SIMD2<Float>(-1, 0), depth: 0.5)
         state.updateRolling(shape: shape)
         let before = state.rollingShape
 

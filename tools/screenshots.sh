@@ -21,15 +21,12 @@ shot() {
   xcrun simctl terminate "$UDID" "$BUNDLE" || true
 }
 
-shot home-morning  -yukikoro-demo -yukikoro-hour 6.3
-shot home-day      -yukikoro-demo -yukikoro-hour 12
-shot home-dusk     -yukikoro-demo -yukikoro-hour 17.7  -yukikoro-steps 9000
-shot home-night    -yukikoro-demo -yukikoro-hour 22    -yukikoro-steps 12500
-shot stock         -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 1
-shot artworks      -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 2
-shot compose-day   -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 2 -yukikoro-compose
-shot compose-sel   -yukikoro-demo -yukikoro-hour 15 -yukikoro-tab 2 -yukikoro-compose -yukikoro-select
-shot compose-dusk  -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-tab 2 -yukikoro-compose
-shot compose-night -yukikoro-demo -yukikoro-hour 22 -yukikoro-tab 2 -yukikoro-compose
-shot sculpt        -yukikoro-demo -yukikoro-hour 12 -yukikoro-tab 1 -yukikoro-sculpt
+shot grow-morning  -yukikoro-demo -yukikoro-hour 6.3
+shot grow-day      -yukikoro-demo -yukikoro-hour 12
+shot grow-dusk     -yukikoro-demo -yukikoro-hour 17.7  -yukikoro-steps 9000
+shot grow-night    -yukikoro-demo -yukikoro-hour 22    -yukikoro-steps 12500
+shot decorate-day  -yukikoro-demo -yukikoro-hour 12 -yukikoro-decorate
+shot decorate-sel  -yukikoro-demo -yukikoro-hour 15 -yukikoro-decorate -yukikoro-select
+shot decorate-dusk -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-decorate
+shot decorate-night -yukikoro-demo -yukikoro-hour 22 -yukikoro-decorate
 shot onboarding
