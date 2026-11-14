@@ -18,8 +18,8 @@ final class SculptController: NSObject, ObservableObject, UIGestureRecognizerDel
     private let meshNode = SCNNode()
     private let material = SnowMaterial.make()
     private let cursor = SCNNode()
-    private var orbit = OrbitCamera(azimuth: 0.5, elevation: 0.25, distance: 4.6, target: .zero,
-                                    minDistance: 2.4, maxDistance: 9, minElevation: -1.4, maxElevation: 1.4)
+    private var orbit = OrbitCamera(azimuth: 0.5, elevation: 0.25, distance: 6.4, target: .zero,
+                                    minDistance: 3.2, maxDistance: 12, minElevation: -1.4, maxElevation: 1.4)
     private var undoStack: [SnowShape] = []
     private var strokePlane: (normal: SIMD3<Float>, depth: Float)?
     private weak var view: SCNView?

@@ -60,13 +60,14 @@ struct SkyState: Equatable {
         let phase = isSun ? (h - 6) / 12 : ((h < 6 ? h + 24 : h) - 18) / 12
         let maxElev: Float = (isSun ? 62 : 48) * Float.pi / 180
         let elev = Float(sin(phase * Double.pi)) * maxElev
-        let az = Float(Double.pi / 2 + phase * Double.pi)
+        // 太陽は少し手前の右から差す（影が奥の左に落ちて、雪玉の立体感が出る）
+        let az = Float(Double.pi / 2 + phase * Double.pi - 0.8)
         let dir = SIMD3<Float>(cos(elev) * sin(az), sin(elev), -cos(elev) * cos(az))
 
         let intensity: Float
         let color: SIMD3<Float>
         if isSun {
-            intensity = 1400 * smoothstep(0, 0.25, elev)
+            intensity = 2400 * smoothstep(0, 0.25, elev)
             let warm = SIMD3<Float>(1.0, 0.62, 0.38)
             let white = SIMD3<Float>(1.0, 0.97, 0.92)
             color = warm + (white - warm) * smoothstep(0, 0.45, elev)
@@ -112,6 +113,8 @@ enum SceneSetup {
         cam.bloomBlurRadius = 8
         cam.vignettingIntensity = 0.2
         cam.vignettingPower = 1.0
+        cam.saturation = 1.3
+        cam.contrast = 0.1
         cam.zNear = 0.05
         cam.zFar = 300
     }
@@ -176,8 +179,10 @@ final class SkyRig {
         scene.rootNode.addChildNode(lightNode)
 
         if withGround {
-            let plane = SCNPlane(width: 180, height: 180)
+            let plane = SCNPlane(width: 120, height: 120)
             let m = PBR.snow(tile: (60, 60))
+            m.roughness.contents = 0.95
+            m.emission.intensity = 0.03
             m.transparent.contents = SkyRig.groundMask
             m.transparencyMode = .rgbZero
             plane.materials = [m]
@@ -200,7 +205,7 @@ final class SkyRig {
 
         scene?.background.contents = SkyRig.uiColor(s.horizon)
         scene?.lightingEnvironment.contents = SkyRig.environmentImage(s)
-        scene?.lightingEnvironment.intensity = CGFloat(s.ambient * 1.5)
+        scene?.lightingEnvironment.intensity = CGFloat(s.ambient * 0.85)
 
         let light = lightNode.light
         light?.color = SkyRig.uiColor(s.lightColor)
@@ -227,7 +232,7 @@ final class SkyRig {
         var colors: [Float] = []
         for i in 0...rings {
             let e = Float.pi / 2 - Float(i) / Float(rings) * Float.pi
-            let c = s.color(elevation: e)
+            let c = s.color(elevation: e) * 1.2
             for j in 0...segments {
                 let a = Float(j) / Float(segments) * 2 * Float.pi
                 let r: Float = 100
