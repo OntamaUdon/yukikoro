@@ -50,7 +50,7 @@ final class BallScene: NSObject {
         camera.camera = SCNCamera()
         camera.camera?.projectionDirection = .horizontal
         camera.camera?.fieldOfView = 42
-        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.2 : -0.3)
+        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.5 : -0.2)
         camera.position = SCNVector3(0, 1.6, 0)
         camera.look(at: SCNVector3(0, 0.34, -BallScene.ballDistance))
         scene.rootNode.addChildNode(camera)

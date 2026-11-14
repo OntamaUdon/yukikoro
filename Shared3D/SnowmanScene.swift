@@ -43,7 +43,7 @@ enum SnowmanScene {
         sun.light = SCNLight()
         sun.light?.type = .directional
         sun.light?.color = daypart == .dusk ? UIColor(red: 1.0, green: 0.86, blue: 0.70, alpha: 1) : UIColor(red: 1.0, green: 0.97, blue: 0.93, alpha: 1)
-        sun.light?.intensity = daypart == .night ? intensity * 0.12 : intensity
+        sun.light?.intensity = daypart == .night ? intensity * 0.25 : intensity
         sun.light?.temperature = 6500
         if castsShadow {
             sun.light?.castsShadow = true
@@ -70,8 +70,8 @@ enum SnowmanScene {
         cam.exposureOffset = exposure
         cam.minimumExposure = -2
         cam.maximumExposure = 2
-        cam.bloomIntensity = 0.35
-        cam.bloomThreshold = 1.0
+        cam.bloomIntensity = 0.12
+        cam.bloomThreshold = 1.6
         cam.bloomBlurRadius = 8
         cam.vignettingIntensity = 0.25
         cam.vignettingPower = 1.0

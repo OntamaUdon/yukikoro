@@ -51,7 +51,7 @@ enum Daypart {
         switch self {
         case .day: return 1.0
         case .dusk: return 0.9
-        case .night: return 0.12
+        case .night: return 0.3
         }
     }
 
