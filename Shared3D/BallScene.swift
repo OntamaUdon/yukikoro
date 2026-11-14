@@ -99,13 +99,15 @@ final class BallScene: NSObject {
             SCNTransaction.animationDuration = 1.4
             SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeOut)
         }
+        // 大きくなったら雪玉を遠くへ置き、画面からはみ出さないようにする（上限はなく、見かけの大きさはゆっくり増える）
+        let distance = Float(BallScale.distance(radius: Double(radius), baseDistance: Double(BallScene.ballDistance)))
         pivot.simdScale = SIMD3<Float>(repeating: radius)
-        pivot.simdPosition = SIMD3<Float>(0, radius, -BallScene.ballDistance)
+        pivot.simdPosition = SIMD3<Float>(0, radius, -distance)
         if animated { SCNTransaction.commit() }
 
         if animated, newSteps > old {
-            let distance = Float(newSteps - old) * 0.02
-            let angle = min(max(0.6, distance / radius), 3 * .pi)
+            let rolled = Float(newSteps - old) * 0.02
+            let angle = min(max(0.6, rolled / radius), 3 * .pi)
             let roll = SCNAction.rotateBy(x: CGFloat(angle), y: 0, z: 0, duration: 1.6)
             roll.timingMode = .easeInEaseOut
             ball.runAction(roll)

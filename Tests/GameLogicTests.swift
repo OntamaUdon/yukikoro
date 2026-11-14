@@ -225,32 +225,31 @@ final class GameLogicTests: XCTestCase {
 
     // MARK: 雪玉の成長モデル
 
-    func testBallRadiusIsMonotonicAndBounded() {
+    func testBallRadiusGrowsWithoutLimit() {
         var previous = BallScale.radius(steps: 0)
-        XCTAssertEqual(previous, BallScale.r0, accuracy: 0.002)
-        for steps in stride(from: 100, through: 100_000, by: 100) {
+        XCTAssertEqual(previous, BallScale.r0, accuracy: 0.0001)
+        for steps in stride(from: 500, through: 200_000, by: 500) {
             let r = BallScale.radius(steps: steps)
-            XCTAssertGreaterThan(r, previous, "歩数が増えたら必ず大きくなる")
-            XCTAssertLessThan(r, BallScale.maxRadius, "上限を超えない")
+            XCTAssertGreaterThan(r, previous, "歩数が増えたら必ず大きくなる（頭打ちなし）")
             previous = r
         }
-        XCTAssertEqual(BallScale.fraction(0), 0, accuracy: 0.001)
-        XCTAssertLessThanOrEqual(BallScale.fraction(1_000_000), 1)
-        XCTAssertGreaterThan(BallScale.fraction(1_000_000), 0.99)
+        XCTAssertGreaterThan(BallScale.radius(steps: 100_000), 2.5)
+        XCTAssertEqual(BallScale.fraction(0), 0, accuracy: 0.0001)
+        XCTAssertLessThan(BallScale.fraction(1_000_000), 1.0001)
     }
 
     func testBallGrowthSlowsDownInRadius() {
-        // 半径の増え方は後半ほど小さくなる（べき乗 + 頭打ち）
+        // 半径の増え方は後半ほど小さくなる（べき乗）
         let early = BallScale.radius(steps: 3_000) - BallScale.radius(steps: 500)
-        let late = BallScale.radius(steps: 15_000) - BallScale.radius(steps: 12_500)
+        let late = BallScale.radius(steps: 30_000) - BallScale.radius(steps: 27_500)
         XCTAssertGreaterThan(early / 2_500, late / 2_500)
     }
 
     func testVolumeGrowsFasterThanDistance() {
-        // 重くなるほど同じ距離で付く雪が増える: 距離が2倍なら体積は2倍より大きい（頭打ち前）
-        for s in [500, 1_000, 2_000, 4_000] {
-            let v1 = BallScale.volume(radius: BallScale.rawRadius(steps: s)) - BallScale.volume(radius: BallScale.r0)
-            let v2 = BallScale.volume(radius: BallScale.rawRadius(steps: 2 * s)) - BallScale.volume(radius: BallScale.r0)
+        // 重くなるほど同じ距離で付く雪が増える: 距離が2倍なら体積は2倍より大きい
+        for s in [500, 1_000, 2_000, 4_000, 20_000] {
+            let v1 = BallScale.volume(radius: BallScale.radius(steps: s)) - BallScale.volume(radius: BallScale.r0)
+            let v2 = BallScale.volume(radius: BallScale.radius(steps: 2 * s)) - BallScale.volume(radius: BallScale.r0)
             XCTAssertGreaterThan(v2 / v1, 2.0, "s=\(s)")
         }
     }
@@ -258,6 +257,20 @@ final class GameLogicTests: XCTestCase {
     func testTierRadiiAreReasonablySpaced() {
         let radii = SizeTier.allCases.map { BallScale.radius(steps: $0.minSteps) }
         for i in 1..<radii.count { XCTAssertGreaterThan(radii[i], radii[i - 1] + 0.1) }
-        XCTAssertLessThan(radii.last ?? 0, BallScale.maxRadius)
+    }
+
+    func testBallStaysOnScreenAndKeepsGrowingVisually() {
+        let base = 4.4
+        var previous = 0.0
+        for steps in [0, 500, 3_000, 8_000, 15_000, 50_000, 200_000, 1_000_000] {
+            let r = BallScale.radius(steps: steps)
+            let apparent = BallScale.apparentFraction(radius: r, baseDistance: base)
+            XCTAssertLessThan(apparent, 0.86, "画面の幅に収まる")
+            XCTAssertGreaterThan(apparent, previous, "見かけも大きくなり続ける")
+            // 配置距離から求めた見かけの大きさと一致する
+            let d = BallScale.distance(radius: r, baseDistance: base)
+            XCTAssertEqual(r / (d * 0.384), apparent, accuracy: 0.0001)
+            previous = apparent
+        }
     }
 }

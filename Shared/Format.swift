@@ -9,40 +9,44 @@ import CoreGraphics
 ///
 ///     r(s) = (r0^q + k·s)^(1/q)     （q = 2〜3。q が小さいほど後半の伸びが強い）
 ///
-/// 現実には、雪の深さの上限や押せる重さの限界で頭打ちになるので、
-/// 上限 R_max に向けてなめらかに頭打ちにする（ソフトミニマム）。
+/// 物理的な上限は無いので、頭打ちは設けない。大きくなるほど半径の伸びは緩やかになり
+/// （q = 2.5: 半径 ∝ 距離^0.4）、体積は距離よりも速く増え続ける。
+/// 画面からはみ出さないよう、大きくなったらカメラ側（雪玉を置く距離）を引いて見せる。
 enum BallScale {
-    /// 指数 q（β = 0.8 のとき 2.2）。2 に近いほど接地幅が半径に比例、3 に近いほど接地幅が一定。
-    static let q = 2.2
+    /// 指数 q（β = 0.5 のとき 2.5。接地幅が √r に比例する想定）
+    static let q = 2.5
     /// 歩数 0 のときの半径（場面の単位）
     static let r0 = 0.28
-    /// 頭打ちの半径
-    static let maxRadius = 1.35
     /// 係数。S/M/L/XL の4段階（500・3,000・8,000・15,000歩）の見た目の差が偏らないよう決めた値
-    static let k = 1.416e-4
-    /// 頭打ちの鋭さ
-    static let sharpness = 4.0
+    static let k = 1.329e-4
 
-    /// 頭打ち前の半径
-    static func rawRadius(steps: Int) -> Double {
+    /// 半径（場面の単位）。上限なし。
+    static func radius(steps: Int) -> Double {
         let s = max(0, Double(steps))
         return pow(pow(r0, q) + k * s, 1 / q)
     }
 
-    /// 半径（場面の単位）
-    static func radius(steps: Int) -> Double {
-        let raw = rawRadius(steps: steps)
-        return pow(pow(raw, -sharpness) + pow(maxRadius, -sharpness), -1 / sharpness)
-    }
-
-    /// 大きさの割合（0〜1）。ウィジェットなどの表示用。
+    /// 大きさの割合（0〜1 未満）。ウィジェットなどの表示用。大きくなるほど 1 に近づく。
     static func fraction(_ steps: Int) -> Double {
-        let low = radius(steps: 0)
-        return min(1, max(0, (radius(steps: steps) - low) / (maxRadius - low)))
+        1 - exp(-(radius(steps: steps) - r0) / 1.0)
     }
 
     /// 体積（半径³に比例。比較用）
     static func volume(radius r: Double) -> Double { 4.0 / 3.0 * Double.pi * r * r * r }
+
+    /// 画面の幅に対する雪玉の見かけの半径（0〜1）。大きくなるほどゆっくり増えて 0.85 に近づく。
+    /// 横画角 42° のとき、距離 d での画面の半幅は d × tan(21°) ≒ 0.384 d。
+    static func apparentFraction(radius r: Double, baseDistance: Double) -> Double {
+        let natural = r / (baseDistance * 0.384)
+        let softLimit = 0.71
+        if natural <= softLimit { return natural }
+        return softLimit + 0.14 * (1 - exp(-(natural - softLimit) / 0.25))
+    }
+
+    /// 雪玉を置く距離。半径が大きいほど遠くへ置いて、画面からはみ出さないようにする。
+    static func distance(radius r: Double, baseDistance: Double) -> Double {
+        r / (0.384 * apparentFraction(radius: r, baseDistance: baseDistance))
+    }
 }
 
 /// 歩数の表示用フォーマット（3桁区切り）
