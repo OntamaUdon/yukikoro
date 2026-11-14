@@ -3,18 +3,26 @@ import XCTest
 final class GameLogicTests: XCTestCase {
     // MARK: 歩数の台帳
 
-    func testFirstSyncCreditsOnlyToday() {
+    func testFirstSyncCountsNothingAndStartsFromZero() {
         var state = GameState()
         let gained = state.apply(daily: ["2026-11-12": 8_000, "2026-11-13": 6_000, "2026-11-14": 1_200], todayKey: "2026-11-14")
-        XCTAssertEqual(gained, 1_200)
-        XCTAssertEqual(state.totalSteps, 1_200)
+        XCTAssertEqual(gained, 0, "はじめて開いたときまでに歩いた分は数えない")
+        XCTAssertEqual(state.totalSteps, 0)
+        XCTAssertEqual(state.walkedSteps(on: "2026-11-14"), 0, "今日は 0 歩からはじまる")
         XCTAssertTrue(state.initialized)
+        // そこから歩いた分だけが数えられる
+        let later = state.apply(daily: ["2026-11-12": 8_000, "2026-11-13": 6_000, "2026-11-14": 1_700], todayKey: "2026-11-14")
+        XCTAssertEqual(later, 500)
+        XCTAssertEqual(state.walkedSteps(on: "2026-11-14"), 500)
+        XCTAssertEqual(state.totalSteps, 500)
     }
 
     func testRepeatedSyncDoesNotDoubleCount() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 1_000], todayKey: "2026-11-14")
-        let again = state.apply(daily: ["2026-11-14": 1_000], todayKey: "2026-11-14")
+        let first = state.apply(daily: ["2026-11-14": 2_000], todayKey: "2026-11-14")
+        XCTAssertEqual(first, 1_000)
+        let again = state.apply(daily: ["2026-11-14": 2_000], todayKey: "2026-11-14")
         XCTAssertEqual(again, 0)
         XCTAssertEqual(state.totalSteps, 1_000)
     }
@@ -22,7 +30,8 @@ final class GameLogicTests: XCTestCase {
     func testOnlyTheDifferenceIsAdded() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 1_000], todayKey: "2026-11-14")
-        let gained = state.apply(daily: ["2026-11-14": 1_750], todayKey: "2026-11-14")
+        state.apply(daily: ["2026-11-14": 2_000], todayKey: "2026-11-14")
+        let gained = state.apply(daily: ["2026-11-14": 2_750], todayKey: "2026-11-14")
         XCTAssertEqual(gained, 750)
         XCTAssertEqual(state.totalSteps, 1_750)
     }
@@ -30,20 +39,23 @@ final class GameLogicTests: XCTestCase {
     func testDecreasingStepsAreIgnored() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 2_000], todayKey: "2026-11-14")
-        let gained = state.apply(daily: ["2026-11-14": 1_500], todayKey: "2026-11-14")
+        state.apply(daily: ["2026-11-14": 3_000], todayKey: "2026-11-14")
+        let gained = state.apply(daily: ["2026-11-14": 2_500], todayKey: "2026-11-14")
         XCTAssertEqual(gained, 0)
-        XCTAssertEqual(state.totalSteps, 2_000)
+        XCTAssertEqual(state.totalSteps, 1_000)
         // 戻らず、その後に増えた分だけが加算される
-        let later = state.apply(daily: ["2026-11-14": 2_300], todayKey: "2026-11-14")
+        let later = state.apply(daily: ["2026-11-14": 3_300], todayKey: "2026-11-14")
         XCTAssertEqual(later, 300)
     }
 
     func testNewDayCountsFromZero() {
         var state = GameState()
         state.apply(daily: ["2026-11-14": 4_000], todayKey: "2026-11-14")
-        let gained = state.apply(daily: ["2026-11-14": 4_000, "2026-11-15": 900], todayKey: "2026-11-15")
-        XCTAssertEqual(gained, 900)
-        XCTAssertEqual(state.totalSteps, 4_900)
+        state.apply(daily: ["2026-11-14": 5_000], todayKey: "2026-11-14")
+        let gained = state.apply(daily: ["2026-11-14": 5_000, "2026-11-15": 900], todayKey: "2026-11-15")
+        XCTAssertEqual(gained, 900, "次の日は、0 歩から全部数える")
+        XCTAssertEqual(state.totalSteps, 1_900)
+        XCTAssertEqual(state.walkedSteps(on: "2026-11-15"), 900)
     }
 
     func testStepsWalkedWhileAppWasClosedAreCredited() {
@@ -339,6 +351,7 @@ final class GameLogicTests: XCTestCase {
     func testTodayGrowthCountsOnlyToday() {
         var state = GameState()
         state.owned = ["kid": 5]
+        state.apply(daily: ["2026-11-14": 0], todayKey: "2026-11-14")
         state.apply(daily: ["2026-11-14": 3_000], todayKey: "2026-11-14")
         let first = state.todayGrowth
         XCTAssertGreaterThan(first, 0.1, "今日歩いた分だけ、直径がふえる")
@@ -428,6 +441,7 @@ final class GameLogicTests: XCTestCase {
         var state = GameState()
         state.owned = ["kid": 10, "big": 3]
         let before = state.mass
+        state.apply(daily: ["2026-11-14": 0], todayKey: "2026-11-14")
         state.apply(daily: ["2026-11-14": 7_000], todayKey: "2026-11-14")
         XCTAssertGreaterThan(state.mass, before * 100)
         XCTAssertGreaterThan(state.peakDiameter, state.diameter - 1e-9)

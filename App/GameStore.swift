@@ -31,7 +31,7 @@ final class GameStore {
     }
 
     var todayKey: String { DayKey.key(for: Date()) }
-    var todaySteps: Int { state.creditedSteps(on: todayKey) }
+    var todaySteps: Int { state.walkedSteps(on: todayKey) }
 
     // MARK: 同期
 

@@ -30,6 +30,8 @@ struct GameState: Codable, Equatable {
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
     var credited: [String: Int] = [:]
+    /// アプリをはじめて開いたとき、すでに歩いていた歩数（日付ごと）。これは数えない。
+    var baseline: [String: Int] = [:]
     /// これまでで一番大きかったときの直径（メートル）。買い物の解放に使う。
     var peakDiameter: Double = 2 * SnowPhysics.initialRadius
     /// 今日の最初の雪玉の重さ（今日ふえた分を見せるため）
@@ -45,7 +47,7 @@ struct GameState: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, totalSteps, credited
+        case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, totalSteps, credited, baseline
         case peakDiameter, seenMass, seenPack, dayKey, dayStartMass, blackHole, createdAt
     }
 
@@ -57,6 +59,7 @@ struct GameState: Codable, Equatable {
         initialized = try c.decodeIfPresent(Bool.self, forKey: .initialized) ?? false
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
+        baseline = try c.decodeIfPresent([String: Int].self, forKey: .baseline) ?? [:]
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         if savedVersion >= 4 {
             version = savedVersion
@@ -95,6 +98,7 @@ struct GameState: Codable, Equatable {
         try c.encode(materials, forKey: .materials)
         try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(credited, forKey: .credited)
+        try c.encode(baseline, forKey: .baseline)
         try c.encode(peakDiameter, forKey: .peakDiameter)
         try c.encode(dayKey, forKey: .dayKey)
         try c.encode(dayStartMass, forKey: .dayStartMass)
@@ -107,14 +111,15 @@ struct GameState: Codable, Equatable {
     // MARK: 歩数の加算
 
     /// 日別の歩数合計を受け取り、まだ加算していない分だけ足す。加算した歩数を返す。
-    /// - 初回は過去日をベースラインとして記録し、当日分から加算する。
+    /// - 初回は、その時点までに歩いていた歩数（今日の分も）をベースラインとして記録し、数えない。以降に歩いた分から加算する。
     /// - 歩数が減った日（ヘルスケア側の修正など）は無視する。
     @discardableResult
     mutating func apply(daily: [String: Int], todayKey: String) -> Int {
         guard !daily.isEmpty else { return 0 }
         if !initialized {
-            for (key, value) in daily where key != todayKey {
+            for (key, value) in daily {
                 credited[key] = value
+                baseline[key] = value
             }
             initialized = true
         }
@@ -167,10 +172,14 @@ struct GameState: Codable, Equatable {
         guard credited.count > 40 else { return }
         for key in credited.keys.sorted().dropLast(40) {
             credited[key] = nil
+            baseline[key] = nil
         }
     }
 
     func creditedSteps(on key: String) -> Int { credited[key] ?? 0 }
+
+    /// アプリをはじめて開いてから、その日に歩いた歩数
+    func walkedSteps(on key: String) -> Int { max(0, (credited[key] ?? 0) - (baseline[key] ?? 0)) }
 
     // MARK: 雪玉
 
@@ -256,6 +265,7 @@ struct GameState: Codable, Equatable {
         fresh.onboarded = onboarded
         fresh.initialized = initialized
         fresh.credited = credited
+        fresh.baseline = baseline
         return fresh
     }
 }

@@ -301,7 +301,7 @@ struct MainView: View {
         let today = calendar.startOfDay(for: Date())
         let days: [(steps: Int, isToday: Bool)] = (0..<7).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: today) ?? today
-            let steps = offset == 0 ? store.todaySteps : state.creditedSteps(on: DayKey.key(for: date))
+            let steps = offset == 0 ? store.todaySteps : state.walkedSteps(on: DayKey.key(for: date))
             return (steps, offset == 0)
         }
         return HStack(alignment: .bottom, spacing: 4) {

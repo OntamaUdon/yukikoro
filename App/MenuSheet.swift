@@ -20,7 +20,7 @@ struct MenuSheet: View {
         return (0..<7).reversed().compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { return nil }
             let key = DayKey.key(for: date)
-            return Day(id: key, date: date, steps: store.state.creditedSteps(on: key))
+            return Day(id: key, date: date, steps: store.state.walkedSteps(on: key))
         }
     }
 

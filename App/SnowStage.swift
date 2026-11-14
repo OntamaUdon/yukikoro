@@ -539,7 +539,6 @@ final class StageCoordinator {
             let white = UIColor(white: 0.98, alpha: 1)
             let dark = UIColor(white: 0.12, alpha: 1)
             let main = tier == 0 ? UIColor(red: 0.95, green: 0.36, blue: 0.38, alpha: 1) : UIColor(red: 0.25, green: 0.50, blue: 0.95, alpha: 1)
-            let accent = tier == 0 ? UIColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1) : UIColor(red: 1.0, green: 0.62, blue: 0.2, alpha: 1)
 
             // からだとあたま
             root.addChildNode(sphere(0.30, white, SCNVector3(0, 0.30, 0)))
@@ -569,14 +568,21 @@ final class StageCoordinator {
             nose.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
             nose.position = SCNVector3(0, 0.73, -0.26)
             root.addChildNode(nose)
-            // 雪玉を押す腕とミトン
+            // 雪玉を押す、枝の腕（先が三つ又に分かれている）
+            let bark = material(UIColor(red: 0.36, green: 0.25, blue: 0.16, alpha: 1))
             for side: Float in [-1, 1] {
-                let arm = SCNNode(geometry: SCNCapsule(capRadius: 0.04, height: 0.34))
-                arm.geometry?.materials = [material(white)]
-                arm.eulerAngles = SCNVector3(Float.pi / 2 * 0.92, 0, side * 0.12)
+                let arm = SCNNode(geometry: SCNCylinder(radius: 0.017, height: 0.38))
+                arm.geometry?.materials = [bark]
+                arm.eulerAngles = SCNVector3(Float.pi / 2 * 0.92, 0, side * 0.10)
                 arm.position = SCNVector3(side * 0.27, 0.50, -0.17)
                 root.addChildNode(arm)
-                root.addChildNode(sphere(0.062, accent, SCNVector3(side * 0.28, 0.51, -0.37)))
+                for spread: Float in [-0.55, 0, 0.55] {
+                    let twig = SCNNode(geometry: SCNCylinder(radius: 0.011, height: 0.11))
+                    twig.geometry?.materials = [bark]
+                    twig.eulerAngles = SCNVector3(Float.pi / 2 * 0.92, 0, spread)
+                    twig.position = SCNVector3(side * 0.28 + spread * 0.05, 0.51, -0.40)
+                    root.addChildNode(twig)
+                }
             }
             // 帽子
             if tier == 0 {
