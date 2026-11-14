@@ -41,22 +41,10 @@ jobs:
           # 形式の確認（中身は表示しない）
           openssl pkey -in "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" -noout && echo "鍵の形式は正しいです" || { echo "::error::ASC_KEY_P8 が正しい .p8 の中身ではありません。.p8 ファイルをテキストエディタで開き、全文を Secrets に貼り直してください"; exit 1; }
 
-      - name: アーカイブ（署名は Xcode の自動署名に任せる）
+      - name: アーカイブ（ここでは署名せず、書き出しのときに配布用の署名を付ける）
         run: |
           set -o pipefail
-          xcodebuild archive \
-            -project Yukikoro.xcodeproj \
-            -scheme Yukikoro \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/Yukikoro.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            | tail -n 40
+          xcodebuild archive             -project Yukikoro.xcodeproj             -scheme Yukikoro             -configuration Release             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Yukikoro.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             DEVELOPMENT_TEAM="$TEAM_ID"             CURRENT_PROJECT_VERSION="${{ github.run_number }}"             | tail -n 30
 
       - name: App Store Connect へアップロード
         run: |
