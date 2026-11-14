@@ -1,6 +1,7 @@
 import SwiftUI
 import SceneKit
 import UIKit
+import simd
 
 /// 雪玉を押している仲間の見た目
 struct CrewLook: Equatable {
@@ -51,6 +52,63 @@ struct SnowStage: UIViewRepresentable {
     }
 }
 
+/// 頂点を直接組み立てるための道具。三角形の向きは、法線のヒントに合わせて自動で直す。
+private struct MeshBuilder {
+    typealias Vertex = (p: SIMD3<Float>, n: SIMD3<Float>)
+
+    var positions: [SCNVector3] = []
+    var normals: [SCNVector3] = []
+    var elements: [[UInt32]]
+
+    init(elementCount: Int) {
+        elements = Array(repeating: [], count: elementCount)
+    }
+
+    mutating func triangle(_ element: Int, _ v0: Vertex, _ v1: Vertex, _ v2: Vertex) {
+        var b = v1
+        var c = v2
+        let geometric = simd_cross(v1.p - v0.p, v2.p - v0.p)
+        let hint = v0.n + v1.n + v2.n
+        if simd_dot(geometric, hint) < 0 {
+            b = v2
+            c = v1
+        }
+        let base = UInt32(positions.count)
+        for v in [v0, b, c] {
+            positions.append(SCNVector3(v.p.x, v.p.y, v.p.z))
+            normals.append(SCNVector3(v.n.x, v.n.y, v.n.z))
+        }
+        elements[element] += [base, base + 1, base + 2]
+    }
+
+    mutating func quad(_ element: Int, _ a: Vertex, _ b: Vertex, _ c: Vertex, _ d: Vertex) {
+        triangle(element, a, b, c)
+        triangle(element, a, c, d)
+    }
+
+    /// 小さな電球（八面体）
+    mutating func bulb(_ element: Int, center: SIMD3<Float>, size s: Float) {
+        let px = center + SIMD3(s, 0, 0), nx = center - SIMD3(s, 0, 0)
+        let py = center + SIMD3(0, s, 0), ny = center - SIMD3(0, s, 0)
+        let pz = center + SIMD3(0, 0, s), nz = center - SIMD3(0, 0, s)
+        func v(_ p: SIMD3<Float>) -> Vertex { (p, simd_normalize(p - center)) }
+        let faces: [(SIMD3<Float>, SIMD3<Float>, SIMD3<Float>)] = [
+            (px, py, pz), (pz, py, nx), (nx, py, nz), (nz, py, px),
+            (pz, ny, px), (nx, ny, pz), (nz, ny, nx), (px, ny, nz),
+        ]
+        for f in faces { triangle(element, v(f.0), v(f.1), v(f.2)) }
+    }
+
+    func geometry(materials: [SCNMaterial]) -> SCNGeometry {
+        let geometry = SCNGeometry(
+            sources: [SCNGeometrySource(vertices: positions), SCNGeometrySource(normals: normals)],
+            elements: elements.map { SCNGeometryElement(indices: $0, primitiveType: .triangles) }
+        )
+        geometry.materials = materials
+        return geometry
+    }
+}
+
 final class StageCoordinator {
     let scene = SCNScene()
 
@@ -65,18 +123,27 @@ final class StageCoordinator {
     private let orbit = SCNNode()
     private let ambient = SCNNode()
     private let sun = SCNNode()
+    private let sparkles = SCNNode()
+    private let sparkleSystem = SCNParticleSystem()
 
     // 木の道に使う材料
     private let trunkMaterial = SCNMaterial()
-    private let leafMaterial = SCNMaterial()
-    private let snowCapMaterial = SCNMaterial()
-    /// イルミネーションの電球（4色）
-    private var bulbMaterials: [SCNMaterial] = []
+    private let needleMaterial = SCNMaterial()
+    private let snowMaterial = SCNMaterial()
+    /// イルミネーションの電球（あたたかい金色と、氷のような白青）
+    private let goldBulb = SCNMaterial()
+    private let iceBulb = SCNMaterial()
+    /// 足元に映る光だまり
+    private let poolMaterial = SCNMaterial()
 
     /// 木の道 1 本ぶん（左右 2 列、等間隔）
     private struct LaneLayer {
         let root: SCNNode
         let holders: [SCNNode]
+        /// 道をまたぐ光のアーチ
+        let arches: [SCNNode]
+        let pool: SCNNode
+        var archStage: Int?
     }
     private var layers: [LaneLayer] = []
 
@@ -88,7 +155,7 @@ final class StageCoordinator {
     private var lastSquish = 0
     private var lastBlackHole = false
 
-    private static let pairsPerLane = 14
+    private static let pairsPerLane = 12
     private static let tierSizes: [Double] = [0.8, 2.2, 3.0, 5.0, 12.0]
     private static let groundTile = 8.0
 
@@ -185,6 +252,8 @@ final class StageCoordinator {
 
         // 重力そうちの玉（雪玉のまわりを回る）
         scene.rootNode.addChildNode(orbit)
+
+        setUpSparkles()
     }
 
     // MARK: 更新
@@ -233,143 +302,154 @@ final class StageCoordinator {
 
     private func setUpMaterials() {
         trunkMaterial.lightingModel = .lambert
-        trunkMaterial.diffuse.contents = UIColor(red: 0.30, green: 0.21, blue: 0.15, alpha: 1)
-        leafMaterial.lightingModel = .lambert
-        leafMaterial.diffuse.contents = UIColor(red: 0.10, green: 0.27, blue: 0.20, alpha: 1)
-        snowCapMaterial.lightingModel = .lambert
-        snowCapMaterial.diffuse.contents = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 1)
+        trunkMaterial.diffuse.contents = UIColor(red: 0.27, green: 0.19, blue: 0.14, alpha: 1)
+        needleMaterial.lightingModel = .lambert
+        needleMaterial.diffuse.contents = UIColor(red: 0.09, green: 0.24, blue: 0.19, alpha: 1)
+        needleMaterial.isDoubleSided = true
+        snowMaterial.lightingModel = .lambert
+        snowMaterial.diffuse.contents = UIColor(red: 0.94, green: 0.97, blue: 1.0, alpha: 1)
+        snowMaterial.isDoubleSided = true
 
-        let bulbColors: [UIColor] = [
-            UIColor(red: 1.0, green: 0.84, blue: 0.52, alpha: 1),
-            UIColor(red: 1.0, green: 0.52, blue: 0.74, alpha: 1),
-            UIColor(red: 0.50, green: 0.86, blue: 1.0, alpha: 1),
-            UIColor(red: 0.70, green: 1.0, blue: 0.62, alpha: 1),
-        ]
-        for color in bulbColors {
-            let material = SCNMaterial()
+        for (material, color) in [
+            (goldBulb, UIColor(red: 1.0, green: 0.80, blue: 0.42, alpha: 1)),
+            (iceBulb, UIColor(red: 0.72, green: 0.88, blue: 1.0, alpha: 1)),
+        ] {
             material.lightingModel = .constant
             material.diffuse.contents = color
             material.emission.contents = color
             material.emission.intensity = 0
-            bulbMaterials.append(material)
         }
+
+        poolMaterial.lightingModel = .constant
+        poolMaterial.diffuse.contents = Self.poolImage(size: 256)
+        poolMaterial.diffuse.wrapS = .repeat
+        poolMaterial.diffuse.wrapT = .repeat
+        poolMaterial.diffuse.contentsTransform = SCNMatrix4MakeScale(1, Float(Self.pairsPerLane), 1)
+        poolMaterial.blendMode = .add
+        poolMaterial.writesToDepthBuffer = false
+        poolMaterial.isDoubleSided = true
+        poolMaterial.transparency = 0
     }
 
-    /// 木の形（頂点を直接つくる）。高さは約 8。幹・葉・雪・電球 4 色の 7 つの面に分けて、材料を共有する。
-    /// 針葉樹らしく、段ごとに少し不ぞろいで、枝先がたれ、上に雪がのる。
+    private func bulbMaterials() -> [SCNMaterial] { [goldBulb, iceBulb] }
+
+    /// 針葉樹（トウヒ）の形。高さは約 8。
+    /// 幹は先が細くなる円錐。そこに、下ほど長い枝の輪が 16 段つく。枝は少しもち上がってから、先がたれて、上に雪がのる。
+    /// 枝にそって小さな電球を並べ、木から木へわたす光の列と、てっぺんの星もつける。
     private func makeTreeGeometry(seed: UInt64) -> SCNGeometry {
         var generator = SplitMix64(seed: seed)
         func random() -> Float { Float(generator.next() % 10_000) / 10_000 }
 
-        var vertices: [SCNVector3] = []
-        var normals: [SCNVector3] = []
-        var trunk: [UInt32] = []
-        var leaf: [UInt32] = []
-        var snow: [UInt32] = []
-        var bulbs: [[UInt32]] = [[], [], [], []]
+        // 面: 0 幹, 1 葉, 2 雪, 3 金の電球, 4 氷の電球
+        var mesh = MeshBuilder(elementCount: 5)
+        let up = SIMD3<Float>(0, 1, 0)
+        func vertex(_ p: SIMD3<Float>, _ n: SIMD3<Float>) -> MeshBuilder.Vertex { (p, simd_normalize(n)) }
 
-        func add(_ p: SCNVector3, _ n: SCNVector3) -> UInt32 {
-            vertices.append(p)
-            normals.append(n)
-            return UInt32(vertices.count - 1)
-        }
-        func normalized(_ x: Float, _ y: Float, _ z: Float) -> SCNVector3 {
-            let length = max((x * x + y * y + z * z).squareRoot(), 1e-6)
-            return SCNVector3(x / length, y / length, z / length)
-        }
-
-        // 幹（8 角形の、先が細い柱）
+        // 幹
+        let ringY: [Float] = [0, 2.5, 5.5, 8.2]
+        let ringR: [Float] = [0.36, 0.25, 0.13, 0.03]
         let sides = 8
-        for i in 0..<sides {
-            let a0 = Float(i) / Float(sides) * 2 * .pi
-            let a1 = Float(i + 1) / Float(sides) * 2 * .pi
-            let n0 = normalized(cos(a0), 0.1, sin(a0))
-            let n1 = normalized(cos(a1), 0.1, sin(a1))
-            let b0 = add(SCNVector3(cos(a0) * 0.42, 0, sin(a0) * 0.42), n0)
-            let b1 = add(SCNVector3(cos(a1) * 0.42, 0, sin(a1) * 0.42), n1)
-            let t0 = add(SCNVector3(cos(a0) * 0.22, 2.6, sin(a0) * 0.22), n0)
-            let t1 = add(SCNVector3(cos(a1) * 0.22, 2.6, sin(a1) * 0.22), n1)
-            trunk += [b0, t1, b1, b0, t0, t1]
-        }
-
-        // 葉の段（下の段ほど大きい）
-        let tierCount = 9
-        let segments = 18
-        for k in 0..<tierCount {
-            let t = Float(k) / Float(tierCount - 1)
-            let baseY = 1.5 + 5.4 * t
-            let height = 3.1 - 2.1 * t
-            let radius = 2.7 * (1 - 0.88 * t) + 0.2 + random() * 0.15
-            let midY = baseY + height * 0.45
-            let apexY = baseY + height
-            var jitter: [Float] = (0..<segments).map { _ in 0.84 + random() * 0.30 }
-            jitter.append(jitter[0])
-            let apex = SCNVector3(0, apexY, 0)
-
-            for i in 0..<segments {
-                let a0 = Float(i) / Float(segments) * 2 * .pi
-                let a1 = Float(i + 1) / Float(segments) * 2 * .pi
-                let r0 = radius * jitter[i]
-                let r1 = radius * jitter[i + 1]
-                // 枝先が、1 つおきに少したれる
-                let droop0: Float = i % 2 == 0 ? -0.16 * height : 0
-                let droop1: Float = (i + 1) % 2 == 0 ? -0.16 * height : 0
-                let n0 = normalized(cos(a0) * height, radius, sin(a0) * height)
-                let n1 = normalized(cos(a1) * height, radius, sin(a1) * height)
-
-                let p0 = add(SCNVector3(cos(a0) * r0, baseY + droop0, sin(a0) * r0), n0)
-                let p1 = add(SCNVector3(cos(a1) * r1, baseY + droop1, sin(a1) * r1), n1)
-                let m0 = add(SCNVector3(cos(a0) * r0 * 0.55, midY, sin(a0) * r0 * 0.55), n0)
-                let m1 = add(SCNVector3(cos(a1) * r1 * 0.55, midY, sin(a1) * r1 * 0.55), n1)
-                leaf += [p0, m1, p1, p0, m0, m1]
-
-                // 上の部分は雪
-                let s0 = add(SCNVector3(cos(a0) * r0 * 0.55, midY, sin(a0) * r0 * 0.55), normalized(n0.x, n0.y + 0.6, n0.z))
-                let s1 = add(SCNVector3(cos(a1) * r1 * 0.55, midY, sin(a1) * r1 * 0.55), normalized(n1.x, n1.y + 0.6, n1.z))
-                let top = add(apex, SCNVector3(0, 1, 0))
-                snow += [s0, top, s1]
-
-                // 下から見えるふた
-                let c = add(SCNVector3(0, baseY, 0), SCNVector3(0, -1, 0))
-                let q0 = add(SCNVector3(cos(a0) * r0, baseY + droop0, sin(a0) * r0), SCNVector3(0, -1, 0))
-                let q1 = add(SCNVector3(cos(a1) * r1, baseY + droop1, sin(a1) * r1), SCNVector3(0, -1, 0))
-                leaf += [c, q0, q1]
+        for j in 0..<(ringY.count - 1) {
+            for i in 0..<sides {
+                let a0 = Float(i) / Float(sides) * 2 * .pi
+                let a1 = Float(i + 1) / Float(sides) * 2 * .pi
+                let d0 = SIMD3<Float>(cos(a0), 0, sin(a0))
+                let d1 = SIMD3<Float>(cos(a1), 0, sin(a1))
+                mesh.quad(0,
+                          vertex(d0 * ringR[j] + SIMD3(0, ringY[j], 0), d0),
+                          vertex(d1 * ringR[j] + SIMD3(0, ringY[j], 0), d1),
+                          vertex(d1 * ringR[j + 1] + SIMD3(0, ringY[j + 1], 0), d1),
+                          vertex(d0 * ringR[j + 1] + SIMD3(0, ringY[j + 1], 0), d0))
             }
         }
 
-        // イルミネーション: 木にらせん状に巻いた電球と、道のふちに並ぶ足元の電球
-        func addBulb(_ center: SCNVector3, size: Float, color: Int) {
-            let corners: [SCNVector3] = [
-                SCNVector3(center.x + size, center.y, center.z), SCNVector3(center.x - size, center.y, center.z),
-                SCNVector3(center.x, center.y + size, center.z), SCNVector3(center.x, center.y - size, center.z),
-                SCNVector3(center.x, center.y, center.z + size), SCNVector3(center.x, center.y, center.z - size),
-            ]
-            let ids = corners.map { add($0, normalized($0.x - center.x, $0.y - center.y, $0.z - center.z)) }
-            // +x -x +y -y +z -z
-            let faces: [[Int]] = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [4, 3, 0], [1, 3, 4], [5, 3, 1], [0, 3, 5]]
-            for face in faces {
-                bulbs[color % 4] += [ids[face[0]], ids[face[1]], ids[face[2]]]
+        // 枝
+        let whorls = 16
+        for k in 0..<whorls {
+            let h = Float(k) / Float(whorls - 1)
+            let y0 = 1.5 + 6.3 * pow(h, 0.95)
+            let length = 1.9 * pow(1 - h, 0.9) + 0.15
+            let branchCount = h < 0.35 ? 8 : (h < 0.7 ? 6 : 4)
+            let droop = 1 - 0.55 * h
+            for b in 0..<branchCount {
+                let theta = (Float(b) / Float(branchCount) + Float(k) * 0.37 + random() * 0.08) * 2 * .pi
+                let radial = SIMD3<Float>(cos(theta), 0, sin(theta))
+                let side = SIMD3<Float>(-sin(theta), 0, cos(theta))
+                let len = length * (0.85 + random() * 0.3)
+
+                let segments = 5
+                var left: [SIMD3<Float>] = []
+                var right: [SIMD3<Float>] = []
+                var ridge: [SIMD3<Float>] = []
+                for i in 0...segments {
+                    let t = Float(i) / Float(segments)
+                    let dy = len * (0.14 * t - 0.42 * t * t) * droop
+                    let spine = radial * (len * t + 0.12) + SIMD3(0, y0 + dy, 0)
+                    let width = 0.46 * len * pow(max(0, sin(Float.pi * pow(t, 0.75))), 0.85)
+                    left.append(spine - side * width)
+                    right.append(spine + side * width)
+                    ridge.append(spine + up * (0.22 * width + 0.03))
+                }
+                let nUp = simd_normalize(up + radial * 0.3)
+                let nLeft = simd_normalize(up * 0.9 - side * 0.6 + radial * 0.2)
+                let nRight = simd_normalize(up * 0.9 + side * 0.6 + radial * 0.2)
+                for i in 0..<segments {
+                    mesh.quad(1,
+                              vertex(left[i], nLeft), vertex(ridge[i], nUp),
+                              vertex(ridge[i + 1], nUp), vertex(left[i + 1], nLeft))
+                    mesh.quad(1,
+                              vertex(ridge[i], nUp), vertex(right[i], nRight),
+                              vertex(right[i + 1], nRight), vertex(ridge[i + 1], nUp))
+                    // 下がわ
+                    mesh.quad(1,
+                              vertex(left[i], -up), vertex(left[i + 1], -up),
+                              vertex(right[i + 1], -up), vertex(right[i], -up))
+                    // 雪（枝のなか側 60% の上に、うすくのせる）
+                    if i >= 1 && i <= 3 && random() < 0.9 {
+                        func snow(_ index: Int) -> (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) {
+                            (ridge[index] + (left[index] - ridge[index]) * 0.65 + up * 0.03,
+                             ridge[index] + up * 0.045,
+                             ridge[index] + (right[index] - ridge[index]) * 0.65 + up * 0.03)
+                        }
+                        let a = snow(i), c = snow(i + 1)
+                        mesh.quad(2, vertex(a.0, up), vertex(a.1, up), vertex(c.1, up), vertex(c.0, up))
+                        mesh.quad(2, vertex(a.1, up), vertex(a.2, up), vertex(c.2, up), vertex(c.1, up))
+                    }
+                }
+                // 枝にそった電球
+                for i in [2, 4, 5] {
+                    mesh.bulb(random() < 0.12 ? 4 : 3, center: ridge[i] + up * 0.05, size: 0.045)
+                }
             }
         }
-        for j in 0..<16 {
-            let t = Float(j) / 15
-            let y = 1.9 + 5.4 * t
-            let coneRadius = (2.7 * (1 - 0.88 * ((y - 1.5) / 5.4)) + 0.2) * 0.78
-            let angle = Float(j) * 2.3
-            addBulb(SCNVector3(cos(angle) * coneRadius, y, sin(angle) * coneRadius), size: 0.13, color: j)
-        }
-        let groundZs: [Float] = [-3.4, 0, 3.4]
-        for (index, z) in groundZs.enumerated() {
-            addBulb(SCNVector3(-1.6, 0.22, z), size: 0.14, color: index)
-            addBulb(SCNVector3(1.6, 0.22, z), size: 0.14, color: index + 2)
+
+        // てっぺんの星
+        mesh.bulb(3, center: SIMD3(0, 8.35, 0), size: 0.2)
+        // 木から木へわたす光の列（次の木までの 7）
+        for j in 0...14 {
+            let z = Float(j) / 14 * 7
+            let y = 5.9 - 0.9 * sin(Float.pi * z / 7)
+            mesh.bulb(j % 5 == 2 ? 4 : 3, center: SIMD3(0, y, z), size: 0.06)
         }
 
-        let geometry = SCNGeometry(
-            sources: [SCNGeometrySource(vertices: vertices), SCNGeometrySource(normals: normals)],
-            elements: ([trunk, leaf, snow] + bulbs).map { SCNGeometryElement(indices: $0, primitiveType: .triangles) }
-        )
-        geometry.materials = [trunkMaterial, leafMaterial, snowCapMaterial] + bulbMaterials
-        return geometry
+        return mesh.geometry(materials: [trunkMaterial, needleMaterial, snowMaterial, goldBulb, iceBulb])
+    }
+
+    /// 木の道をまたぐ、光のアーチ（メートルで作る）
+    private func makeArchGeometry(half: Double, f: Double) -> SCNGeometry {
+        var mesh = MeshBuilder(elementCount: 2)
+        let reach = Float(half + 1.7 * f)
+        let height = Float(6.4 * f)
+        let sag = Float(1.1 * f)
+        let count = 26
+        for j in 0...count {
+            let t = Float(j) / Float(count)
+            let x = -reach + 2 * reach * t
+            // 両はしでは高く、まん中ではたれる
+            let drooped = height - sag * (1 - pow(abs(2 * t - 1), 2))
+            mesh.bulb(j % 6 == 3 ? 1 : 0, center: SIMD3(x, drooped, 0), size: Float(0.07 * f))
+        }
+        return mesh.geometry(materials: [goldBulb, iceBulb])
     }
 
     private func makeLane(variants: [SCNGeometry]) -> LaneLayer {
@@ -377,14 +457,24 @@ final class StageCoordinator {
         var holders: [SCNNode] = []
         for index in 0..<(Self.pairsPerLane * 2) {
             let holder = SCNNode()
-            let tree = SCNNode(geometry: variants[index % variants.count])
-            tree.eulerAngles = SCNVector3(0, Float(index) * 0.9, 0)
-            holder.addChildNode(tree)
+            holder.addChildNode(SCNNode(geometry: variants[index % variants.count]))
             root.addChildNode(holder)
             holders.append(holder)
         }
+        var arches: [SCNNode] = []
+        for _ in 0..<Self.pairsPerLane {
+            let arch = SCNNode()
+            root.addChildNode(arch)
+            arches.append(arch)
+        }
+        // 足元の光だまり（道全体に 1 枚。木の位置に合わせて、くり返し模様をずらす）
+        let poolPlane = SCNPlane(width: 7.6, height: 7 * Double(Self.pairsPerLane))
+        poolPlane.materials = [poolMaterial]
+        let pool = SCNNode(geometry: poolPlane)
+        pool.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
+        root.addChildNode(pool)
         root.isHidden = true
-        return LaneLayer(root: root, holders: holders)
+        return LaneLayer(root: root, holders: holders, arches: arches, pool: pool, archStage: nil)
     }
 
     /// 雪玉の大きさに合わせて、見せる道を決める。
@@ -405,22 +495,31 @@ final class StageCoordinator {
                 fall = max(0, p)
             }
         }
-        configure(layers[0], stage: fallingStage, fall: fall)
-        configure(layers[1], stage: upright, fall: 0)
-        configure(layers[2], stage: upright + 1, fall: 0)
+        configure(0, stage: fallingStage, fall: fall)
+        configure(1, stage: upright, fall: 0)
+        configure(2, stage: upright + 1, fall: 0)
     }
 
-    private func configure(_ layer: LaneLayer, stage: Int?, fall: Double) {
+    private func configure(_ slot: Int, stage: Int?, fall: Double) {
         guard let stage else {
-            layer.root.isHidden = true
+            layers[slot].root.isHidden = true
             return
         }
+        let layer = layers[slot]
         layer.root.isHidden = false
         let f = Lane.treeScale(stage: stage)
         let half = Lane.width(stage: stage) / 2
+
+        // 光のアーチは、道が変わったときだけ作り直す
+        if layers[slot].archStage != stage {
+            layers[slot].archStage = stage
+            let geometry = makeArchGeometry(half: half, f: f)
+            for arch in layer.arches { arch.geometry = geometry }
+        }
+
         let spacing = 7 * f
         let period = spacing * Double(Self.pairsPerLane)
-        let near = 4 * spacing
+        let near = 0.5 * spacing
         let fallAngle = Float(fall * .pi / 2)
         let fs = Float(f)
         for index in 0..<(Self.pairsPerLane * 2) {
@@ -431,11 +530,47 @@ final class StageCoordinator {
             z = z - period + near
 
             let holder = layer.holders[index]
-            holder.position = SCNVector3(Float(side * (half + 1.5 * f)), 0, Float(z))
+            holder.position = SCNVector3(Float(side * (half + 1.7 * f)), 0, Float(z))
             holder.scale = SCNVector3(fs, fs, fs)
             holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
             holder.isHidden = fall >= 1
+
+            if index % 2 == 0 {
+                let arch = layer.arches[index / 2]
+                arch.position = SCNVector3(0, 0, Float(z))
+                arch.isHidden = fall > 0
+            }
         }
+
+        // 光だまり: 木の位置と、くり返し模様のずれを合わせる
+        let offset = scroll.truncatingRemainder(dividingBy: spacing)
+        layer.pool.position = SCNVector3(0, 0.02 * fs, Float(near - period / 2 + (offset < 0 ? offset + spacing : offset)))
+        layer.pool.scale = SCNVector3(fs, fs, fs)
+        layer.pool.isHidden = fall > 0
+    }
+
+    // MARK: 光の粒（夜に、金色の粒がゆっくり漂う）
+
+    private func setUpSparkles() {
+        sparkleSystem.birthRate = 0
+        sparkleSystem.particleLifeSpan = 7
+        sparkleSystem.particleLifeSpanVariation = 3
+        sparkleSystem.particleSize = 0.07
+        sparkleSystem.particleSizeVariation = 0.05
+        sparkleSystem.particleColor = UIColor(red: 1.0, green: 0.84, blue: 0.5, alpha: 1)
+        sparkleSystem.particleImage = Self.glowDot(size: 64)
+        sparkleSystem.blendMode = .additive
+        sparkleSystem.isAffectedByGravity = false
+        sparkleSystem.particleVelocity = 0.12
+        sparkleSystem.particleVelocityVariation = 0.1
+        sparkleSystem.emittingDirection = SCNVector3(0, 1, 0)
+        sparkleSystem.spreadingAngle = 40
+        sparkleSystem.emitterShape = SCNBox(width: 9, height: 2.5, length: 14, chamferRadius: 0)
+        sparkleSystem.particleColorVariation = SCNVector4(0.05, 0.1, 0.1, 0)
+        sparkleSystem.isLocal = true
+        sparkles.position = SCNVector3(0, 1.6, -5)
+        sparkles.addParticleSystem(sparkleSystem)
+        scene.rootNode.addChildNode(sparkles)
     }
 
     // MARK: 仲間
@@ -449,28 +584,33 @@ final class StageCoordinator {
         let tierIndex = min(max(look.tier, 0), Self.tierSizes.count - 1)
         let nominal = Self.tierSizes[tierIndex]
         let size = min(nominal, 1.6 * r)
-        let factor = Float(size / nominal)
-        crew.scale = SCNVector3(factor, factor, factor)
+        let factor = size / nominal
+        crew.scale = SCNVector3(Float(factor), Float(factor), Float(factor))
+        crew.position = SCNVector3(0, 0, 0)
+
+        // 手が雪玉にふれる高さでの、雪玉の中心からの距離。そこから、うでの長さぶんだけ離れて立つ。
         let handHeight = min(0.75 * size, 1.8 * r)
         let surface = max(0, r * r - (r - handHeight) * (r - handHeight)).squareRoot()
-        crew.position = SCNVector3(0, 0, Float(surface + 0.45 * size))
+        let distance = surface + 0.45 * size
 
-        // 横に並べる幅が、雪玉の幅に収まるようにする
-        let count = max(1, look.count)
-        let spacing: Double
-        if count > 1 {
-            let natural = 0.85 * nominal
-            let limit = 1.7 * r / Double(count - 1) / (size / nominal)
-            spacing = min(natural, limit)
-        } else {
-            spacing = 0
-        }
+        // 雪玉の後ろがわの円弧に、はば 1 人ぶんずつ並べる（入りきらない分は見せない）
+        let arc = distance * 2.1
+        let fit = max(1, Int(arc / (1.05 * size)))
+        let shown = max(1, min(min(look.count, 8), fit))
+        let step = shown > 1 ? min(1.05 * size / distance, 2.1 / Double(shown - 1)) : 0
+
         // 歩いているように、ぴょこぴょこ弾む（仲間だけ。機械は小さく揺れる）
         let bounce = tierIndex <= 1 ? 0.05 : 0.008
         for (index, node) in crew.childNodes.enumerated() {
-            let x = (Double(index) - Double(count - 1) / 2) * spacing
+            node.isHidden = index >= shown
+            let phi = (Double(index) - Double(shown - 1) / 2) * step
             let y = abs(sin(angle * 4 + Double(index) * 1.3)) * bounce
-            node.position = SCNVector3(Float(x), Float(y), 0)
+            node.position = SCNVector3(
+                Float(distance * sin(phi) / factor),
+                Float(y),
+                Float(distance * cos(phi) / factor)
+            )
+            node.eulerAngles = SCNVector3(0, Float(phi), 0)
         }
 
         orbit.isHidden = look.gravity == 0
@@ -643,6 +783,8 @@ final class StageCoordinator {
     private func applyDaypart(_ daypart: Daypart) {
         func color(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> UIColor { UIColor(red: r, green: g, blue: b, alpha: 1) }
         var bulbGlow: CGFloat = 0
+        var pool: CGFloat = 0
+        var sparkle: CGFloat = 0
         switch daypart {
         case .day:
             ambient.light?.color = color(0.60, 0.66, 0.78)
@@ -656,24 +798,30 @@ final class StageCoordinator {
             ambient.light?.intensity = 1000
             sun.light?.color = color(1.0, 0.70, 0.50)
             sun.light?.intensity = 750
-            bulbGlow = 0.8
+            bulbGlow = 0.9
+            pool = 0.45
+            sparkle = 4
             camera.wantsHDR = false
             camera.bloomIntensity = 0
         case .night:
             // 雪玉が見えるくらいには明るく。電球だけがにじんで光る。
-            ambient.light?.color = color(0.50, 0.56, 0.78)
+            ambient.light?.color = color(0.46, 0.52, 0.76)
             ambient.light?.intensity = 1000
-            sun.light?.color = color(0.62, 0.70, 1.0)
-            sun.light?.intensity = 500
-            bulbGlow = 2.4
+            sun.light?.color = color(0.60, 0.68, 1.0)
+            sun.light?.intensity = 450
+            bulbGlow = 2.6
+            pool = 0.9
+            sparkle = 16
             camera.wantsHDR = true
             camera.bloomThreshold = 0.85
             camera.bloomBlurRadius = 14
-            camera.bloomIntensity = 1.1
+            camera.bloomIntensity = 1.2
         }
-        for material in bulbMaterials {
+        for material in bulbMaterials() {
             material.emission.intensity = bulbGlow
         }
+        poolMaterial.transparency = pool
+        sparkleSystem.birthRate = sparkle
         scene.fogColor = UIColor(StoryPalette.of(daypart).hillNear)
     }
 
@@ -728,6 +876,55 @@ final class StageCoordinator {
             guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) else { return }
             let center = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
             cg.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: CGFloat(size) / 2, options: [])
+        }
+    }
+
+    /// 光の粒（中心が明るく、ふちが透ける、やわらかい点）
+    private static func glowDot(size: Int) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { context in
+            let cg = context.cgContext
+            let colors = [UIColor(white: 1, alpha: 1).cgColor, UIColor(white: 1, alpha: 0.35).cgColor, UIColor(white: 1, alpha: 0).cgColor] as CFArray
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.35, 1]) else { return }
+            let center = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
+            cg.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: CGFloat(size) / 2, options: [])
+        }
+    }
+
+    /// 木の道の足元に映る光だまり。黒い地に、金色の光をぼかして描く（足し算で重ねる）。
+    /// 横は道のはば（-1〜1）、たては木 1 本ぶんのくり返し。光は木の足元（左右のふち）と、道のへりにだけ置く。
+    private static func poolImage(size: Int) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = true
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        return renderer.image { context in
+            let cg = context.cgContext
+            UIColor.black.setFill()
+            cg.fill(CGRect(x: 0, y: 0, width: size, height: size))
+            let side = CGFloat(size)
+            func blob(centerU: CGFloat, centerV: CGFloat, radiusU: CGFloat, radiusV: CGFloat, strength: CGFloat) {
+                let colors = [
+                    UIColor(red: 1.0 * strength, green: 0.74 * strength, blue: 0.36 * strength, alpha: 1).cgColor,
+                    UIColor(red: 0, green: 0, blue: 0, alpha: 1).cgColor,
+                ] as CFArray
+                guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) else { return }
+                cg.saveGState()
+                cg.translateBy(x: centerU * side, y: centerV * side)
+                cg.scaleBy(x: radiusU * side, y: radiusV * side)
+                cg.drawRadialGradient(gradient, startCenter: .zero, startRadius: 0, endCenter: .zero, endRadius: 1, options: [])
+                cg.restoreGState()
+            }
+            // 木の足元（くり返しの継ぎ目をまたぐので、上下に 1 つずつ描く）
+            for centerV: CGFloat in [0, 1] {
+                for centerU: CGFloat in [0.079, 0.921] {
+                    blob(centerU: centerU, centerV: centerV, radiusU: 0.20, radiusV: 0.34, strength: 0.50)
+                }
+                // 道のへり（ボールが通る側）
+                for centerU: CGFloat in [0.303, 0.697] {
+                    blob(centerU: centerU, centerV: centerV, radiusU: 0.08, radiusV: 0.22, strength: 0.18)
+                }
+            }
         }
     }
 }

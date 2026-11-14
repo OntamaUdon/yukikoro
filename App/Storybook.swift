@@ -341,6 +341,9 @@ struct StoryPanorama: View {
         ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.62, seed: 5, step: w * 0.16), with: .color(p.hillFar))
         ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.34, seed: 19, step: w * 0.11), with: .color(p.hillFar.opacity(0.0)))
         ctx.fill(ridge(w: w, base: horizon, height: skyHeight * 0.30, seed: 41, step: w * 0.09), with: .color(p.hillNear))
-        ctx.fill(Path(CGRect(x: 0, y: horizon - 1, width: w, height: h - horizon + 1)), with: .color(p.hillNear))
+        let groundBottom = max(horizon + 1, h - bottomInset)
+        ctx.fill(Path(CGRect(x: 0, y: horizon - 1, width: w, height: groundBottom - horizon + 1)),
+                 with: .linearGradient(Gradient(colors: [p.hillNear, p.snowTop]), startPoint: CGPoint(x: 0, y: horizon), endPoint: CGPoint(x: 0, y: groundBottom)))
+        ctx.fill(Path(CGRect(x: 0, y: groundBottom, width: w, height: h - groundBottom + 1)), with: .color(p.snowTop))
     }
 }

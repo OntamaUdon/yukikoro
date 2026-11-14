@@ -190,6 +190,13 @@ struct MainView: View {
             GeometryReader { full in
                 SnowStage(input: input)
                     .frame(width: full.size.width, height: max(1, full.size.height - top - bottom))
+                    .mask(
+                        LinearGradient(stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .black, location: 0.86),
+                            .init(color: .clear, location: 1),
+                        ], startPoint: .top, endPoint: .bottom)
+                    )
                     .padding(.top, top)
             }
             SnowFall(isDark: daypart.isDark)
