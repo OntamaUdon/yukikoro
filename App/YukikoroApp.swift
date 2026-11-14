@@ -13,8 +13,6 @@ struct YukikoroApp: App {
                 Gallery3DView(page: page, useSnapshots: true)
             } else if let steps = DemoMode.ballSteps {
                 BallDemoView(steps: steps)
-            } else if let page = DemoMode.galleryPage {
-                GalleryView(page: page)
             } else {
                 RootView()
                     .environment(store)

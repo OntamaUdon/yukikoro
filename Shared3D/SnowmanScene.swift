@@ -11,7 +11,7 @@ enum SnowmanScene {
         let snowman: SCNNode
     }
 
-    static func addLights(to scene: SCNScene, ambientIntensity: CGFloat = 800, keyIntensity: CGFloat = 900, ambientColor: UIColor = UIColor(red: 0.72, green: 0.82, blue: 1.0, alpha: 1)) {
+    static func addLights(to scene: SCNScene, ambientIntensity: CGFloat = 880, keyIntensity: CGFloat = 900, ambientColor: UIColor = UIColor(red: 0.72, green: 0.82, blue: 1.0, alpha: 1)) {
         let ambient = SCNNode()
         ambient.light = SCNLight()
         ambient.light?.type = .ambient
@@ -83,7 +83,7 @@ enum SnowmanScene {
 
         let camera = SCNNode()
         camera.camera = SCNCamera()
-        camera.camera?.fieldOfView = 28
+        camera.camera?.fieldOfView = 25
         camera.camera?.zNear = 0.1
         camera.camera?.zFar = 100
         camera.position = SCNVector3(0, 1.55, 5.8)

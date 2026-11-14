@@ -22,15 +22,21 @@ struct RootView: View {
             CollectionView()
                 .tabItem { Label("ずかん", systemImage: "square.grid.2x2") }
                 .tag(1)
+            RecordsView()
+                .tabItem { Label("きろく", systemImage: "chart.bar.fill") }
+                .tag(2)
             SettingsView()
                 .tabItem { Label("せってい", systemImage: "gearshape") }
-                .tag(2)
+                .tag(3)
         }
         .fullScreenCover(isPresented: .constant(!store.state.onboarded)) {
             OnboardingView()
         }
         .sheet(item: $store.pendingResult) { result in
             CompletionView(result: result)
+        }
+        .task {
+            store.exportWidgetImages()
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }

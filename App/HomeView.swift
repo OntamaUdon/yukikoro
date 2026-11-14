@@ -2,83 +2,81 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(GameStore.self) private var store
-    @State private var rollAngle: Double = 0
     @State private var confirming = false
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { timeline in
-            let theme = SkyTheme.current(timeline.date)
-            ZStack {
-                SkyBackground(theme: theme)
-                SnowFall(isDark: theme.isDark)
-                GeometryReader { geo in
-                    content(theme: theme, size: geo.size)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func content(theme: SkyTheme, size: CGSize) -> some View {
-        let steps = store.state.rollingSteps
-        let groundTop = size.height * 0.46
-        let maxDiameter = min(size.width * 0.74, 290)
-        let diameter = BallScale.diameter(steps: steps, minimum: 56, maximum: maxDiameter)
-        let frameSide = diameter / 0.92
-
-        ZStack(alignment: .top) {
-            SnowGround(isDark: theme.isDark)
-                .frame(width: size.width, height: size.height - groundTop)
-                .position(x: size.width / 2, y: groundTop + (size.height - groundTop) / 2)
-                .ignoresSafeArea(edges: .bottom)
-
-            RollingBall(rotation: rollAngle)
-                .frame(width: frameSide, height: frameSide)
-                .position(x: size.width / 2, y: groundTop + 34 - diameter / 2 + frameSide * 0.06)
-
-            header(theme: theme)
-                .frame(width: size.width)
-                .position(x: size.width / 2, y: 70)
-
-            panel(theme: theme)
-                .padding(.horizontal, 20)
-                .frame(width: size.width)
-                .position(x: size.width / 2, y: size.height - 150)
-        }
-        .onChange(of: steps) { oldValue, newValue in
-            guard newValue > oldValue else { return }
-            withAnimation(.easeInOut(duration: 1.6)) {
-                rollAngle += 0.5 + Double(newValue - oldValue) * 0.004
-            }
-        }
-    }
-
-    private func header(theme: SkyTheme) -> some View {
-        VStack(spacing: 4) {
-            Text("ゆきころ")
-                .font(.system(.title2, design: .rounded, weight: .bold))
-                .foregroundStyle(theme.text)
-            Text("今日は \(formatSteps(store.todaySteps)) 歩")
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundStyle(theme.secondaryText)
-        }
-    }
-
-    private func panel(theme: SkyTheme) -> some View {
+        let theme = SkyTheme.current()
         let state = store.state
-        return VStack(spacing: 10) {
-            Text("いま転がしている雪玉")
-                .font(.system(.footnote, design: .rounded))
-                .foregroundStyle(.secondary)
+        ZStack(alignment: .bottom) {
+            BallSceneView(
+                steps: state.rollingSteps,
+                isDark: theme.isDark,
+                skyTop: UIColor(theme.top),
+                skyBottom: UIColor(theme.bottom)
+            )
+            .id(theme.isDark)
+            .ignoresSafeArea()
+
+            VStack {
+                header(state: state)
+                Spacer()
+            }
+
+            panel(state: state)
+        }
+    }
+
+    // MARK: 上部: 今日の歩数など
+
+    private func header(state: GameState) -> some View {
+        HStack(spacing: 10) {
+            chip(icon: "figure.walk", text: "今日 \(formatSteps(store.todaySteps))歩")
+            chip(icon: "snowflake", text: "雪だるま \(state.snowmen.count)体")
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    private func chip(icon: String, text: String) -> some View {
+        Label(text, systemImage: icon)
+            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+    }
+
+    // MARK: 下部: 雪玉の情報とボタン
+
+    private func panel(state: GameState) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("いま転がしている雪玉")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(state.currentTier.map { "\($0.adjective)サイズ" } ?? "ころがし中")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Palette.tint.opacity(0.15), in: Capsule())
+                    .foregroundStyle(Palette.tint)
+            }
+
             Text("\(formatSteps(state.rollingSteps)) 歩")
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(.system(size: 40, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .animation(.easeOut(duration: 0.6), value: state.rollingSteps)
-            Text(hint(for: state))
-                .font(.system(.footnote, design: .rounded))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ProgressView(value: progress(for: state))
+                    .tint(Palette.tint)
+                Text(hint(for: state))
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
             Button {
                 confirming = true
             } label: {
@@ -91,25 +89,41 @@ struct HomeView: View {
             .controlSize(.large)
             .disabled(!state.canComplete)
         }
-        .padding(18)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
+                .ignoresSafeArea(edges: .bottom)
+        )
         .confirmationDialog("この大きさで雪だるまにする？", isPresented: $confirming, titleVisibility: .visible) {
             Button("雪だるまにする") { store.completeSnowman() }
             Button("もう少し転がす", role: .cancel) {}
         } message: {
             if let tier = state.currentTier {
-                Text("\(tier.adjective)大きさ（\(formatSteps(state.rollingSteps))歩）の雪だるまができます。")
+                Text("\(tier.adjective)サイズ（\(formatSteps(state.rollingSteps))歩）の雪だるまができます。")
             }
         }
     }
 
+    /// 次のサイズまでの進み具合（0〜1）
+    private func progress(for state: GameState) -> Double {
+        guard let next = state.nextTier else { return 1 }
+        let lower = state.currentTier?.minSteps ?? 0
+        let span = Double(next.minSteps - lower)
+        return min(1, max(0, Double(state.rollingSteps - lower) / max(span, 1)))
+    }
+
     private func hint(for state: GameState) -> String {
         guard let tier = state.currentTier else {
-            return "\(SizeTier.minimumSteps)歩から雪だるまにできます。のんびり歩こう。"
+            return "\(SizeTier.minimumSteps)歩から雪だるまにできます。"
         }
         if let next = state.nextTier {
-            return "いまは「\(tier.adjective)」サイズ。\(formatSteps(next.minSteps))歩で「\(next.adjective)」サイズになるよ。"
+            return "いまは「\(tier.adjective)」サイズ。\(formatSteps(next.minSteps))歩で「\(next.adjective)」サイズになります。"
         }
-        return "ばかでかい雪玉になりました。いつでも雪だるまにできます。"
+        return "いちばん大きな「\(tier.adjective)」サイズです。いつでも雪だるまにできます。"
     }
 }

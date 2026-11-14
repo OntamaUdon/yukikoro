@@ -8,9 +8,9 @@ struct SnowmanDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    SnowmanView(snowman)
-                        .frame(maxWidth: 300)
-                        .padding(.top, 8)
+                    SnowmanSceneView(snowman)
+                        .frame(height: 340)
+                        .padding(.top, 4)
                     VStack(spacing: 6) {
                         Text(snowman.name)
                             .font(.system(size: 26, weight: .bold, design: .rounded))
@@ -90,8 +90,8 @@ struct CompletionView: View {
                         .padding(.vertical, 6)
                         .background(Palette.gold.opacity(0.35), in: Capsule())
                 }
-                SnowmanView(snowman)
-                    .frame(maxWidth: 300)
+                SnowmanSceneView(snowman, popIn: true)
+                    .frame(height: 340)
                 Text("\(snowman.name)ができました")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)

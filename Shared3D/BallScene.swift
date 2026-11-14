@@ -1,5 +1,6 @@
 import SceneKit
 import UIKit
+import Metal
 import simd
 
 /// ホームに出す「転がる雪玉」の 3D シーン。歩数に合わせて大きくなり、増えるたびにころころ回る。
@@ -53,13 +54,6 @@ final class BallScene: NSObject {
             tree.position = SCNVector3(spot.0, 0, spot.1)
             scene.rootNode.addChildNode(tree)
         }
-
-        // 雪玉が通ったあとの跡
-        let trail = SCNBox(width: 14, height: 0.02, length: 1.5, chamferRadius: 0.01)
-        trail.materials = [Toon.material(UIColor(red: 0.82, green: 0.89, blue: 0.98, alpha: 1))]
-        let trailNode = SCNNode(geometry: trail)
-        trailNode.position = SCNVector3(-7.2, 0.01, 0.05)
-        scene.rootNode.addChildNode(trailNode)
     }
 
     private func pine(color: UIColor) -> SCNNode {
@@ -83,13 +77,18 @@ final class BallScene: NSObject {
 
     // MARK: 雪玉
 
-    private func buildBall() {
+    /// 半径1の雪玉（表面の模様つき・輪郭つき）
+    static func makeBallNode() -> SCNNode {
         let geo = SCNSphere(radius: 1)
         geo.segmentCount = 64
         geo.materials = [Toon.texturedMaterial(BallScene.snowTexture)]
         let sphere = SCNNode(geometry: geo)
         addOutline(to: sphere, geometry: geo)
-        ball.addChildNode(sphere)
+        return sphere
+    }
+
+    private func buildBall() {
+        ball.addChildNode(BallScene.makeBallNode())
         pivot.addChildNode(ball)
         scene.rootNode.addChildNode(pivot)
         apply(steps: 0, animated: false)
@@ -97,11 +96,12 @@ final class BallScene: NSObject {
 
     private func buildCamera() {
         camera.camera = SCNCamera()
-        camera.camera?.fieldOfView = 36
+        camera.camera?.projectionDirection = .horizontal
+        camera.camera?.fieldOfView = 40
         camera.camera?.zNear = 0.1
         camera.camera?.zFar = 200
-        camera.position = SCNVector3(1.0, 1.6, 7.4)
-        camera.look(at: SCNVector3(-0.1, 1.0, 0))
+        camera.position = SCNVector3(1.1, 2.6, 8.6)
+        camera.look(at: SCNVector3(-0.15, 0.55, 0))
         scene.rootNode.addChildNode(camera)
     }
 
@@ -143,7 +143,7 @@ final class BallScene: NSObject {
         let old = steps
         steps = newSteps
         let fraction = Float(BallScale.fraction(newSteps))
-        let radius = 0.34 + 1.0 * fraction
+        let radius = 0.36 + 0.9 * fraction
         if animated {
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 1.4
@@ -183,7 +183,7 @@ final class BallScene: NSObject {
         }
     }()
 
-    /// 表面のでこぼこ。球に貼って回すと転がって見える。
+    /// 表面のやわらかなむら。球に貼って回すと転がって見える。
     private static let snowTexture: UIImage = {
         let size = CGSize(width: 1024, height: 512)
         var rng = SplitMix64(seed: 90210)
@@ -192,22 +192,47 @@ final class BallScene: NSObject {
             let g = ctx.cgContext
             UIColor(red: 0.975, green: 0.985, blue: 1.0, alpha: 1).setFill()
             g.fill(CGRect(origin: .zero, size: size))
-            for _ in 0..<170 {
-                let w = 26 + rand() * 80
-                let h = w * (0.5 + rand() * 0.5)
+            let space = CGColorSpaceCreateDeviceRGB()
+            for _ in 0..<70 {
+                let r = 40 + rand() * 90
                 let x = rand() * size.width
-                let y = 40 + rand() * (size.height - 80)
-                let rect = CGRect(x: x - w / 2, y: y - h / 2, width: w, height: h)
-                UIColor(red: 0.74, green: 0.82, blue: 0.94, alpha: 0.30 + rand() * 0.18).setFill()
+                let y = 50 + rand() * (size.height - 100)
+                let alpha = 0.16 + rand() * 0.14
+                let colors = [UIColor(red: 0.66, green: 0.76, blue: 0.93, alpha: alpha).cgColor,
+                              UIColor(red: 0.66, green: 0.76, blue: 0.93, alpha: 0).cgColor] as CFArray
+                guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: [0, 1]) else { continue }
                 for dx in [-size.width, 0, size.width] {
-                    g.fillEllipse(in: rect.offsetBy(dx: dx, dy: 0))
-                }
-                UIColor.white.withAlphaComponent(0.9).setFill()
-                let hi = rect.offsetBy(dx: -w * 0.12, dy: -h * 0.16).insetBy(dx: w * 0.2, dy: h * 0.25)
-                for dx in [-size.width, 0, size.width] {
-                    g.fillEllipse(in: hi.offsetBy(dx: dx, dy: 0))
+                    let c = CGPoint(x: x + dx, y: y)
+                    g.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: r, options: [])
                 }
             }
         }
     }()
+}
+
+/// ウィジェット用の、雪玉1個だけの静止画
+@MainActor
+enum BallSnapshot {
+    static func image(size: CGSize, scale: CGFloat = 2, background: UIColor) -> UIImage? {
+        guard let device = MTLCreateSystemDefaultDevice() else { return nil }
+        let scene = SCNScene()
+        scene.background.contents = background
+        SnowmanScene.addLights(to: scene)
+        let ball = BallScene.makeBallNode()
+        ball.simdScale = SIMD3<Float>(repeating: 1)
+        ball.position = SCNVector3(0, 1, 0)
+        ball.eulerAngles.z = -0.6
+        scene.rootNode.addChildNode(ball)
+        scene.rootNode.addChildNode(SnowmanScene.shadowBlob(size: 2.6))
+        let camera = SCNNode()
+        camera.camera = SCNCamera()
+        camera.camera?.fieldOfView = 26
+        camera.position = SCNVector3(0.4, 1.9, 6.4)
+        camera.look(at: SCNVector3(0, 0.9, 0))
+        scene.rootNode.addChildNode(camera)
+        let renderer = SCNRenderer(device: device, options: nil)
+        renderer.scene = scene
+        renderer.pointOfView = camera
+        return renderer.snapshot(atTime: 0, with: CGSize(width: size.width * scale, height: size.height * scale), antialiasingMode: .multisampling4X)
+    }
 }

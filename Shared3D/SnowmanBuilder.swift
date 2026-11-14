@@ -152,10 +152,10 @@ enum SnowmanBuilder {
         switch s {
         case .tenshi:
             for sign: Float in [-1, 1] {
-                let wing = sphere(0.34, snow, at: SIMD3<Float>(sign * 0.50, 0.78, -0.30), scale: SIMD3<Float>(0.26, 1.0, 0.16), outline: true)
+                let wing = sphere(0.42, snow, at: SIMD3<Float>(sign * 0.52, 0.80, -0.30), scale: SIMD3<Float>(0.34, 1.0, 0.18), outline: true)
                 wing.eulerAngles = SCNVector3(0, sign * 0.5, -sign * 0.55)
                 root.addChildNode(wing)
-                let feather = sphere(0.22, UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 1), at: SIMD3<Float>(sign * 0.66, 0.46, -0.30), scale: SIMD3<Float>(0.22, 1.0, 0.15), outline: true)
+                let feather = sphere(0.30, UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 1), at: SIMD3<Float>(sign * 0.72, 0.42, -0.30), scale: SIMD3<Float>(0.30, 1.0, 0.16), outline: true)
                 feather.eulerAngles = SCNVector3(0, sign * 0.5, -sign * 0.75)
                 root.addChildNode(feather)
             }
@@ -180,12 +180,12 @@ enum SnowmanBuilder {
             }
         case .neko:
             for sign: Float in [-1, 1] {
-                let geo = SCNCone(topRadius: 0, bottomRadius: 0.13, height: 0.27)
+                let geo = SCNCone(topRadius: 0, bottomRadius: 0.15, height: 0.36)
                 geo.radialSegmentCount = 3
                 let ear = solid(geo, snow, scale: SIMD3<Float>(1, 1, 0.55))
-                ear.simdPosition = headCenter + SIMD3<Float>(sign * 0.21, 0.27, -0.02)
-                ear.eulerAngles = SCNVector3(0, 0, -sign * 0.42)
-                let innerGeo = SCNCone(topRadius: 0, bottomRadius: 0.07, height: 0.17)
+                ear.simdPosition = headCenter + SIMD3<Float>(sign * 0.20, 0.31, -0.02)
+                ear.eulerAngles = SCNVector3(0, 0, -sign * 0.38)
+                let innerGeo = SCNCone(topRadius: 0, bottomRadius: 0.09, height: 0.24)
                 innerGeo.radialSegmentCount = 3
                 let inner = solid(innerGeo, cheek, outline: false)
                 inner.simdPosition = SIMD3<Float>(0, -0.015, 0.04)
@@ -209,11 +209,11 @@ enum SnowmanBuilder {
     private static func addPatches(_ s: Species, to root: SCNNode) {
         switch s {
         case .penguin:
-            let belly = solid(SCNSphere(radius: 0.512), snow, outline: false, scale: SIMD3<Float>(0.74, 0.86, 1.0))
-            belly.simdPosition = bodyCenter + SIMD3<Float>(0, -0.02, 0)
+            let belly = solid(SCNSphere(radius: 0.527), snow, outline: false, scale: SIMD3<Float>(0.88, 0.90, 1.0))
+            belly.simdPosition = bodyCenter + SIMD3<Float>(0, -0.03, 0)
             root.addChildNode(belly)
-            let face = solid(SCNSphere(radius: 0.352), snow, outline: false, scale: SIMD3<Float>(0.72, 0.62, 1.0))
-            face.simdPosition = headCenter + SIMD3<Float>(0, -0.045, 0)
+            let face = solid(SCNSphere(radius: 0.362), snow, outline: false, scale: SIMD3<Float>(0.84, 0.74, 1.0))
+            face.simdPosition = headCenter + SIMD3<Float>(0, -0.04, 0)
             root.addChildNode(face)
         case .daruma:
             let face = solid(SCNSphere(radius: 0.352), snow, outline: false, scale: SIMD3<Float>(0.74, 0.66, 1.0))
@@ -429,9 +429,9 @@ enum SnowmanBuilder {
             let group = SCNNode()
             group.simdPosition = SIMD3<Float>(0, top - 0.10, 0)
             group.eulerAngles.z = 0.07
-            let crown = solid(lathe(profile: [CGPoint(x: 0, y: 0.26), CGPoint(x: 0.12, y: 0.255), CGPoint(x: 0.2, y: 0.22), CGPoint(x: 0.255, y: 0.02), CGPoint(x: 0.255, y: 0)]), base)
+            let crown = solidLathe([CGPoint(x: 0, y: 0.26), CGPoint(x: 0.12, y: 0.255), CGPoint(x: 0.2, y: 0.22), CGPoint(x: 0.255, y: 0.02), CGPoint(x: 0.255, y: 0)], base)
             group.addChildNode(crown)
-            let brim = solid(lathe(profile: [CGPoint(x: 0.25, y: 0.012), CGPoint(x: 0.40, y: 0.0), CGPoint(x: 0.40, y: -0.02), CGPoint(x: 0.25, y: -0.01)]), dark)
+            let brim = solidLathe([CGPoint(x: 0.25, y: 0.012), CGPoint(x: 0.40, y: 0.0), CGPoint(x: 0.40, y: -0.02), CGPoint(x: 0.25, y: -0.01)], dark)
             group.addChildNode(brim)
             let band = solid(SCNTorus(ringRadius: 0.245, pipeRadius: 0.018), dark, outline: false)
             band.simdPosition = SIMD3<Float>(0, 0.05, 0)
@@ -454,7 +454,7 @@ enum SnowmanBuilder {
             let group = SCNNode()
             group.simdPosition = SIMD3<Float>(0.02, top - 0.14, 0)
             group.eulerAngles.z = -0.28
-            let hat = solid(lathe(profile: [CGPoint(x: 0, y: 0.52), CGPoint(x: 0.07, y: 0.46), CGPoint(x: 0.15, y: 0.30), CGPoint(x: 0.27, y: 0.04), CGPoint(x: 0.27, y: 0)]), base)
+            let hat = solidLathe([CGPoint(x: 0, y: 0.52), CGPoint(x: 0.07, y: 0.46), CGPoint(x: 0.15, y: 0.30), CGPoint(x: 0.27, y: 0.04), CGPoint(x: 0.27, y: 0)], base)
             group.addChildNode(hat)
             let brim = solid(SCNTorus(ringRadius: 0.27, pipeRadius: 0.055), snow)
             brim.simdPosition = SIMD3<Float>(0, 0.01, 0)
@@ -464,10 +464,10 @@ enum SnowmanBuilder {
         case .knitCap:
             let group = SCNNode()
             group.simdPosition = SIMD3<Float>(0, headCenter.y + 0.02, 0)
-            let cap = solid(lathe(profile: [
+            let cap = solidLathe([
                 CGPoint(x: 0, y: 0.40), CGPoint(x: 0.14, y: 0.385), CGPoint(x: 0.25, y: 0.32), CGPoint(x: 0.32, y: 0.20),
                 CGPoint(x: 0.352, y: 0.09), CGPoint(x: 0.356, y: 0.0),
-            ]), base)
+            ], base)
             group.addChildNode(cap)
             let cuff = solid(SCNTorus(ringRadius: 0.35, pipeRadius: 0.045), dark)
             cuff.simdPosition = SIMD3<Float>(0, 0.05, 0)
@@ -598,8 +598,8 @@ enum SnowmanBuilder {
             }
         case .stripe:
             for dy: Float in [0.08, -0.12] {
-                let rr = sqrt(bodyRadius * bodyRadius - dy * dy) + 0.004
-                let band = solid(SCNTorus(ringRadius: CGFloat(rr), pipeRadius: 0.034), base, outline: false)
+                let rr = sqrt(bodyRadius * bodyRadius - dy * dy) - 0.002
+                let band = solid(SCNTorus(ringRadius: CGFloat(rr), pipeRadius: 0.03), base, outline: false)
                 band.simdPosition = SIMD3<Float>(0, bodyCenter.y + dy, 0)
                 root.addChildNode(band)
             }

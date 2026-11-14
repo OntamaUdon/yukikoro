@@ -3,6 +3,7 @@ import SwiftUI
 /// SNS などで共有するための画像
 struct ShareCardView: View {
     let snowman: Snowman
+    let picture: UIImage?
 
     var body: some View {
         ZStack {
@@ -16,8 +17,12 @@ struct ShareCardView: View {
                     .foregroundStyle(Palette.ink.opacity(0.7))
                     .padding(.top, 26)
                 Spacer(minLength: 0)
-                SnowmanView(snowman)
-                    .frame(width: 260, height: 260)
+                if let picture {
+                    Image(uiImage: picture)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 300, height: 300)
+                }
                 Spacer(minLength: 0)
                 VStack(spacing: 6) {
                     Text(snowman.name)
@@ -37,7 +42,8 @@ struct ShareCardView: View {
 @MainActor
 enum ShareImage {
     static func render(_ snowman: Snowman) -> Image? {
-        let renderer = ImageRenderer(content: ShareCardView(snowman: snowman))
+        let picture = SnowmanSnapshot.image(for: snowman, size: CGSize(width: 300, height: 300), scale: 3)
+        let renderer = ImageRenderer(content: ShareCardView(snowman: snowman, picture: picture))
         renderer.scale = 3
         guard let uiImage = renderer.uiImage else { return nil }
         return Image(uiImage: uiImage)

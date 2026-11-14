@@ -7,7 +7,6 @@ enum DemoMode {
     static var args: [String] { CommandLine.arguments }
     static var isOn: Bool { args.contains("-yukikoro-demo") }
     static var showsCompletion: Bool { args.contains("-yukikoro-complete") }
-    static var galleryPage: Int? { value("-yukikoro-gallery").flatMap(Int.init) }
     static var gallery3DPage: Int? { value("-yukikoro-gallery3d").flatMap(Int.init) }
     static var ballSteps: Int? { value("-yukikoro-ball").flatMap(Int.init) }
     static var snapPage: Int? { value("-yukikoro-snap").flatMap(Int.init) }
@@ -45,48 +44,6 @@ enum DemoMode {
         s.totalSteps += steps
         s.credited[DayKey.key(for: Date())] = 5_200
         return s
-    }
-}
-
-/// 全種類を大きく並べて、絵柄を確認するための画面
-struct GalleryView: View {
-    let page: Int
-
-    private struct Item: Identifiable {
-        let species: Species
-        let decorations: [Decoration]
-        var id: String { species.rawValue }
-    }
-
-    private var items: [Item] {
-        var rng = SplitMix64(seed: 77)
-        let slice = Array(Species.allCases.dropFirst(page * 6).prefix(6))
-        var result: [Item] = []
-        for species in slice {
-            let decorations = SnowmanFactory.pickDecorations(species: species, tier: .xl, using: &rng)
-            result.append(Item(species: species, decorations: decorations))
-        }
-        return result
-    }
-
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.88, green: 0.94, blue: 1.0), Color(red: 0.96, green: 0.98, blue: 1.0)],
-                startPoint: .top, endPoint: .bottom
-            ).ignoresSafeArea()
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 18) {
-                ForEach(items) { item in
-                    VStack(spacing: 4) {
-                        SnowmanView(species: item.species, decorations: item.decorations)
-                        Text(item.species.displayName)
-                            .font(.system(.footnote, design: .rounded, weight: .semibold))
-                            .foregroundStyle(Palette.ink)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-        }
     }
 }
 

@@ -32,3 +32,23 @@ enum GameStorage {
         return (try? data.write(to: url, options: .atomic)) != nil
     }
 }
+
+/// ウィジェットと共有する画像などのファイル置き場
+enum SharedFiles {
+    static func directory() -> URL {
+        let fm = FileManager.default
+        if let container = fm.containerURL(forSecurityApplicationGroupIdentifier: SharedConfig.appGroup) {
+            return container
+        }
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? fm.temporaryDirectory
+        try? fm.createDirectory(at: base, withIntermediateDirectories: true)
+        return base
+    }
+
+    static let ballImageName = "widget-ball.png"
+    static let snowmanImageName = "widget-snowman.png"
+    /// ウィジェット画像の背景色（ウィジェット側の背景とそろえる）
+    static let backgroundRGB: (Double, Double, Double) = (0.87, 0.93, 1.0)
+
+    static func url(_ name: String) -> URL { directory().appendingPathComponent(name) }
+}

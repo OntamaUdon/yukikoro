@@ -13,11 +13,11 @@ struct OnboardingView: View {
             SnowFall()
             VStack(spacing: 22) {
                 Spacer()
-                SnowmanView(species: .plain, decorations: [
+                SnowmanSceneView(species: .plain, decorations: [
                     Decoration(kind: .knitCap, hue: 0),
                     Decoration(kind: .scarf, hue: 1),
                 ])
-                .frame(maxWidth: 240)
+                .frame(height: 300)
                 Text("ゆきころ")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.ink)

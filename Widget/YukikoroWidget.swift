@@ -37,12 +37,31 @@ struct YukikoroProvider: TimelineProvider {
     }
 }
 
+/// アプリが共有フォルダに置いた 3D の静止画を表示する（ウィジェットは 3D を直接描けない）
+struct SharedImage: View {
+    let name: String
+
+    var body: some View {
+        if let image = UIImage(contentsOfFile: SharedFiles.url(name).path) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "snowflake")
+                .font(.largeTitle)
+                .foregroundStyle(Color(red: 0.45, green: 0.62, blue: 0.9).opacity(0.5))
+        }
+    }
+}
+
 struct YukikoroWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: YukikoroEntry
 
-    private var diameter: CGFloat {
-        BallScale.diameter(steps: entry.state.rollingSteps, minimum: 34, maximum: family == .systemSmall ? 84 : 96)
+    private var ballSide: CGFloat {
+        let fraction = CGFloat(BallScale.fraction(entry.state.rollingSteps))
+        let maximum: CGFloat = family == .systemSmall ? 92 : 100
+        return 46 + (maximum - 46) * fraction
     }
 
     var body: some View {
@@ -54,16 +73,11 @@ struct YukikoroWidgetView: View {
         }
     }
 
-    private var ball: some View {
-        let side = diameter / 0.92
-        return RollingBall(rotation: 0.6)
-            .frame(width: side, height: side)
-    }
-
-    private var small: some View {
-        VStack(spacing: 4) {
+    private var ballBlock: some View {
+        VStack(spacing: 2) {
             Spacer(minLength: 0)
-            ball
+            SharedImage(name: SharedFiles.ballImageName)
+                .frame(width: ballSide, height: ballSide)
             Text("\(formatSteps(entry.state.rollingSteps))歩")
                 .font(.system(.headline, design: .rounded))
                 .monospacedDigit()
@@ -72,28 +86,22 @@ struct YukikoroWidgetView: View {
                 .font(.system(.caption2, design: .rounded))
                 .foregroundStyle(Palette.ink.opacity(0.6))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var small: some View {
+        ballBlock
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var medium: some View {
         HStack(spacing: 8) {
-            VStack(spacing: 4) {
-                Spacer(minLength: 0)
-                ball
-                Text("\(formatSteps(entry.state.rollingSteps))歩")
-                    .font(.system(.headline, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.ink)
-                Text(caption)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(Palette.ink.opacity(0.6))
-            }
-            .frame(maxWidth: .infinity)
+            ballBlock
+                .frame(maxWidth: .infinity)
 
             if let latest = entry.state.snowmen.last {
                 VStack(spacing: 2) {
-                    SnowmanView(latest)
-                        .frame(maxWidth: 96, maxHeight: 96)
+                    SharedImage(name: SharedFiles.snowmanImageName)
+                        .frame(maxWidth: 110, maxHeight: 100)
                     Text(latest.name)
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                         .foregroundStyle(Palette.ink)
@@ -105,13 +113,11 @@ struct YukikoroWidgetView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                VStack(spacing: 4) {
-                    Text("最初の雪だるまを\nつくろう")
-                        .font(.system(.footnote, design: .rounded))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(Palette.ink.opacity(0.7))
-                }
-                .frame(maxWidth: .infinity)
+                Text("最初の雪だるまを\nつくろう")
+                    .font(.system(.footnote, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.ink.opacity(0.7))
+                    .frame(maxWidth: .infinity)
             }
         }
     }
@@ -131,10 +137,7 @@ struct YukikoroWidget: Widget {
         StaticConfiguration(kind: kind, provider: YukikoroProvider()) { entry in
             YukikoroWidgetView(entry: entry)
                 .containerBackground(for: .widget) {
-                    LinearGradient(
-                        colors: [Color(red: 0.80, green: 0.91, blue: 0.99), Color(red: 0.95, green: 0.98, blue: 1.0)],
-                        startPoint: .top, endPoint: .bottom
-                    )
+                    Color(red: SharedFiles.backgroundRGB.0, green: SharedFiles.backgroundRGB.1, blue: SharedFiles.backgroundRGB.2)
                 }
         }
         .configurationDisplayName("ゆきころ")

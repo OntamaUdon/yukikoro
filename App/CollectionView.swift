@@ -4,11 +4,6 @@ struct CollectionView: View {
     @Environment(GameStore.self) private var store
     @State private var selected: Snowman?
 
-    private let pageBackground = LinearGradient(
-        colors: [Color(red: 0.93, green: 0.97, blue: 1.0), Color(red: 0.86, green: 0.92, blue: 0.99)],
-        startPoint: .top, endPoint: .bottom
-    )
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -21,7 +16,7 @@ struct CollectionView: View {
                 }
                 .padding()
             }
-            .background(pageBackground.ignoresSafeArea())
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("ずかん")
             .sheet(item: $selected) { snowman in
                 SnowmanDetailView(snowman: snowman)
@@ -32,7 +27,7 @@ struct CollectionView: View {
     private var summary: some View {
         let found = store.state.discoveredKindCount
         let total = GameState.totalKindCount
-        return VStack(spacing: 6) {
+        return VStack(spacing: 8) {
             Text("\(found) / \(total)")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .monospacedDigit()
@@ -44,7 +39,7 @@ struct CollectionView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     @ViewBuilder
@@ -57,12 +52,12 @@ struct CollectionView: View {
                 ForEach(list) { snowman in
                     Button { selected = snowman } label: {
                         HStack(spacing: 12) {
-                            SnowmanView(snowman)
-                                .frame(width: 48, height: 48)
+                            SnowmanThumbnail(snowman, size: CGSize(width: 120, height: 120))
+                                .frame(width: 52, height: 52)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(snowman.name)
                                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                    .foregroundStyle(Palette.ink)
+                                    .foregroundStyle(.primary)
                                 Text("\(formatSteps(snowman.steps))歩 ・ \(snowman.madeAt.formatted(date: .abbreviated, time: .omitted))")
                                     .font(.system(.caption, design: .rounded))
                                     .foregroundStyle(.secondary)
@@ -78,7 +73,7 @@ struct CollectionView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 }
@@ -108,7 +103,7 @@ private struct SpeciesCard: View {
             }
         }
         .padding(14)
-        .background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     @ViewBuilder
@@ -120,8 +115,9 @@ private struct SpeciesCard: View {
                     .fill(available ? Color(red: 0.90, green: 0.95, blue: 1.0) : Color.gray.opacity(0.10))
                 if let found = state.latest(species: species, tier: tier) {
                     Button { onSelect(found) } label: {
-                        SnowmanView(found, scale: 0.95)
-                            .padding(4)
+                        SnowmanThumbnail(found, size: CGSize(width: 150, height: 150))
+                            .scaleEffect(0.82 + 0.18 * tier.drawScale, anchor: .bottom)
+                            .padding(2)
                     }
                     .buttonStyle(.plain)
                 } else if available {
@@ -133,7 +129,7 @@ private struct SpeciesCard: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(height: 74)
+            .frame(height: 78)
             Text(tier.label)
                 .font(.system(.caption2, design: .rounded, weight: .semibold))
                 .foregroundStyle(.secondary)

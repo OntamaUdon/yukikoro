@@ -1,0 +1,54 @@
+import XCTest
+import SceneKit
+
+final class Scene3DTests: XCTestCase {
+    /// 全種類・全サイズの組み合わせで、雪だるまが破綻なく組み立てられること
+    func testBuildsEveryKind() {
+        var rng = SplitMix64(seed: 11)
+        for species in Species.allCases {
+            for tier in SizeTier.allCases {
+                for _ in 0..<5 {
+                    let decorations = SnowmanFactory.pickDecorations(species: species, tier: tier, using: &rng)
+                    let node = SnowmanBuilder.make(species: species, decorations: decorations)
+                    XCTAssertGreaterThan(node.childNodes.count, 6, "\(species) \(tier)")
+                    let (mn, mx) = node.boundingBox
+                    _ = (mn, mx)
+                    let flat = node.flattenedClone()
+                    let (fmin, fmax) = flat.boundingBox
+                    XCTAssertGreaterThan(fmax.y - fmin.y, 1.5, "背が低すぎる \(species)")
+                    XCTAssertLessThan(fmax.y - fmin.y, 2.8, "背が高すぎる \(species)")
+                    XCTAssertLessThan(fmax.x - fmin.x, 2.6, "横に広すぎる \(species)")
+                }
+            }
+        }
+    }
+
+    func testLatheGeometryHasConsistentBuffers() {
+        let profile = [CGPoint(x: 0, y: 0.5), CGPoint(x: 0.2, y: 0.3), CGPoint(x: 0.3, y: 0)]
+        let g = lathe(profile: profile, segments: 12)
+        let vertexCount = g.sources(for: .vertex).first?.vectorCount ?? 0
+        let normalCount = g.sources(for: .normal).first?.vectorCount ?? 0
+        XCTAssertEqual(vertexCount, 3 * 13)
+        XCTAssertEqual(vertexCount, normalCount)
+        XCTAssertEqual(g.elements.first?.primitiveCount, 2 * 12 * 2)
+    }
+
+    func testOrientAlignsAxis() {
+        let node = SCNNode()
+        orient(node, axis: SIMD3<Float>(0, 1, 0), to: SIMD3<Float>(1, 0, 0))
+        let rotated = node.simdOrientation.act(SIMD3<Float>(0, 1, 0))
+        XCTAssertEqual(rotated.x, 1, accuracy: 0.001)
+        XCTAssertEqual(rotated.y, 0, accuracy: 0.001)
+
+        let flip = SCNNode()
+        orient(flip, axis: SIMD3<Float>(0, 1, 0), to: SIMD3<Float>(0, -1, 0))
+        XCTAssertEqual(flip.simdOrientation.act(SIMD3<Float>(0, 1, 0)).y, -1, accuracy: 0.001)
+    }
+
+    func testSurfacePointIsOnSphere() {
+        let c = SIMD3<Float>(0, 1, 0)
+        let (p, n) = surfacePoint(center: c, radius: 0.5, az: 0.4, el: 0.3)
+        XCTAssertEqual(simd_length(p - c), 0.5, accuracy: 0.0001)
+        XCTAssertEqual(simd_length(n), 1, accuracy: 0.0001)
+    }
+}

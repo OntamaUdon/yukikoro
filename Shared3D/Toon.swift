@@ -5,7 +5,7 @@ import simd
 /// アニメ調（セル塗り＋輪郭線）の質感。
 enum Toon {
     static let outlineColor = UIColor(red: 0.36, green: 0.46, blue: 0.66, alpha: 1)
-    static let outlineWidth: Float = 0.017
+    static let outlineWidth: Float = 0.013
 
     /// 陰影を数段階に丸めて、ふんわりしたセル塗りにする。
     private static let fragment = """
@@ -95,19 +95,57 @@ func solid(_ geometry: SCNGeometry, _ color: UIColor, outline: Bool = true, scal
 }
 
 func addOutline(to node: SCNNode, geometry: SCNGeometry) {
+    let hull: SCNGeometry
+    if let special = outlineHull(for: geometry) {
+        hull = special
+        hull.materials = [Toon.outlineMaterial()]
+        node.addChildNode(SCNNode(geometry: hull))
+        return
+    }
+    // 想定外の形は、拡大コピーで代用する
     let (mn, mx) = geometry.boundingBox
     let dims = [abs(mx.x - mn.x), abs(mx.y - mn.y), abs(mx.z - mn.z)]
     let characteristic = max(Float(0.012), (dims.min() ?? 0.1) / 2)
     let k = 1 + Toon.outlineWidth / characteristic
     guard let copy = geometry.copy() as? SCNGeometry else { return }
     copy.materials = [Toon.outlineMaterial()]
-    let hull = SCNNode(geometry: copy)
-    hull.simdScale = SIMD3<Float>(repeating: k)
-    node.addChildNode(hull)
+    let fallback = SCNNode(geometry: copy)
+    fallback.simdScale = SIMD3<Float>(repeating: k)
+    node.addChildNode(fallback)
+}
+
+/// 形ごとに「少しだけ太らせた」輪郭用の殻を作る（細い輪が不自然に膨らまないように）。
+private func outlineHull(for geometry: SCNGeometry) -> SCNGeometry? {
+    let w = CGFloat(Toon.outlineWidth)
+    switch geometry {
+    case let g as SCNSphere:
+        let h = SCNSphere(radius: g.radius + w)
+        h.segmentCount = g.segmentCount
+        return h
+    case let g as SCNTorus:
+        let h = SCNTorus(ringRadius: g.ringRadius, pipeRadius: g.pipeRadius + w)
+        h.ringSegmentCount = g.ringSegmentCount
+        h.pipeSegmentCount = g.pipeSegmentCount
+        return h
+    case let g as SCNCylinder:
+        let h = SCNCylinder(radius: g.radius + w, height: g.height + 2 * w)
+        h.radialSegmentCount = g.radialSegmentCount
+        return h
+    case let g as SCNCapsule:
+        return SCNCapsule(capRadius: g.capRadius + w, height: g.height + 2 * w)
+    case let g as SCNBox:
+        return SCNBox(width: g.width + 2 * w, height: g.height + 2 * w, length: g.length + 2 * w, chamferRadius: g.chamferRadius + w)
+    case let g as SCNCone:
+        let h = SCNCone(topRadius: g.topRadius > 0 ? g.topRadius + w : 0, bottomRadius: g.bottomRadius + w * 1.6, height: g.height + 2 * w)
+        h.radialSegmentCount = g.radialSegmentCount
+        return h
+    default:
+        return nil
+    }
 }
 
 /// 軸まわりの回転体。profile は (半径, 高さ) の点列で、上（軸上）から下へ向かって並べる。
-func lathe(profile: [CGPoint], segments: Int = 36) -> SCNGeometry {
+func lathe(profile: [CGPoint], segments: Int = 36, outset: Float = 0) -> SCNGeometry {
     var vertices: [SCNVector3] = []
     var normals: [SCNVector3] = []
     var indices: [UInt32] = []
@@ -126,8 +164,9 @@ func lathe(profile: [CGPoint], segments: Int = 36) -> SCNGeometry {
             let theta = Float(j) / Float(segments) * 2 * .pi
             let s = sin(theta)
             let c = cos(theta)
-            let r = Float(profile[i].x)
-            vertices.append(SCNVector3(r * s, Float(profile[i].y), r * c))
+            let r = Float(profile[i].x) + nr * outset
+            let y = Float(profile[i].y) + ny * outset
+            vertices.append(SCNVector3(r * s, y, r * c))
             normals.append(SCNVector3(nr * s, ny, nr * c))
         }
     }
@@ -146,4 +185,15 @@ func lathe(profile: [CGPoint], segments: Int = 36) -> SCNGeometry {
         elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)]
     )
     return geometry
+}
+
+/// 回転体＋その輪郭（外側にずらした殻）
+func solidLathe(_ profile: [CGPoint], _ color: UIColor) -> SCNNode {
+    let geometry = lathe(profile: profile)
+    geometry.materials = [Toon.material(color)]
+    let node = SCNNode(geometry: geometry)
+    let hull = lathe(profile: profile, outset: Toon.outlineWidth)
+    hull.materials = [Toon.outlineMaterial()]
+    node.addChildNode(SCNNode(geometry: hull))
+    return node
 }

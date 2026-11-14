@@ -75,6 +75,26 @@ final class GameStore {
         pendingResult = result
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         persist(forceWidget: true)
+        exportWidgetImages()
+    }
+
+    // MARK: ウィジェット用の画像
+
+    /// ウィジェットは 3D を描けないので、雪玉と最新の雪だるまを画像にして共有フォルダへ置く。
+    func exportWidgetImages() {
+        guard !isDemo else { return }
+        let rgb = SharedFiles.backgroundRGB
+        let background = UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+        if let ball = BallSnapshot.image(size: CGSize(width: 160, height: 160), background: background),
+           let data = ball.pngData() {
+            try? data.write(to: SharedFiles.url(SharedFiles.ballImageName), options: .atomic)
+        }
+        if let latest = state.snowmen.last,
+           let image = SnowmanSnapshot.image(for: latest, size: CGSize(width: 200, height: 200), background: background),
+           let data = image.pngData() {
+            try? data.write(to: SharedFiles.url(SharedFiles.snowmanImageName), options: .atomic)
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: 検証用
