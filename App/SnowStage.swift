@@ -115,6 +115,7 @@ final class StageCoordinator {
     private let camera = SCNCamera()
     private let ball = SCNNode()
     private let ballMaterial = SCNMaterial()
+    private let groundMaterial = SCNMaterial()
     private let ring = SCNNode()
     private let shadow = SCNNode()
     private let world = SCNNode()
@@ -240,7 +241,6 @@ final class StageCoordinator {
         scene.rootNode.addChildNode(world)
 
         let plane = SCNPlane(width: 3_000, height: 3_000)
-        let groundMaterial = SCNMaterial()
         groundMaterial.lightingModel = .lambert
         groundMaterial.diffuse.contents = Self.speckle(size: 256, base: UIColor(white: 0.97, alpha: 1), spots: 260, seed: 9, tint: UIColor(red: 0.78, green: 0.88, blue: 1.0, alpha: 1))
         let repeatCount = Float(3_000 / Self.groundTile)
@@ -830,6 +830,7 @@ final class StageCoordinator {
             sun.light?.intensity = 800
             camera.wantsHDR = false
             camera.bloomIntensity = 0
+            groundMaterial.multiply.contents = UIColor.white
         case .dusk:
             ambient.light?.color = color(0.55, 0.48, 0.62)
             ambient.light?.intensity = 1000
@@ -840,6 +841,7 @@ final class StageCoordinator {
             sparkle = 4
             lamp = 250
             ballGlow = color(0.10, 0.07, 0.06)
+            groundMaterial.multiply.contents = color(0.92, 0.86, 0.92)
             camera.wantsHDR = false
             camera.bloomIntensity = 0
         case .night:
@@ -853,6 +855,8 @@ final class StageCoordinator {
             sparkle = 16
             lamp = 1300
             ballGlow = color(0.36, 0.38, 0.54)
+            // 地面を少し暗くして、雪玉が浮かび上がるようにする
+            groundMaterial.multiply.contents = color(0.66, 0.71, 0.90)
             camera.wantsHDR = true
             camera.bloomThreshold = 0.85
             camera.bloomBlurRadius = 14
