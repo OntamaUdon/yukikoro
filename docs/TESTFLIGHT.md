@@ -124,7 +124,7 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 
 ## 4B. 【方式B: Mac なし】GitHub Actions でアップロード
 
-> **注意**: この方式は、作者が認証情報を持っておらず、**実際に動かして確認できていません**。失敗したら、Actions のログ（赤いステップ）を見て、書かれているエラーを手がかりに調整します。確実に出したいなら、Mac を借りられる人に方式Aで1回だけ出してもらうのも手です。
+> **動作確認済み**: この方式（GitHub Actions）で、App Store Connect へのアップロードに成功しています（Xcode 26.3、実機の登録は不要）。失敗したら、Actions のログ（赤いステップ）を見て、書かれているエラーを手がかりに調整します。確実に出したいなら、Mac を借りられる人に方式Aで1回だけ出してもらうのも手です。
 
 ### 準備1: App Store Connect API キーを作る
 1. App Store Connect を開き、「ユーザとアクセス」→「統合」→「App Store Connect API」。
