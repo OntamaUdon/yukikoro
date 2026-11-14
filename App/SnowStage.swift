@@ -254,7 +254,13 @@ final class StageCoordinator {
 
         setUpMaterials()
         // 左右 2 列の木の道。落ちていく道・いまの道・次の道の 3 本ぶんを用意しておく。
-        let variants = (0..<3).map { makeTreeGeometry(seed: UInt64($0 + 1) * 7_919) }
+        let variants = (0..<3).map { index -> SCNGeometry in
+            let seed = UInt64(index + 1) * 7_919
+            let full = makeTreeGeometry(seed: seed)
+            // 画面で小さくなったら、枝の少ない簡単な形にかえる
+            full.levelsOfDetail = [SCNLevelOfDetail(geometry: makeTreeGeometry(seed: seed, detailed: false), screenSpaceRadius: 90)]
+            return full
+        }
         for _ in 0..<3 {
             let layer = makeLane(variants: variants)
             world.addChildNode(layer.root)
@@ -348,7 +354,7 @@ final class StageCoordinator {
     /// 針葉樹（トウヒ）の形。高さは約 8。
     /// 幹は先が細くなる円錐。そこに、下ほど長い枝の輪が 16 段つく。枝は少しもち上がってから、先がたれて、上に雪がのる。
     /// 枝にそって小さな電球を並べ、木から木へわたす光の列と、てっぺんの星もつける。
-    private func makeTreeGeometry(seed: UInt64) -> SCNGeometry {
+    private func makeTreeGeometry(seed: UInt64, detailed: Bool = true) -> SCNGeometry {
         var generator = SplitMix64(seed: seed)
         func random() -> Float { Float(generator.next() % 10_000) / 10_000 }
 
@@ -413,12 +419,12 @@ final class StageCoordinator {
             }
         }
 
-        let whorls = 16
+        let whorls = detailed ? 16 : 9
         for k in 0..<whorls {
             let h = Float(k) / Float(whorls - 1)
             let y0 = 1.5 + 6.3 * pow(h, 0.95)
             let length = 1.9 * pow(1 - h, 0.9) + 0.15
-            let branchCount = h < 0.35 ? 10 : (h < 0.7 ? 8 : 6)
+            let branchCount = detailed ? (h < 0.35 ? 10 : (h < 0.7 ? 8 : 6)) : (h < 0.35 ? 6 : (h < 0.7 ? 5 : 4))
             let droop = 1 - 0.55 * h
             for b in 0..<branchCount {
                 let theta = (Float(b) / Float(branchCount) + Float(k) * 0.37 + random() * 0.06) * 2 * .pi
@@ -427,10 +433,10 @@ final class StageCoordinator {
                 let len = length * (0.85 + random() * 0.3)
                 let origin = SIMD3<Float>(0, y0, 0) + radial * 0.12
                 frond(origin: origin, radial: radial, side: side, length: len, droop: droop,
-                      widthFactor: 0.27, segments: 5, snowy: true, bulbAt: [3, 5])
+                      widthFactor: detailed ? 0.27 : 0.34, segments: detailed ? 5 : 3, snowy: true, bulbAt: detailed ? [3, 5] : [3])
 
                 // 小枝（枝の途中から、左右に出る）
-                if len > 0.5 {
+                if detailed && len > 0.5 {
                     let t: Float = 0.5
                     let base = origin + radial * (len * t) + SIMD3(0, len * (0.14 * t - 0.42 * t * t) * droop, 0)
                     for sign: Float in [-1, 1] {
@@ -773,27 +779,36 @@ final class StageCoordinator {
             root.addChildNode(box(0.06, 0.55, 0.06, darkWood, SCNVector3(-0.4, 0.45, 0.12)))
             root.addChildNode(box(0.06, 0.55, 0.06, darkWood, SCNVector3(0.4, 0.45, 0.12)))
             root.addChildNode(box(0.9, 0.05, 0.05, darkWood, SCNVector3(0, 0.75, 0.12)))
-        case 3:
-            // でんどうクローラー
-            let body = UIColor(red: 0.42, green: 0.52, blue: 0.68, alpha: 1)
-            root.addChildNode(box(0.9, 0.42, 1.2, body, SCNVector3(0, 0.52, 0.1)))
-            root.addChildNode(box(0.5, 0.3, 0.5, UIColor(red: 0.55, green: 0.70, blue: 0.90, alpha: 1), SCNVector3(0, 0.88, 0.3)))
-            root.addChildNode(box(0.22, 0.34, 1.5, UIColor(white: 0.18, alpha: 1), SCNVector3(-0.5, 0.17, 0.1)))
-            root.addChildNode(box(0.22, 0.34, 1.5, UIColor(white: 0.18, alpha: 1), SCNVector3(0.5, 0.17, 0.1)))
-            root.addChildNode(box(1.1, 0.48, 0.07, UIColor(red: 1.0, green: 0.82, blue: 0.25, alpha: 1), SCNVector3(0, 0.42, -0.64)))
-            root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(-0.3, 0.6, -0.52)))
-            root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(0.3, 0.6, -0.52)))
+        case 3, 4:
+            // クローラー（3 = でんどう、4 = おおがた）
+            let big = tier == 4
+            let body = big ? UIColor(red: 1.0, green: 0.72, blue: 0.14, alpha: 1) : UIColor(red: 0.30, green: 0.62, blue: 0.95, alpha: 1)
+            let dark = UIColor(white: 0.16, alpha: 1)
+            let metal = UIColor(white: 0.78, alpha: 1)
+            // 車体と運転席
+            root.addChildNode(box(0.86, 0.34, 1.2, body, SCNVector3(0, 0.50, 0.1)))
+            root.addChildNode(box(0.62, 0.34, 0.52, UIColor(white: 0.96, alpha: 1), SCNVector3(0, 0.84, 0.28)))
+            root.addChildNode(box(0.56, 0.16, 0.04, UIColor(red: 0.35, green: 0.60, blue: 0.90, alpha: 1), SCNVector3(0, 0.88, 0.0)))
+            // キャタピラ（左右）と車輪
+            for side: Float in [-1, 1] {
+                root.addChildNode(box(0.24, 0.36, 1.55, dark, SCNVector3(side * 0.52, 0.18, 0.1)))
+                for z: Float in [-0.55, 0.1, 0.75] {
+                    let wheel = SCNNode(geometry: SCNCylinder(radius: 0.15, height: 0.26))
+                    wheel.geometry?.materials = [material(metal)]
+                    wheel.eulerAngles = SCNVector3(0, 0, Float.pi / 2)
+                    wheel.position = SCNVector3(side * 0.52, 0.18, z)
+                    root.addChildNode(wheel)
+                }
+            }
+            // 雪玉を押す、まえのブレード
+            root.addChildNode(box(1.22, 0.55, 0.07, metal, SCNVector3(0, 0.40, -0.72)))
+            root.addChildNode(box(1.22, 0.06, 0.12, body, SCNVector3(0, 0.70, -0.70)))
+            // ライト
+            root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(-0.3, 0.62, -0.52)))
+            root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(0.3, 0.62, -0.52)))
+            root.addChildNode(glowing(0.05, UIColor(red: 1.0, green: 0.45, blue: 0.30, alpha: 1), SCNVector3(0, 1.08, 0.3)))
         default:
-            // おおがたクローラー
-            let body = UIColor(red: 0.98, green: 0.62, blue: 0.20, alpha: 1)
-            root.addChildNode(box(0.9, 0.46, 1.2, body, SCNVector3(0, 0.54, 0.1)))
-            root.addChildNode(box(0.55, 0.38, 0.55, UIColor(red: 0.55, green: 0.72, blue: 0.92, alpha: 1), SCNVector3(0, 0.96, 0.3)))
-            root.addChildNode(box(0.26, 0.38, 1.6, UIColor(white: 0.16, alpha: 1), SCNVector3(-0.52, 0.19, 0.1)))
-            root.addChildNode(box(0.26, 0.38, 1.6, UIColor(white: 0.16, alpha: 1), SCNVector3(0.52, 0.19, 0.1)))
-            root.addChildNode(box(1.25, 0.6, 0.08, UIColor(white: 0.86, alpha: 1), SCNVector3(0, 0.46, -0.68)))
-            root.addChildNode(glowing(0.08, UIColor(red: 1.0, green: 0.92, blue: 0.55, alpha: 1), SCNVector3(-0.35, 0.72, -0.5)))
-            root.addChildNode(glowing(0.08, UIColor(red: 1.0, green: 0.92, blue: 0.55, alpha: 1), SCNVector3(0.35, 0.72, -0.5)))
-            root.addChildNode(glowing(0.06, UIColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1), SCNVector3(0, 1.2, 0.3)))
+            break
         }
         return root
     }
@@ -829,15 +844,15 @@ final class StageCoordinator {
             camera.bloomIntensity = 0
         case .night:
             // 雪玉が見えるくらいには明るく。電球だけがにじんで光る。
-            ambient.light?.color = color(0.46, 0.52, 0.76)
+            ambient.light?.color = color(0.40, 0.46, 0.70)
             ambient.light?.intensity = 1000
             sun.light?.color = color(0.60, 0.68, 1.0)
             sun.light?.intensity = 450
             bulbGlow = 2.6
             pool = 0.9
             sparkle = 16
-            lamp = 800
-            ballGlow = color(0.16, 0.17, 0.27)
+            lamp = 1300
+            ballGlow = color(0.30, 0.32, 0.46)
             camera.wantsHDR = true
             camera.bloomThreshold = 0.85
             camera.bloomBlurRadius = 14
