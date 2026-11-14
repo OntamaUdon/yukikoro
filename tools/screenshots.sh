@@ -33,12 +33,4 @@ shot g3d-1         -yukikoro-gallery3d 1
 shot snap-0        -yukikoro-snap 0
 shot ball-day      -yukikoro-ball 4200 -yukikoro-hour 11
 shot ball-night    -yukikoro-ball 12500 -yukikoro-hour 22
-shot yaw-day-0     -yukikoro-ball 4200 -yukikoro-hour 11 -yukikoro-yaw 0
-shot yaw-day-1     -yukikoro-ball 4200 -yukikoro-hour 11 -yukikoro-yaw 1.5708
-shot yaw-day-2     -yukikoro-ball 4200 -yukikoro-hour 11 -yukikoro-yaw 3.1416
-shot yaw-day-3     -yukikoro-ball 4200 -yukikoro-hour 11 -yukikoro-yaw 4.7124
-shot yaw-dusk-0    -yukikoro-ball 4200 -yukikoro-hour 17 -yukikoro-yaw 0
-shot yaw-dusk-1    -yukikoro-ball 4200 -yukikoro-hour 17 -yukikoro-yaw 1.5708
-shot yaw-dusk-2    -yukikoro-ball 4200 -yukikoro-hour 17 -yukikoro-yaw 3.1416
-shot yaw-dusk-3    -yukikoro-ball 4200 -yukikoro-hour 17 -yukikoro-yaw 4.7124
 shot onboarding

@@ -18,26 +18,13 @@ final class BallScene: NSObject {
     init(daypart: Daypart, yaw: Float? = nil) {
         super.init()
         SnowmanScene.applyEnvironment(to: scene, daypart: daypart, background: true, yaw: yaw ?? daypart.backgroundYaw)
-        SnowmanScene.addSun(to: scene, daypart: daypart, castsShadow: true, intensity: 700)
-        buildGround()
+        SnowmanScene.addSun(to: scene, daypart: daypart, castsShadow: false, intensity: 1300)
         buildBall()
         buildCamera(daypart: daypart)
         buildSnowfall(daypart: daypart)
     }
 
     // MARK: 世界
-
-    /// 影だけを受ける床（写真の地面の上に、雪玉の影だけを重ねる）
-    private func buildGround() {
-        let plane = SCNPlane(width: 60, height: 60)
-        let m = SCNMaterial()
-        m.lightingModel = .shadowOnly
-        plane.materials = [m]
-        let node = SCNNode(geometry: plane)
-        node.eulerAngles.x = -.pi / 2
-        node.position = SCNVector3(0, 0, -BallScene.ballDistance)
-        scene.rootNode.addChildNode(node)
-    }
 
     // MARK: 雪玉
 
@@ -51,6 +38,10 @@ final class BallScene: NSObject {
     private func buildBall() {
         ball.addChildNode(BallScene.makeBallNode())
         pivot.addChildNode(ball)
+        // 足元のやわらかい影（雪玉の大きさに合わせて広がる）
+        let contact = SnowmanScene.shadowBlob(size: 3.4)
+        contact.position = SCNVector3(0, -0.995, 0)
+        pivot.addChildNode(contact)
         scene.rootNode.addChildNode(pivot)
         apply(steps: 0, animated: false)
     }
@@ -59,7 +50,7 @@ final class BallScene: NSObject {
         camera.camera = SCNCamera()
         camera.camera?.projectionDirection = .horizontal
         camera.camera?.fieldOfView = 42
-        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.9 : -0.4)
+        SnowmanScene.configure(camera: camera.camera!, exposure: daypart == .day ? -0.2 : -0.3)
         camera.position = SCNVector3(0, 1.6, 0)
         camera.look(at: SCNVector3(0, 0.34, -BallScene.ballDistance))
         scene.rootNode.addChildNode(camera)

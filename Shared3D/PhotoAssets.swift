@@ -58,8 +58,8 @@ enum Daypart {
     /// 背景の写真を回す角度（道・雪原が正面に来るように）
     var backgroundYaw: Float {
         switch self {
-        case .day: return 0.0
-        case .dusk, .night: return 0.0
+        case .day: return Float.pi            // 雪道と林が正面に来る向き
+        case .dusk, .night: return Float.pi * 1.5   // 夕日と雪原が正面に来る向き
         }
     }
 }
