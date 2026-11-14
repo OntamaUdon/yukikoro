@@ -24,9 +24,9 @@
 
 ## 開く・動かす（Mac）
 
-`Yukikoro.xcodeproj` はリポジトリに含まれているので、そのまま Xcode 16 以降で開けます。
+`Yukikoro.xcodeproj`（と、それが参照する `Info.plist`・権限ファイル）はリポジトリに含まれているので、そのまま Xcode 16 以降で開けます。
 
-`project.yml` を変えたときだけ、プロジェクトを作り直します。
+`project.yml` を変えたときだけ、プロジェクトを作り直します（CI でも毎回生成して検証しています）。
 
 ```bash
 brew install xcodegen
@@ -35,13 +35,17 @@ xcodegen generate
 
 実機で歩数を確認するには、実機（iPhone）を選んで実行します。シミュレーターでは歩数が増えないので、**設定画面のバージョンを5回タップ**すると出る「テスト用」メニューで歩数を足せます。
 
-## TestFlight に出す前にやること
+## TestFlight に出す
 
-1. **Bundle ID を自分のものに変える**。`project.yml` の `com.example.yukikoro`（アプリ）と `com.example.yukikoro.widget`（ウィジェット）、`group.com.example.yukikoro`（App Group）、`Shared/Storage.swift` の `SharedConfig.appGroup` の4か所。変えたら `xcodegen generate`。
-2. Xcode の Signing & Capabilities で Team を選ぶ（Automatic signing）。HealthKit と App Groups は両方のターゲット（アプリ・ウィジェット）で有効にします。
-3. Apple Developer 側で App Group を登録（Automatic signing なら Xcode が作ります）。
-4. App Store Connect でアプリを作成し、Product > Archive から TestFlight にアップロード。
-5. 公開前に、[PRIVACY.md](PRIVACY.md) を元にしたプライバシーポリシーの URL を用意する。
+**手順書: [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md)**（はじめてでも分かるように、順番に書いてあります。Mac がある場合とない場合の両方）。
+
+要点だけ書くと、次のとおりです。
+
+1. Apple Developer Program に加入する（年会費が必要）。
+2. **Bundle ID を自分のものに変える**: `python tools/set_bundle_id.py com.yourname.yukikoro --team <TeamID>`（アプリ・ウィジェット・App Group・保存先の設定を一括で書き換えます）。
+3. App Store Connect でアプリを作る。
+4. Xcode で Archive してアップロードする（Mac なしの場合は、GitHub Actions の手動ワークフロー。未検証）。
+5. TestFlight でテスターを招待して、iPhone にインストールする。
 
 ## 検証（CI）
 
