@@ -106,9 +106,9 @@ struct HomeView: View {
 
     /// 次のサイズまでの進み具合（0〜1）
     private func progress(for state: GameState) -> Double {
-        guard let next = state.nextTier else { return 1 }
         let lower = state.currentTier?.minSteps ?? 0
-        let span = Double(next.minSteps - lower)
+        let upper = state.nextTier?.minSteps ?? SizeTier.maxSteps
+        let span = Double(upper - lower)
         return min(1, max(0, Double(state.rollingSteps - lower) / max(span, 1)))
     }
 
@@ -116,9 +116,13 @@ struct HomeView: View {
         guard let tier = state.currentTier else {
             return "\(SizeTier.minimumSteps)歩から雪だるまにできます。"
         }
+        if state.isAtCap {
+            let carry = state.reserveSteps > 0 ? "（持ち越し \(formatSteps(state.reserveSteps))歩）" : ""
+            return "最大サイズに達しました。雪だるまにすると、次の雪玉へ歩数を持ち越せます。\(carry)"
+        }
         if let next = state.nextTier {
             return "いまは「\(tier.adjective)」サイズ。\(formatSteps(next.minSteps))歩で「\(next.adjective)」サイズになります。"
         }
-        return "いちばん大きな「\(tier.adjective)」サイズです。いつでも雪だるまにできます。"
+        return "いまは最大の「\(tier.adjective)」サイズ。\(formatSteps(SizeTier.maxSteps))歩で最大サイズに達します。"
     }
 }

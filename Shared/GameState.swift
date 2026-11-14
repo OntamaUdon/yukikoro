@@ -14,8 +14,10 @@ struct GameState: Codable, Equatable {
     var onboarded: Bool = false
     /// 初回の歩数同期（過去日のベースライン記録）が済んだか
     var initialized: Bool = false
-    /// 今転がしている雪玉の歩数
+    /// 今転がしている雪玉の歩数（達成上限 `SizeTier.maxSteps` まで）
     var rollingSteps: Int = 0
+    /// 達成上限を超えて余った歩数。雪だるまにしたあと、次の雪玉に持ち越す。
+    var reserveSteps: Int = 0
     /// これまでに雪玉に加算した歩数の合計
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
@@ -26,7 +28,7 @@ struct GameState: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, rollingSteps, totalSteps, credited, snowmen, createdAt
+        case version, onboarded, initialized, rollingSteps, reserveSteps, totalSteps, credited, snowmen, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -35,6 +37,7 @@ struct GameState: Codable, Equatable {
         onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
         initialized = try c.decodeIfPresent(Bool.self, forKey: .initialized) ?? false
         rollingSteps = try c.decodeIfPresent(Int.self, forKey: .rollingSteps) ?? 0
+        reserveSteps = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
         snowmen = try c.decodeIfPresent([Snowman].self, forKey: .snowmen) ?? []
@@ -63,8 +66,7 @@ struct GameState: Codable, Equatable {
                 credited[key] = value
             }
         }
-        rollingSteps += gained
-        totalSteps += gained
+        addToBall(gained)
         prune()
         return gained
     }
@@ -72,7 +74,15 @@ struct GameState: Codable, Equatable {
     /// テストやデバッグ用に歩数を直接足す
     mutating func addBonus(steps: Int) {
         guard steps > 0 else { return }
-        rollingSteps += steps
+        addToBall(steps)
+    }
+
+    /// 雪玉に歩数を足す。達成上限を超えた分は持ち越しに回す。
+    private mutating func addToBall(_ steps: Int) {
+        let room = max(0, SizeTier.maxSteps - rollingSteps)
+        let toBall = min(steps, room)
+        rollingSteps += toBall
+        reserveSteps += steps - toBall
         totalSteps += steps
     }
 
@@ -89,6 +99,9 @@ struct GameState: Codable, Equatable {
 
     var canComplete: Bool { rollingSteps >= SizeTier.minimumSteps }
 
+    /// 達成上限（最大サイズ）に到達しているか
+    var isAtCap: Bool { rollingSteps >= SizeTier.maxSteps }
+
     var currentTier: SizeTier? { SizeTier.tier(forSteps: rollingSteps) }
 
     var nextTier: SizeTier? { SizeTier.allCases.first { $0.minSteps > rollingSteps } }
@@ -98,7 +111,10 @@ struct GameState: Codable, Equatable {
         let snowman = SnowmanFactory.make(tier: tier, steps: rollingSteps, date: now, using: &g)
         let isNew = !hasMade(species: snowman.species, tier: snowman.tier)
         snowmen.append(snowman)
-        rollingSteps = 0
+        // 達成上限を超えて持ち越していた歩数があれば、次の雪玉に回す
+        let carried = min(reserveSteps, SizeTier.maxSteps)
+        rollingSteps = carried
+        reserveSteps -= carried
         return CompletionResult(snowman: snowman, isNewKind: isNew)
     }
 

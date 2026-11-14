@@ -9,8 +9,8 @@ import CoreGraphics
 ///
 ///     r(s) = (r0^q + k·s)^(1/q)     （q = 2〜3。q が小さいほど後半の伸びが強い）
 ///
-/// 物理的な上限は無いので、頭打ちは設けない。大きくなるほど半径の伸びは緩やかになり
-/// （q = 2.5: 半径 ∝ 距離^0.4）、体積は距離よりも速く増え続ける。
+/// 式そのものには収束する上限（漸近線）は無く、半径は距離^0.4 で伸び、体積は距離よりも速く増える。
+/// ゲームとしては「達成上限」（`SizeTier.maxSteps` = 30,000歩）で最大サイズに到達して止まる。
 /// 画面からはみ出さないよう、大きくなったらカメラ側（雪玉を置く距離）を引いて見せる。
 enum BallScale {
     /// 指数 q（β = 0.5 のとき 2.5。接地幅が √r に比例する想定）
@@ -20,13 +20,13 @@ enum BallScale {
     /// 係数。S/M/L/XL の4段階（500・3,000・8,000・15,000歩）の見た目の差が偏らないよう決めた値
     static let k = 1.329e-4
 
-    /// 半径（場面の単位）。上限なし。
+    /// 半径（場面の単位）。達成上限（`SizeTier.maxSteps`）の歩数で最大になり、以降は変わらない。
     static func radius(steps: Int) -> Double {
-        let s = max(0, Double(steps))
+        let s = Double(min(max(0, steps), SizeTier.maxSteps))
         return pow(pow(r0, q) + k * s, 1 / q)
     }
 
-    /// 大きさの割合（0〜1 未満）。ウィジェットなどの表示用。大きくなるほど 1 に近づく。
+    /// 大きさの割合（0〜1 未満）。ウィジェットなどの表示用。
     static func fraction(_ steps: Int) -> Double {
         1 - exp(-(radius(steps: steps) - r0) / 1.0)
     }

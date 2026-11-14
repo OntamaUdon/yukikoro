@@ -13,6 +13,9 @@ enum SizeTier: Int, Codable, CaseIterable, Comparable, Identifiable {
     /// 雪だるまにできる最小の歩数
     static let minimumSteps = 500
 
+    /// 達成上限: 雪玉はこの歩数で最大サイズに到達し、これ以上は大きくならない（超えた歩数は次の雪玉へ持ち越す）
+    static let maxSteps = 30_000
+
     var minSteps: Int {
         switch self {
         case .s: return 500
