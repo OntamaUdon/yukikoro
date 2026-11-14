@@ -30,10 +30,17 @@ jobs:
           brew install xcodegen
           xcodegen generate
 
-      - name: App Store Connect API キーを保存
+      - name: App Store Connect API キーを保存（貼り付けで改行が崩れていても直す）
+        env:
+          P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p "$RUNNER_TEMP/keys"
-          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+          body=$(printf '%s' "$P8" | tr -d '' | sed -e 's/\n//g' -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' | tr -d ' 
+	')
+          if [ -z "$body" ]; then echo "::error::ASC_KEY_P8 の中身が空か、.p8 の形式ではありません"; exit 1; fi
+          { echo "-----BEGIN PRIVATE KEY-----"; echo "$body" | fold -w 64; echo "-----END PRIVATE KEY-----"; } > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+          # 形式の確認（中身は表示しない）
+          openssl pkey -in "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" -noout && echo "鍵の形式は正しいです" || { echo "::error::ASC_KEY_P8 が正しい .p8 の中身ではありません。.p8 ファイルをテキストエディタで開き、全文を Secrets に貼り直してください"; exit 1; }
 
       - name: アーカイブ（署名は Xcode の自動署名に任せる）
         run: |
