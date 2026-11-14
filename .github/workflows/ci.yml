@@ -29,6 +29,7 @@ jobs:
             -project Yukikoro.xcodeproj \
             -scheme Yukikoro \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             | tee build.log | tail -n 60
 
@@ -48,7 +49,7 @@ jobs:
         run: |
           APP=$(find build/Build/Products -maxdepth 3 -name Yukikoro.app | head -1)
           echo "App: $APP"
-          tools/screenshots.sh "$APP" shots
+          bash tools/screenshots.sh "$APP" shots
 
       - name: Upload screenshots
         if: always()
