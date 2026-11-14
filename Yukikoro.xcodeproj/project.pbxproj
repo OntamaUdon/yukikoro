@@ -8,10 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		022F398C16F18C3E898CFA7B /* YukikoroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */; };
+		047DD2808A9A1EAF911EC674 /* PhotoAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E1213A3C13F06F45E4D919 /* PhotoAssets.swift */; };
+		0725AF94F5BC82F6F3F75556 /* snow_albedo.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8CD9D0E80ED1AB634210B6BB /* snow_albedo.jpg */; };
 		0834B4F08ED27E8080CF5F69 /* MotionSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79AD79011FC1158183B204 /* MotionSteps.swift */; };
 		0E0C78FE7E033092DA4BF7B3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9561C63DB568D080B3C4FAB7 /* OnboardingView.swift */; };
 		0ED704185A48A031415689C1 /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
 		0F44C1F9ABB58157238B4715 /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
+		11A8A8E6712A62B24DDAD5E6 /* fleece_normal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 1DE713F68BEBFFCB08181384 /* fleece_normal.jpg */; };
 		11FE7F206F8858463DE601F6 /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
 		1D8DB12128D7E915862ABF5F /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
 		1FCE694BBC070E7168C8ED5C /* Backdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67B6286B1C4C22DBA8489F42 /* Backdrop.swift */; };
@@ -19,41 +22,55 @@
 		3276972A058244DB4A6056C1 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */; };
 		378A5EA737F2C1316614C5B6 /* SnowmanScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8C4762059C3B5133F30144 /* SnowmanScene.swift */; };
 		39945836191BDC2E861BB566 /* DemoMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4E850DB86DC39BE9F59435 /* DemoMode.swift */; };
+		4294247904CCE17063C6EDB5 /* snowy_forest_path_01_1k.hdr in Resources */ = {isa = PBXBuildFile; fileRef = 1494099C3F6360FB34E75122 /* snowy_forest_path_01_1k.hdr */; };
 		4B0F479DF971E455784099D5 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2D02A6D30A37D34AD5D60 /* RootView.swift */; };
+		4C2E342F0080AFAFB1D9AC5F /* bark_rough.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 48EAC1764736CC021A73C653 /* bark_rough.jpg */; };
 		4E3F6A7B475FAC324AFCDE0D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
 		533E4D8C9F06B96D56E876F5 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
 		541F5F3F4F97A2165B63F788 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562F0B7AD8A58BD76A7598BD /* SettingsView.swift */; };
 		58A1357D0ACA0C464B0F963A /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
+		5CB37869968630C79AD842F7 /* snow_normal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5587D63C464BF7C17D3ACFE4 /* snow_normal.jpg */; };
 		5D488FCBA4DD49A6DCD0C94E /* SnowmanScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8C4762059C3B5133F30144 /* SnowmanScene.swift */; };
+		5FD4F93486892F12B45CC097 /* Geometry3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53EE2AD619417A13A800B74B /* Geometry3D.swift */; };
+		63AA47C893E10349F6AD5F7A /* CREDITS.md in Resources */ = {isa = PBXBuildFile; fileRef = EBC284D24D1624E738BF39D7 /* CREDITS.md */; };
+		63D71D1722D3096962B37B10 /* stierberg_sunrise_1k.hdr in Resources */ = {isa = PBXBuildFile; fileRef = 8AAB199FBB82FCD616EA1A7A /* stierberg_sunrise_1k.hdr */; };
+		6B245EAEFAFF6989D906B354 /* SnowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BC4795217944C6860589E8 /* SnowGeometry.swift */; };
 		6C0F347B7F62DE904984855B /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
 		6EBE562F2F5F107B83D709DB /* YukikoroWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0666223FA208B6D618EECE /* YukikoroWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		746813341D511A6C8D37A020 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
 		77BBCD48567ABDA7632C1900 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8552DDD202991821D118BA0 /* Assets.xcassets */; };
 		7BC33E3888F33EF50291D59A /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
+		7C56666F06F0CC39E563DA80 /* snow_rough.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0C45B5D7F63B8EB05FC3E014 /* snow_rough.jpg */; };
 		802A4988C05DEDC924BE56F5 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
 		85EA3F7C213F6E7075F67ED8 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
 		89397FA07FC5A44CB95097F8 /* GameLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA43FE9CB06026A78809604 /* GameLogicTests.swift */; };
 		8C0CEFA84C228B3DBDEB7D62 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
+		8D81966F1809EF3DDF6CBB16 /* bark_normal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 9EAE23014451A75801BC2E21 /* bark_normal.jpg */; };
 		8DEEDB388A9B44C4C1E2054A /* SceneViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D8505F309D0BB7AB326A21B /* SceneViews.swift */; };
 		8E20D626E7A446B8D339680E /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
 		9BCE9BF6A2026C42ED66E388 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
+		9C0C43035B4C3E20B28591C3 /* SnowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BC4795217944C6860589E8 /* SnowGeometry.swift */; };
 		AAFC52A4ED600409DC920512 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
+		ACBCD277D8698586A5345D9D /* snow_ao.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A7BB1B856EBAA8C5B32BEC5E /* snow_ao.jpg */; };
 		B45192CF506BC85B64E9374B /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
 		B8E0AC3A4B01A4DEE8598BFD /* Scene3DTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */; };
 		B9886CE8979E209E89265AF3 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
 		BBE2836CD442C85CCCD02ACA /* YukikoroWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */; };
 		C0A1037AB7FC6853872C1F8A /* SnowmanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */; };
-		C526B2C31A7BFD69C550894C /* Toon.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0AA922DF2DCEE398AF5471 /* Toon.swift */; };
+		C44FCC134A11651152E7B838 /* fleece_rough.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DDCB08DDFE575302148F3193 /* fleece_rough.jpg */; };
 		C7D2AA63392C52937BFD222F /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3844FE06C085B960996B479B /* RecordsView.swift */; };
 		CB15E129D8EE582A862991B1 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
-		D317B3CCBE688BD100DA4647 /* Toon.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0AA922DF2DCEE398AF5471 /* Toon.swift */; };
+		CD722A3DEB1391C2BEABB368 /* fleece_luma.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F725390DBA4A50FAA3CA8B43 /* fleece_luma.jpg */; };
 		D80ECB36BC5A1B2799C303D4 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A3617C390AC14661EE8DAB9 /* HomeView.swift */; };
 		DE22147DE0C32A8E75ECC6F8 /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */; };
 		E1F48FED132340F3343D21A2 /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25ACC5C95A691218FF6B89 /* GameStore.swift */; };
 		E590425EDBD2620184C54CDC /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
+		E8CE7C04553B27B890C3BBAF /* PhotoAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E1213A3C13F06F45E4D919 /* PhotoAssets.swift */; };
 		EDBCDC6949F5AA0CC89B45C7 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
+		EF51D1B814C081813309C27E /* bark_diffuse.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DFB5EE1C1C0AA9E87EA141E4 /* bark_diffuse.jpg */; };
 		F1446FAAF5CBA9D59457C5BC /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
 		F30FF04726EDD7C14CE915B7 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
+		F3AB4C239687A93D8023E868 /* Geometry3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53EE2AD619417A13A800B74B /* Geometry3D.swift */; };
 		F85DC22D2E8528E29BFC8ED3 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
 /* End PBXBuildFile section */
 
@@ -83,10 +100,14 @@
 
 /* Begin PBXFileReference section */
 		08558F75C7F515BEE185620D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0C45B5D7F63B8EB05FC3E014 /* snow_rough.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_rough.jpg; sourceTree = "<group>"; };
 		0CB6ED371ED4D088AA90B3CD /* Yukikoro.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yukikoro.entitlements; sourceTree = "<group>"; };
 		0D8505F309D0BB7AB326A21B /* SceneViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViews.swift; sourceTree = "<group>"; };
 		13795C81BBE77D0C8188AFE3 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		1494099C3F6360FB34E75122 /* snowy_forest_path_01_1k.hdr */ = {isa = PBXFileReference; path = snowy_forest_path_01_1k.hdr; sourceTree = "<group>"; };
+		1DE713F68BEBFFCB08181384 /* fleece_normal.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = fleece_normal.jpg; sourceTree = "<group>"; };
 		1F8C4762059C3B5133F30144 /* SnowmanScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanScene.swift; sourceTree = "<group>"; };
+		26E1213A3C13F06F45E4D919 /* PhotoAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAssets.swift; sourceTree = "<group>"; };
 		2D4E850DB86DC39BE9F59435 /* DemoMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMode.swift; sourceTree = "<group>"; };
 		35D82E4D42C448AC6920AC31 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3844FE06C085B960996B479B /* RecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsView.swift; sourceTree = "<group>"; };
@@ -96,31 +117,50 @@
 		3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
 		43C9975DA4969754B0431DCC /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
 		4874573F65F49A1F9FE85B46 /* YukikoroTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = YukikoroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		48EAC1764736CC021A73C653 /* bark_rough.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = bark_rough.jpg; sourceTree = "<group>"; };
 		4AA43FE9CB06026A78809604 /* GameLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameLogicTests.swift; sourceTree = "<group>"; };
+		53EE2AD619417A13A800B74B /* Geometry3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geometry3D.swift; sourceTree = "<group>"; };
+		5587D63C464BF7C17D3ACFE4 /* snow_normal.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_normal.jpg; sourceTree = "<group>"; };
+		55BC4795217944C6860589E8 /* SnowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowGeometry.swift; sourceTree = "<group>"; };
 		562F0B7AD8A58BD76A7598BD /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		67B6286B1C4C22DBA8489F42 /* Backdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backdrop.swift; sourceTree = "<group>"; };
 		6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3DTests.swift; sourceTree = "<group>"; };
 		6C0666223FA208B6D618EECE /* YukikoroWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = YukikoroWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8AAB199FBB82FCD616EA1A7A /* stierberg_sunrise_1k.hdr */ = {isa = PBXFileReference; path = stierberg_sunrise_1k.hdr; sourceTree = "<group>"; };
 		8BE55531C82129E47543B21A /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
+		8CD9D0E80ED1AB634210B6BB /* snow_albedo.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_albedo.jpg; sourceTree = "<group>"; };
 		8F57E5C3DDB83C598ACD0466 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
 		9561C63DB568D080B3C4FAB7 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		9EAE23014451A75801BC2E21 /* bark_normal.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = bark_normal.jpg; sourceTree = "<group>"; };
 		A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSteps.swift; sourceTree = "<group>"; };
+		A7BB1B856EBAA8C5B32BEC5E /* snow_ao.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_ao.jpg; sourceTree = "<group>"; };
 		A8552DDD202991821D118BA0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA79AD79011FC1158183B204 /* MotionSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionSteps.swift; sourceTree = "<group>"; };
 		B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroApp.swift; sourceTree = "<group>"; };
-		BA0AA922DF2DCEE398AF5471 /* Toon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toon.swift; sourceTree = "<group>"; };
 		BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
 		D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroWidget.swift; sourceTree = "<group>"; };
 		D48167DB6D202F0769CBBE6D /* BallScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallScene.swift; sourceTree = "<group>"; };
 		D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yukikoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DDCB08DDFE575302148F3193 /* fleece_rough.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = fleece_rough.jpg; sourceTree = "<group>"; };
+		DFB5EE1C1C0AA9E87EA141E4 /* bark_diffuse.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = bark_diffuse.jpg; sourceTree = "<group>"; };
 		E1A2D02A6D30A37D34AD5D60 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		EBC284D24D1624E738BF39D7 /* CREDITS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CREDITS.md; sourceTree = "<group>"; };
 		F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
+		F725390DBA4A50FAA3CA8B43 /* fleece_luma.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = fleece_luma.jpg; sourceTree = "<group>"; };
 		F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanFactory.swift; sourceTree = "<group>"; };
 		F8DC882C77D546F00B3CE9E7 /* YukikoroWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YukikoroWidget.entitlements; sourceTree = "<group>"; };
 		FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0B118CD4B8113CF75FBFACA5 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E96F81D5340B7E3960B24C0A /* Photoreal */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		36B46A6C6750D3C94C26D5F9 /* Widget */ = {
 			isa = PBXGroup;
 			children = (
@@ -135,6 +175,7 @@
 			isa = PBXGroup;
 			children = (
 				8CEBB234418DE8C25F8F2DC6 /* App */,
+				0B118CD4B8113CF75FBFACA5 /* Resources */,
 				AECEFD6DAC5E23A09D95A394 /* Shared */,
 				D8FF9C04F3EF6093351C5DAB /* Shared3D */,
 				D5A5D234D4527DBB2E313E10 /* Tests */,
@@ -204,11 +245,33 @@
 			isa = PBXGroup;
 			children = (
 				D48167DB6D202F0769CBBE6D /* BallScene.swift */,
+				53EE2AD619417A13A800B74B /* Geometry3D.swift */,
+				26E1213A3C13F06F45E4D919 /* PhotoAssets.swift */,
+				55BC4795217944C6860589E8 /* SnowGeometry.swift */,
 				39F77657C8C829259935097E /* SnowmanBuilder.swift */,
 				1F8C4762059C3B5133F30144 /* SnowmanScene.swift */,
-				BA0AA922DF2DCEE398AF5471 /* Toon.swift */,
 			);
 			path = Shared3D;
+			sourceTree = "<group>";
+		};
+		E96F81D5340B7E3960B24C0A /* Photoreal */ = {
+			isa = PBXGroup;
+			children = (
+				DFB5EE1C1C0AA9E87EA141E4 /* bark_diffuse.jpg */,
+				9EAE23014451A75801BC2E21 /* bark_normal.jpg */,
+				48EAC1764736CC021A73C653 /* bark_rough.jpg */,
+				EBC284D24D1624E738BF39D7 /* CREDITS.md */,
+				F725390DBA4A50FAA3CA8B43 /* fleece_luma.jpg */,
+				1DE713F68BEBFFCB08181384 /* fleece_normal.jpg */,
+				DDCB08DDFE575302148F3193 /* fleece_rough.jpg */,
+				8CD9D0E80ED1AB634210B6BB /* snow_albedo.jpg */,
+				A7BB1B856EBAA8C5B32BEC5E /* snow_ao.jpg */,
+				5587D63C464BF7C17D3ACFE4 /* snow_normal.jpg */,
+				0C45B5D7F63B8EB05FC3E014 /* snow_rough.jpg */,
+				1494099C3F6360FB34E75122 /* snowy_forest_path_01_1k.hdr */,
+				8AAB199FBB82FCD616EA1A7A /* stierberg_sunrise_1k.hdr */,
+			);
+			path = Photoreal;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -318,6 +381,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				77BBCD48567ABDA7632C1900 /* Assets.xcassets in Resources */,
+				63AA47C893E10349F6AD5F7A /* CREDITS.md in Resources */,
+				EF51D1B814C081813309C27E /* bark_diffuse.jpg in Resources */,
+				8D81966F1809EF3DDF6CBB16 /* bark_normal.jpg in Resources */,
+				4C2E342F0080AFAFB1D9AC5F /* bark_rough.jpg in Resources */,
+				CD722A3DEB1391C2BEABB368 /* fleece_luma.jpg in Resources */,
+				11A8A8E6712A62B24DDAD5E6 /* fleece_normal.jpg in Resources */,
+				C44FCC134A11651152E7B838 /* fleece_rough.jpg in Resources */,
+				0725AF94F5BC82F6F3F75556 /* snow_albedo.jpg in Resources */,
+				ACBCD277D8698586A5345D9D /* snow_ao.jpg in Resources */,
+				5CB37869968630C79AD842F7 /* snow_normal.jpg in Resources */,
+				7C56666F06F0CC39E563DA80 /* snow_rough.jpg in Resources */,
+				4294247904CCE17063C6EDB5 /* snowy_forest_path_01_1k.hdr in Resources */,
+				63D71D1722D3096962B37B10 /* stierberg_sunrise_1k.hdr in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,23 +411,25 @@
 				0ED704185A48A031415689C1 /* Format.swift in Sources */,
 				CB15E129D8EE582A862991B1 /* GameState.swift in Sources */,
 				E1F48FED132340F3343D21A2 /* GameStore.swift in Sources */,
+				5FD4F93486892F12B45CC097 /* Geometry3D.swift in Sources */,
 				F85DC22D2E8528E29BFC8ED3 /* HealthSteps.swift in Sources */,
 				D80ECB36BC5A1B2799C303D4 /* HomeView.swift in Sources */,
 				4E3F6A7B475FAC324AFCDE0D /* Models.swift in Sources */,
 				0834B4F08ED27E8080CF5F69 /* MotionSteps.swift in Sources */,
 				0E0C78FE7E033092DA4BF7B3 /* OnboardingView.swift in Sources */,
 				533E4D8C9F06B96D56E876F5 /* Palette.swift in Sources */,
+				047DD2808A9A1EAF911EC674 /* PhotoAssets.swift in Sources */,
 				C7D2AA63392C52937BFD222F /* RecordsView.swift in Sources */,
 				4B0F479DF971E455784099D5 /* RootView.swift in Sources */,
 				8DEEDB388A9B44C4C1E2054A /* SceneViews.swift in Sources */,
 				541F5F3F4F97A2165B63F788 /* SettingsView.swift in Sources */,
 				DE22147DE0C32A8E75ECC6F8 /* ShareCard.swift in Sources */,
+				6B245EAEFAFF6989D906B354 /* SnowGeometry.swift in Sources */,
 				E590425EDBD2620184C54CDC /* SnowmanBuilder.swift in Sources */,
 				C0A1037AB7FC6853872C1F8A /* SnowmanDetailView.swift in Sources */,
 				11FE7F206F8858463DE601F6 /* SnowmanFactory.swift in Sources */,
 				5D488FCBA4DD49A6DCD0C94E /* SnowmanScene.swift in Sources */,
 				58A1357D0ACA0C464B0F963A /* Storage.swift in Sources */,
-				C526B2C31A7BFD69C550894C /* Toon.swift in Sources */,
 				022F398C16F18C3E898CFA7B /* YukikoroApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -364,15 +442,17 @@
 				7BC33E3888F33EF50291D59A /* Format.swift in Sources */,
 				89397FA07FC5A44CB95097F8 /* GameLogicTests.swift in Sources */,
 				F1446FAAF5CBA9D59457C5BC /* GameState.swift in Sources */,
+				F3AB4C239687A93D8023E868 /* Geometry3D.swift in Sources */,
 				F30FF04726EDD7C14CE915B7 /* HealthSteps.swift in Sources */,
 				9BCE9BF6A2026C42ED66E388 /* Models.swift in Sources */,
 				85EA3F7C213F6E7075F67ED8 /* Palette.swift in Sources */,
+				E8CE7C04553B27B890C3BBAF /* PhotoAssets.swift in Sources */,
 				B8E0AC3A4B01A4DEE8598BFD /* Scene3DTests.swift in Sources */,
+				9C0C43035B4C3E20B28591C3 /* SnowGeometry.swift in Sources */,
 				0F44C1F9ABB58157238B4715 /* SnowmanBuilder.swift in Sources */,
 				24D24946383A3FC35A59AA81 /* SnowmanFactory.swift in Sources */,
 				378A5EA737F2C1316614C5B6 /* SnowmanScene.swift in Sources */,
 				AAFC52A4ED600409DC920512 /* Storage.swift in Sources */,
-				D317B3CCBE688BD100DA4647 /* Toon.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
