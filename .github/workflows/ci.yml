@@ -21,7 +21,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xcodeproj
-          path: Yukikoro.xcodeproj
+          path: |
+            Yukikoro.xcodeproj
+            App/Info.plist
+            App/Yukikoro.entitlements
+            Widget/Info.plist
+            Widget/YukikoroWidget.entitlements
 
       - name: Show toolchain
         run: |
