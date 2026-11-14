@@ -1,0 +1,680 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		022F398C16F18C3E898CFA7B /* YukikoroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */; };
+		0834B4F08ED27E8080CF5F69 /* MotionSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79AD79011FC1158183B204 /* MotionSteps.swift */; };
+		0E0C78FE7E033092DA4BF7B3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9561C63DB568D080B3C4FAB7 /* OnboardingView.swift */; };
+		0ED704185A48A031415689C1 /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
+		0F44C1F9ABB58157238B4715 /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
+		11FE7F206F8858463DE601F6 /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
+		1D8DB12128D7E915862ABF5F /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
+		1FCE694BBC070E7168C8ED5C /* Backdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67B6286B1C4C22DBA8489F42 /* Backdrop.swift */; };
+		24D24946383A3FC35A59AA81 /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
+		3276972A058244DB4A6056C1 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */; };
+		378A5EA737F2C1316614C5B6 /* SnowmanScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8C4762059C3B5133F30144 /* SnowmanScene.swift */; };
+		39945836191BDC2E861BB566 /* DemoMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4E850DB86DC39BE9F59435 /* DemoMode.swift */; };
+		4B0F479DF971E455784099D5 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A2D02A6D30A37D34AD5D60 /* RootView.swift */; };
+		4E3F6A7B475FAC324AFCDE0D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
+		533E4D8C9F06B96D56E876F5 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
+		541F5F3F4F97A2165B63F788 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562F0B7AD8A58BD76A7598BD /* SettingsView.swift */; };
+		58A1357D0ACA0C464B0F963A /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
+		5D488FCBA4DD49A6DCD0C94E /* SnowmanScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8C4762059C3B5133F30144 /* SnowmanScene.swift */; };
+		6C0F347B7F62DE904984855B /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
+		6EBE562F2F5F107B83D709DB /* YukikoroWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0666223FA208B6D618EECE /* YukikoroWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		746813341D511A6C8D37A020 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
+		77BBCD48567ABDA7632C1900 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8552DDD202991821D118BA0 /* Assets.xcassets */; };
+		7BC33E3888F33EF50291D59A /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
+		802A4988C05DEDC924BE56F5 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
+		85EA3F7C213F6E7075F67ED8 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
+		89397FA07FC5A44CB95097F8 /* GameLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA43FE9CB06026A78809604 /* GameLogicTests.swift */; };
+		8C0CEFA84C228B3DBDEB7D62 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
+		8DEEDB388A9B44C4C1E2054A /* SceneViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D8505F309D0BB7AB326A21B /* SceneViews.swift */; };
+		8E20D626E7A446B8D339680E /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
+		9BCE9BF6A2026C42ED66E388 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
+		AAFC52A4ED600409DC920512 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
+		B45192CF506BC85B64E9374B /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
+		B8E0AC3A4B01A4DEE8598BFD /* Scene3DTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */; };
+		B9886CE8979E209E89265AF3 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
+		BBE2836CD442C85CCCD02ACA /* YukikoroWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */; };
+		C0A1037AB7FC6853872C1F8A /* SnowmanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */; };
+		C526B2C31A7BFD69C550894C /* Toon.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0AA922DF2DCEE398AF5471 /* Toon.swift */; };
+		C7D2AA63392C52937BFD222F /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3844FE06C085B960996B479B /* RecordsView.swift */; };
+		CB15E129D8EE582A862991B1 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
+		D317B3CCBE688BD100DA4647 /* Toon.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0AA922DF2DCEE398AF5471 /* Toon.swift */; };
+		D80ECB36BC5A1B2799C303D4 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A3617C390AC14661EE8DAB9 /* HomeView.swift */; };
+		DE22147DE0C32A8E75ECC6F8 /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */; };
+		E1F48FED132340F3343D21A2 /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25ACC5C95A691218FF6B89 /* GameStore.swift */; };
+		E590425EDBD2620184C54CDC /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
+		EDBCDC6949F5AA0CC89B45C7 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
+		F1446FAAF5CBA9D59457C5BC /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
+		F30FF04726EDD7C14CE915B7 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
+		F85DC22D2E8528E29BFC8ED3 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AE6D63DABBEA484F1EA11BA4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 540E4D0630F0038774CB1A97 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C9C4A0E8BB6773FFC6A80E51;
+			remoteInfo = YukikoroWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6C9CC2F366E3000D6F8E4FC6 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6EBE562F2F5F107B83D709DB /* YukikoroWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		08558F75C7F515BEE185620D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0CB6ED371ED4D088AA90B3CD /* Yukikoro.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yukikoro.entitlements; sourceTree = "<group>"; };
+		0D8505F309D0BB7AB326A21B /* SceneViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViews.swift; sourceTree = "<group>"; };
+		13795C81BBE77D0C8188AFE3 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		1F8C4762059C3B5133F30144 /* SnowmanScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanScene.swift; sourceTree = "<group>"; };
+		2D4E850DB86DC39BE9F59435 /* DemoMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMode.swift; sourceTree = "<group>"; };
+		35D82E4D42C448AC6920AC31 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3844FE06C085B960996B479B /* RecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsView.swift; sourceTree = "<group>"; };
+		39F77657C8C829259935097E /* SnowmanBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanBuilder.swift; sourceTree = "<group>"; };
+		3A3617C390AC14661EE8DAB9 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		3F25ACC5C95A691218FF6B89 /* GameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameStore.swift; sourceTree = "<group>"; };
+		3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
+		43C9975DA4969754B0431DCC /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
+		4874573F65F49A1F9FE85B46 /* YukikoroTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = YukikoroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4AA43FE9CB06026A78809604 /* GameLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameLogicTests.swift; sourceTree = "<group>"; };
+		562F0B7AD8A58BD76A7598BD /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		67B6286B1C4C22DBA8489F42 /* Backdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backdrop.swift; sourceTree = "<group>"; };
+		6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3DTests.swift; sourceTree = "<group>"; };
+		6C0666223FA208B6D618EECE /* YukikoroWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = YukikoroWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BE55531C82129E47543B21A /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
+		8F57E5C3DDB83C598ACD0466 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
+		9561C63DB568D080B3C4FAB7 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSteps.swift; sourceTree = "<group>"; };
+		A8552DDD202991821D118BA0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA79AD79011FC1158183B204 /* MotionSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionSteps.swift; sourceTree = "<group>"; };
+		B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroApp.swift; sourceTree = "<group>"; };
+		BA0AA922DF2DCEE398AF5471 /* Toon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toon.swift; sourceTree = "<group>"; };
+		BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
+		D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroWidget.swift; sourceTree = "<group>"; };
+		D48167DB6D202F0769CBBE6D /* BallScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallScene.swift; sourceTree = "<group>"; };
+		D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yukikoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1A2D02A6D30A37D34AD5D60 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
+		F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanFactory.swift; sourceTree = "<group>"; };
+		F8DC882C77D546F00B3CE9E7 /* YukikoroWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YukikoroWidget.entitlements; sourceTree = "<group>"; };
+		FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanDetailView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		36B46A6C6750D3C94C26D5F9 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				08558F75C7F515BEE185620D /* Info.plist */,
+				F8DC882C77D546F00B3CE9E7 /* YukikoroWidget.entitlements */,
+				D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		42BB3BEFDFFA358CD2043EBB = {
+			isa = PBXGroup;
+			children = (
+				8CEBB234418DE8C25F8F2DC6 /* App */,
+				AECEFD6DAC5E23A09D95A394 /* Shared */,
+				D8FF9C04F3EF6093351C5DAB /* Shared3D */,
+				D5A5D234D4527DBB2E313E10 /* Tests */,
+				36B46A6C6750D3C94C26D5F9 /* Widget */,
+				88EABF4FCD90DFE1AF7FCF2F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		88EABF4FCD90DFE1AF7FCF2F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */,
+				4874573F65F49A1F9FE85B46 /* YukikoroTests.xctest */,
+				6C0666223FA208B6D618EECE /* YukikoroWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8CEBB234418DE8C25F8F2DC6 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A8552DDD202991821D118BA0 /* Assets.xcassets */,
+				67B6286B1C4C22DBA8489F42 /* Backdrop.swift */,
+				BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */,
+				2D4E850DB86DC39BE9F59435 /* DemoMode.swift */,
+				3F25ACC5C95A691218FF6B89 /* GameStore.swift */,
+				3A3617C390AC14661EE8DAB9 /* HomeView.swift */,
+				35D82E4D42C448AC6920AC31 /* Info.plist */,
+				AA79AD79011FC1158183B204 /* MotionSteps.swift */,
+				9561C63DB568D080B3C4FAB7 /* OnboardingView.swift */,
+				3844FE06C085B960996B479B /* RecordsView.swift */,
+				E1A2D02A6D30A37D34AD5D60 /* RootView.swift */,
+				0D8505F309D0BB7AB326A21B /* SceneViews.swift */,
+				562F0B7AD8A58BD76A7598BD /* SettingsView.swift */,
+				F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */,
+				FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */,
+				0CB6ED371ED4D088AA90B3CD /* Yukikoro.entitlements */,
+				B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AECEFD6DAC5E23A09D95A394 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				43C9975DA4969754B0431DCC /* Format.swift */,
+				3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */,
+				A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */,
+				13795C81BBE77D0C8188AFE3 /* Models.swift */,
+				8BE55531C82129E47543B21A /* Palette.swift */,
+				F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */,
+				8F57E5C3DDB83C598ACD0466 /* Storage.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		D5A5D234D4527DBB2E313E10 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				4AA43FE9CB06026A78809604 /* GameLogicTests.swift */,
+				6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		D8FF9C04F3EF6093351C5DAB /* Shared3D */ = {
+			isa = PBXGroup;
+			children = (
+				D48167DB6D202F0769CBBE6D /* BallScene.swift */,
+				39F77657C8C829259935097E /* SnowmanBuilder.swift */,
+				1F8C4762059C3B5133F30144 /* SnowmanScene.swift */,
+				BA0AA922DF2DCEE398AF5471 /* Toon.swift */,
+			);
+			path = Shared3D;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9DA991D94C75D831E5773840 /* YukikoroTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AFA5580C926D0D1A3543D001 /* Build configuration list for PBXNativeTarget "YukikoroTests" */;
+			buildPhases = (
+				127C42602A6EF919707D1F82 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YukikoroTests;
+			packageProductDependencies = (
+			);
+			productName = YukikoroTests;
+			productReference = 4874573F65F49A1F9FE85B46 /* YukikoroTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A5B836A22E58E22A2C5B813E /* Yukikoro */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 96CEBAAD0062253AC2757C7C /* Build configuration list for PBXNativeTarget "Yukikoro" */;
+			buildPhases = (
+				034BE9A226A4DDBAAA857823 /* Sources */,
+				D2FD85A01248E032312D9AF3 /* Resources */,
+				6C9CC2F366E3000D6F8E4FC6 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				88BB4D6E2548FA63AC60E454 /* PBXTargetDependency */,
+			);
+			name = Yukikoro;
+			packageProductDependencies = (
+			);
+			productName = Yukikoro;
+			productReference = D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7BC66C3011F2E42BF51215C /* Build configuration list for PBXNativeTarget "YukikoroWidget" */;
+			buildPhases = (
+				BA52E8D8FB96BF22FAC5A070 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YukikoroWidget;
+			packageProductDependencies = (
+			);
+			productName = YukikoroWidget;
+			productReference = 6C0666223FA208B6D618EECE /* YukikoroWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		540E4D0630F0038774CB1A97 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					9DA991D94C75D831E5773840 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					A5B836A22E58E22A2C5B813E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					C9C4A0E8BB6773FFC6A80E51 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 4DE56492E89DFABB8A67FE9D /* Build configuration list for PBXProject "Yukikoro" */;
+			developmentRegion = ja;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				ja,
+			);
+			mainGroup = 42BB3BEFDFFA358CD2043EBB;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 88EABF4FCD90DFE1AF7FCF2F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A5B836A22E58E22A2C5B813E /* Yukikoro */,
+				C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */,
+				9DA991D94C75D831E5773840 /* YukikoroTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D2FD85A01248E032312D9AF3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				77BBCD48567ABDA7632C1900 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		034BE9A226A4DDBAAA857823 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1FCE694BBC070E7168C8ED5C /* Backdrop.swift in Sources */,
+				802A4988C05DEDC924BE56F5 /* BallScene.swift in Sources */,
+				3276972A058244DB4A6056C1 /* CollectionView.swift in Sources */,
+				39945836191BDC2E861BB566 /* DemoMode.swift in Sources */,
+				0ED704185A48A031415689C1 /* Format.swift in Sources */,
+				CB15E129D8EE582A862991B1 /* GameState.swift in Sources */,
+				E1F48FED132340F3343D21A2 /* GameStore.swift in Sources */,
+				F85DC22D2E8528E29BFC8ED3 /* HealthSteps.swift in Sources */,
+				D80ECB36BC5A1B2799C303D4 /* HomeView.swift in Sources */,
+				4E3F6A7B475FAC324AFCDE0D /* Models.swift in Sources */,
+				0834B4F08ED27E8080CF5F69 /* MotionSteps.swift in Sources */,
+				0E0C78FE7E033092DA4BF7B3 /* OnboardingView.swift in Sources */,
+				533E4D8C9F06B96D56E876F5 /* Palette.swift in Sources */,
+				C7D2AA63392C52937BFD222F /* RecordsView.swift in Sources */,
+				4B0F479DF971E455784099D5 /* RootView.swift in Sources */,
+				8DEEDB388A9B44C4C1E2054A /* SceneViews.swift in Sources */,
+				541F5F3F4F97A2165B63F788 /* SettingsView.swift in Sources */,
+				DE22147DE0C32A8E75ECC6F8 /* ShareCard.swift in Sources */,
+				E590425EDBD2620184C54CDC /* SnowmanBuilder.swift in Sources */,
+				C0A1037AB7FC6853872C1F8A /* SnowmanDetailView.swift in Sources */,
+				11FE7F206F8858463DE601F6 /* SnowmanFactory.swift in Sources */,
+				5D488FCBA4DD49A6DCD0C94E /* SnowmanScene.swift in Sources */,
+				58A1357D0ACA0C464B0F963A /* Storage.swift in Sources */,
+				C526B2C31A7BFD69C550894C /* Toon.swift in Sources */,
+				022F398C16F18C3E898CFA7B /* YukikoroApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		127C42602A6EF919707D1F82 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				746813341D511A6C8D37A020 /* BallScene.swift in Sources */,
+				7BC33E3888F33EF50291D59A /* Format.swift in Sources */,
+				89397FA07FC5A44CB95097F8 /* GameLogicTests.swift in Sources */,
+				F1446FAAF5CBA9D59457C5BC /* GameState.swift in Sources */,
+				F30FF04726EDD7C14CE915B7 /* HealthSteps.swift in Sources */,
+				9BCE9BF6A2026C42ED66E388 /* Models.swift in Sources */,
+				85EA3F7C213F6E7075F67ED8 /* Palette.swift in Sources */,
+				B8E0AC3A4B01A4DEE8598BFD /* Scene3DTests.swift in Sources */,
+				0F44C1F9ABB58157238B4715 /* SnowmanBuilder.swift in Sources */,
+				24D24946383A3FC35A59AA81 /* SnowmanFactory.swift in Sources */,
+				378A5EA737F2C1316614C5B6 /* SnowmanScene.swift in Sources */,
+				AAFC52A4ED600409DC920512 /* Storage.swift in Sources */,
+				D317B3CCBE688BD100DA4647 /* Toon.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BA52E8D8FB96BF22FAC5A070 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B45192CF506BC85B64E9374B /* Format.swift in Sources */,
+				B9886CE8979E209E89265AF3 /* GameState.swift in Sources */,
+				8C0CEFA84C228B3DBDEB7D62 /* HealthSteps.swift in Sources */,
+				EDBCDC6949F5AA0CC89B45C7 /* Models.swift in Sources */,
+				1D8DB12128D7E915862ABF5F /* Palette.swift in Sources */,
+				8E20D626E7A446B8D339680E /* SnowmanFactory.swift in Sources */,
+				6C0F347B7F62DE904984855B /* Storage.swift in Sources */,
+				BBE2836CD442C85CCCD02ACA /* YukikoroWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		88BB4D6E2548FA63AC60E454 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */;
+			targetProxy = AE6D63DABBEA484F1EA11BA4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		32D52D41C8F4EE7CEB80D25C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Yukikoro.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3801AED471A1DB5B3491D410 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widget/YukikoroWidget.entitlements;
+				INFOPLIST_FILE = Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro.widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9438BE42C8A343325D9D47EF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widget/YukikoroWidget.entitlements;
+				INFOPLIST_FILE = Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro.widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A7960E7A12766E87F4E0F16F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Yukikoro.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AE462ECCDB495807A1EB0368 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CE4E4F5CD2C0ECD740162CBC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		DAA3DE325CDB046AFFD936B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.yukikoro.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FDB405F31A3E9D1B3CD5EFD0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4DE56492E89DFABB8A67FE9D /* Build configuration list for PBXProject "Yukikoro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDB405F31A3E9D1B3CD5EFD0 /* Debug */,
+				CE4E4F5CD2C0ECD740162CBC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		96CEBAAD0062253AC2757C7C /* Build configuration list for PBXNativeTarget "Yukikoro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A7960E7A12766E87F4E0F16F /* Debug */,
+				32D52D41C8F4EE7CEB80D25C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AFA5580C926D0D1A3543D001 /* Build configuration list for PBXNativeTarget "YukikoroTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DAA3DE325CDB046AFFD936B7 /* Debug */,
+				AE462ECCDB495807A1EB0368 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B7BC66C3011F2E42BF51215C /* Build configuration list for PBXNativeTarget "YukikoroWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3801AED471A1DB5B3491D410 /* Debug */,
+				9438BE42C8A343325D9D47EF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 540E4D0630F0038774CB1A97 /* Project object */;
+}
