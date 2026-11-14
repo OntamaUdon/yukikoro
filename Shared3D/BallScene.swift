@@ -2,62 +2,48 @@ import SceneKit
 import UIKit
 import simd
 
-/// ホームに出す「転がる雪玉」の 3D シーン。時刻に合わせた空と雪原の上で、歩数に合わせて雪玉が大きくなる。
+/// ホームに出す「転がる雪玉」の 3D シーン。雪道の写真を背景に、実際の光で照らされた雪玉が歩数に合わせて大きくなる。
+/// 雪玉の形・色は成形したものがそのまま出る。
 final class BallScene: NSObject {
-    let scene: SCNScene
+    let scene = SCNScene()
     let camera = SCNNode()
-    private let rig: SkyRig
     private let pivot = SCNNode()   // 位置と大きさ
     private let ball = SCNNode()    // 回転
+    private let material = SnowMaterial.make()
     private var steps = 0
+    private var shape: SnowShape?
     private var hasShown = false
-    private var timer: Timer?
-    private let hourProvider: () -> Double
 
     /// 雪玉をカメラの正面に置く距離
     static let ballDistance: Float = 4.4
 
-    init(hourProvider: @escaping () -> Double) {
-        self.hourProvider = hourProvider
-        let newScene = SCNScene()
-        scene = newScene
-        rig = SkyRig(scene: newScene, ground: true, shadows: true)
+    init(daypart: Daypart, yaw: Float? = nil) {
         super.init()
-        rig.apply(hour: hourProvider())
+        PhotoSky.apply(to: scene, daypart: daypart, background: true, yaw: yaw)
+        PhotoSky.addSun(to: scene, daypart: daypart, intensity: 1300)
         buildBall()
-        buildCamera()
+        buildCamera(daypart: daypart)
         buildSnowfall()
-        // 空は時間とともにゆっくり変わる
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            self.rig.apply(hour: self.hourProvider())
-        }
     }
-
-    deinit { timer?.invalidate() }
-
-    func refreshSky() { rig.apply(hour: hourProvider()) }
 
     // MARK: 雪玉
 
     private func buildBall() {
-        let shape = SnowShape.pristine(seed: 11)
-        ball.geometry = SculptMesh.geometry(for: shape, material: SnowMaterial.make())
         pivot.addChildNode(ball)
         // 足元のやわらかい影（雪玉の大きさに合わせて広がる）
-        let contact = SkyRig.shadowBlob()
-        contact.simdScale = SIMD3<Float>(2.7, 2.7, 1)
-        contact.position = SCNVector3(0, -0.99, 0)
+        let contact = PhotoSky.shadowBlob()
+        contact.simdScale = SIMD3<Float>(3.4, 3.4, 1)
+        contact.position = SCNVector3(0, -0.995, 0)
         pivot.addChildNode(contact)
         scene.rootNode.addChildNode(pivot)
         apply(steps: 0, animated: false)
     }
 
-    private func buildCamera() {
+    private func buildCamera(daypart: Daypart) {
         camera.camera = SCNCamera()
         camera.camera?.projectionDirection = .horizontal
         camera.camera?.fieldOfView = 42
-        SceneSetup.configure(camera: camera.camera!, exposure: -0.3)
+        PhotoSky.configure(camera: camera.camera!, exposure: daypart == .day ? -0.5 : -0.2)
         camera.position = SCNVector3(0, 1.6, 0)
         camera.look(at: SCNVector3(0, 0.34, -BallScene.ballDistance))
         scene.rootNode.addChildNode(camera)
@@ -90,8 +76,12 @@ final class BallScene: NSObject {
 
     // MARK: 更新
 
-    /// 歩数に合わせて大きさと回転を更新する。
-    func update(steps newSteps: Int) {
+    /// 歩数と形に合わせて大きさ・形・回転を更新する。
+    func update(steps newSteps: Int, shape newShape: SnowShape) {
+        if shape != newShape {
+            shape = newShape
+            ball.geometry = SculptMesh.geometry(for: newShape, material: material)
+        }
         guard newSteps != steps || !hasShown else { return }
         apply(steps: newSteps, animated: hasShown)
         hasShown = true

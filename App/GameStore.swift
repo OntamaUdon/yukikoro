@@ -12,6 +12,8 @@ final class GameStore {
     var tab = 0
     /// 整える画面を開いているゆきだま（手元のもの）
     var sculptingPieceID: UUID?
+    /// 転がしている雪玉を成形する画面を開いているか
+    var sculptingRolling = false
     /// 設定画面のバージョンを5回タップすると有効になる検証用メニュー
     var developerMode = false
 
@@ -71,13 +73,17 @@ final class GameStore {
 
     // MARK: ゆきだま・作品
 
-    /// 転がした雪玉を「ゆきだま」にして、整える画面へ進む
+    /// 転がしている雪玉を「ゆきだま」として取り出す（作品に使えるようになる）
     func makePiece() {
-        guard let piece = state.makePiece() else { return }
+        guard state.makePiece() != nil else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         persist()
-        tab = 1
-        sculptingPieceID = piece.id
+    }
+
+    /// 転がしている雪玉の形を更新する（成形したとき）
+    func updateRolling(shape: SnowShape) {
+        state.updateRolling(shape: shape)
+        persist()
     }
 
     func updateStock(id: UUID, shape: SnowShape) {
@@ -122,6 +128,7 @@ final class GameStore {
     func resetAll() {
         state = GameState()
         sculptingPieceID = nil
+        sculptingRolling = false
         persist()
     }
 

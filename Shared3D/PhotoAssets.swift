@@ -16,6 +16,15 @@ enum PhotoAssets {
         images[key] = image
         return image
     }
+
+    static func hdr(_ name: String) -> URL? {
+        path(name, "hdr").map { URL(fileURLWithPath: $0) }
+    }
+
+    /// 利用者が差し替えた背景写真（Resources/Photoreal/custom_background.jpg）があれば返す
+    static func customBackground() -> UIImage? {
+        image("custom_background") ?? image("custom_background", ext: "png")
+    }
 }
 
 /// 物理ベースの素材（PBR）をまとめて作る。
@@ -40,7 +49,6 @@ enum PBR {
     static func snow(tile tiles: (Float, Float) = (1, 1)) -> SCNMaterial {
         let m = base()
         m.diffuse.contents = PhotoAssets.image("snow_albedo") ?? UIColor(white: 0.96, alpha: 1)
-        m.diffuse.intensity = 0.8
         m.normal.contents = PhotoAssets.image("snow_normal")
         m.normal.intensity = 0.9
         m.roughness.contents = PhotoAssets.image("snow_rough") ?? 0.9

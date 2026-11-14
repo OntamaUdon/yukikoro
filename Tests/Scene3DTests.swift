@@ -3,91 +3,151 @@ import SceneKit
 import simd
 
 final class SculptTests: XCTestCase {
-    private let up = SIMD3<Float>(0, 1, 0)
+    private let identity = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
 
-    func testPristineShapeIsNearlySphere() {
+    private func index(of direction: SIMD3<Float>) -> Int {
+        // 向きがいちばん近い頂点
+        var best = 0
+        var bestDot: Float = -2
+        for (k, d) in SculptGrid.directions.enumerated() {
+            let v = simd_dot(d, simd_normalize(direction))
+            if v > bestDot { bestDot = v; best = k }
+        }
+        return best
+    }
+
+    func testPristineShapeIsNearlyWhiteSphere() {
         let s = SnowShape.pristine(seed: 4)
         XCTAssertEqual(s.radii.count, SculptGrid.vertexCount)
-        XCTAssertEqual(s.colors.count, SculptGrid.vertexCount * 3)
+        XCTAssertEqual(s.tint, [255, 255, 255])
         XCTAssertGreaterThan(s.radii.min() ?? 0, 0.9)
         XCTAssertLessThan(s.radii.max() ?? 2, 1.1)
         XCTAssertFalse(s.isModified)
     }
 
-    func testCarveReducesAndAddRaisesOnlyNearTheTool() {
-        let base = SnowShape.pristine(seed: 4)
-        var carved = base
-        for _ in 0..<10 { carved.apply(tool: .carve, direction: up, size: 0.4, strength: 1) }
-        let top = SculptGrid.index(0, 0)
-        let bottom = SculptGrid.index(SculptGrid.rings, 0)
-        XCTAssertLessThan(carved.radii[top], base.radii[top] - 0.05)
-        XCTAssertEqual(carved.radii[bottom], base.radii[bottom], accuracy: 1e-6, "遠い所は変わらない")
-        XCTAssertTrue(carved.isModified)
+    // MARK: 刃
 
-        var raised = base
-        for _ in 0..<10 { raised.apply(tool: .add, direction: up, size: 0.4, strength: 1) }
-        XCTAssertGreaterThan(raised.radii[top], base.radii[top] + 0.05)
+    func testBladeCutsTheSideItPassedThrough() {
+        // 刃は左（x<0）から入る。刃の面（x=-0.5）より左の雪が取り除かれる。
+        var s = SnowShape.pristine(seed: 1)
+        let left = index(of: SIMD3<Float>(-1, 0, 0))
+        let right = index(of: SIMD3<Float>(1, 0, 0))
+        let rightBefore = s.radii[right]
+        XCTAssertTrue(s.cutBlade(rotation: identity, planeX: -0.5, bandLow: -3, bandHigh: 3))
+        XCTAssertEqual(s.radii[left], 0.5, accuracy: 0.02, "刃の面ぴったりまで削れる")
+        XCTAssertEqual(s.radii[right], rightBefore, accuracy: 1e-6, "反対側は変わらない")
+        XCTAssertTrue(s.isModified)
     }
 
-    func testCarveAndAddStayInsideLimits() {
-        var s = SnowShape.pristine(seed: 1)
-        for _ in 0..<500 { s.apply(tool: .carve, direction: up, size: 0.5, strength: 2) }
+    func testCutLeavesAFlatFaceAtThePlane() {
+        var s = SnowShape.pristine(seed: 2)
+        s.cutBlade(rotation: identity, planeX: -0.6, bandLow: -3, bandHigh: 3)
+        // 切り口の上の点は、すべて x = -0.6 にある
+        for (k, d) in SculptGrid.directions.enumerated() where d.x < -0.4 {
+            let x = s.radii[k] * d.x
+            XCTAssertGreaterThanOrEqual(x, -0.6 - 0.01, "刃の面より外へは出ない")
+        }
+        let k = index(of: SIMD3<Float>(-1, 0.2, 0.1))
+        XCTAssertEqual(s.radii[k] * SculptGrid.directions[k].x, -0.6, accuracy: 0.01)
+    }
+
+    func testBladeOnlyCutsWithinItsHeight() {
+        var s = SnowShape.pristine(seed: 3)
+        let before = s
+        // 上のほう（y=0.6〜0.9）だけの小さな刃
+        s.cutBlade(rotation: identity, planeX: -0.4, bandLow: 0.6, bandHigh: 0.9)
+        let high = index(of: SIMD3<Float>(-0.6, 0.8, 0))
+        let low = index(of: SIMD3<Float>(-1, -0.6, 0))
+        XCTAssertLessThan(s.radii[high], before.radii[high] - 0.1)
+        XCTAssertEqual(s.radii[low], before.radii[low], accuracy: 1e-6, "刃の高さの外は削れない")
+    }
+
+    func testBladeKeepsTheCenterSide() {
+        var s = SnowShape.pristine(seed: 5)
+        // 中心の手前までしか入らない（0.2より内には入れない）
+        s.cutBlade(rotation: identity, planeX: -0.01, bandLow: -3, bandHigh: 3)
+        let left = index(of: SIMD3<Float>(-1, 0, 0))
+        XCTAssertGreaterThanOrEqual(s.radii[left], SnowShape.minCutDepth - 0.01)
         XCTAssertGreaterThanOrEqual(s.radii.min() ?? 0, SnowShape.minRadius)
-        for _ in 0..<2_000 { s.apply(tool: .add, direction: up, size: 0.5, strength: 2) }
-        XCTAssertLessThanOrEqual(s.radii.max() ?? 9, SnowShape.maxRadius)
+    }
+
+    func testBladeFollowsTheBallRotation() {
+        // 雪玉を回すと、刃（画面の座標）に当たる面が変わる
+        var s = SnowShape.pristine(seed: 6)
+        let turn = simd_quatf(angle: .pi / 2, axis: SIMD3<Float>(0, 1, 0))
+        s.cutBlade(rotation: turn, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        // y 軸まわりに90°回すと、画面の左 (-x) には、元の形の +z か -z の面が来る
+        let hit = turn.inverse.act(SIMD3<Float>(-1, 0, 0))
+        let k = index(of: hit)
+        XCTAssertEqual(s.radii[k], 0.5, accuracy: 0.03)
+        let unaffected = index(of: SIMD3<Float>(-1, 0, 0))
+        XCTAssertGreaterThan(s.radii[unaffected], 0.9)
     }
 
     func testSeamVerticesStayInSync() {
         var s = SnowShape.pristine(seed: 9)
-        // 経度の継ぎ目（j=0 と j=最後）の近くで道具を使っても、両端が一致する
-        let seam = SIMD3<Float>(0, 0, 1)
-        s.apply(tool: .carve, direction: seam, size: 0.4, strength: 2)
-        s.apply(tool: .smooth, direction: seam, size: 0.4, strength: 1)
-        s.apply(tool: .paint, direction: seam, size: 0.4, strength: 3, color: SIMD3<Float>(1, 0, 0))
+        s.cutBlade(rotation: simd_quatf(angle: 0.7, axis: simd_normalize(SIMD3<Float>(1, 2, 0.5))), planeX: -0.5, bandLow: -3, bandHigh: 3)
         for i in 0...SculptGrid.rings {
             let a = SculptGrid.index(i, 0)
             let b = SculptGrid.index(i, SculptGrid.segments)
             XCTAssertEqual(s.radii[a], s.radii[b], accuracy: 1e-5, "ring \(i)")
-            XCTAssertEqual(s.colors[a * 3], s.colors[b * 3])
         }
     }
 
-    func testSmoothReducesRoughness() {
-        var s = SnowShape.pristine(seed: 2)
-        for _ in 0..<12 { s.apply(tool: .carve, direction: up, size: 0.2, strength: 3) }
-        let k = SculptGrid.index(0, 0)
-        let ring1 = SculptGrid.index(2, 10)
-        let before = abs(s.radii[k] - s.radii[ring1])
-        for _ in 0..<20 { s.apply(tool: .smooth, direction: up, size: 0.5, strength: 1.5) }
-        XCTAssertLessThan(abs(s.radii[k] - s.radii[ring1]), before)
-    }
+    // MARK: 色
 
-    func testFlattenCutsDownToPlane() {
-        var s = SnowShape.pristine(seed: 3)
-        for _ in 0..<40 { s.apply(tool: .flatten, direction: up, size: 0.9, strength: 2, plane: (up, 0.7)) }
-        // 真上は平面（深さ0.7）まで削れる
-        XCTAssertEqual(s.radii[SculptGrid.index(0, 0)], 0.7, accuracy: 0.02)
-        // 真下は変わらない
-        XCTAssertEqual(s.radii[SculptGrid.index(SculptGrid.rings, 0)], SnowShape.pristine(seed: 3).radii[SculptGrid.index(SculptGrid.rings, 0)], accuracy: 1e-6)
-    }
-
-    func testPaintChangesColorOnlyNearTheTool() {
+    func testTintIsOneColorForTheWholeBall() {
         var s = SnowShape.pristine(seed: 5)
-        for _ in 0..<20 { s.apply(tool: .paint, direction: up, size: 0.4, strength: 2, color: SIMD3<Float>(1, 0, 0)) }
-        let top = SculptGrid.index(0, 0)
-        XCTAssertEqual(s.colors[top * 3], 255)
-        XCTAssertLessThan(s.colors[top * 3 + 1], 30, "赤に近づく")
-        let bottom = SculptGrid.index(SculptGrid.rings, 0)
-        XCTAssertEqual(s.colors[bottom * 3 + 1], 255, "遠い所は白のまま")
+        s.setTint(SIMD3<Float>(1, 0, 0))
+        XCTAssertEqual(s.tint, [255, 0, 0])
+        XCTAssertEqual(s.tintRGB.x, 1, accuracy: 1e-6)
         XCTAssertTrue(s.isModified)
+        let geo = SculptMesh.geometry(for: s, material: SnowMaterial.make())
+        XCTAssertEqual(geo.sources(for: .color).first?.vectorCount, SculptGrid.vertexCount)
     }
+
+    // MARK: 成長（厚さ一定）
+
+    func testGrowAddsUniformThickness() {
+        var s = SnowShape.pristine(seed: 7)
+        s.cutBlade(rotation: identity, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        let before = s
+        let old: Float = 0.5, new: Float = 0.7
+        s.grow(fromRadius: old, toRadius: new)
+        for k in stride(from: 0, to: s.radii.count, by: 97) {
+            // 実際の長さ（基準の半径 × 倍率）は、どこも 0.2 だけ増える
+            let beforeLength = old * before.radii[k]
+            let afterLength = new * s.radii[k]
+            XCTAssertEqual(afterLength - beforeLength, new - old, accuracy: 1e-4)
+        }
+    }
+
+    func testGrowKeepsTheCutFaceAsAnOffsetFace() {
+        var s = SnowShape.pristine(seed: 8)
+        s.cutBlade(rotation: identity, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        s.grow(fromRadius: 0.5, toRadius: 0.6)
+        // 切り口は、そのまま少しだけ外側に厚みが付く（ゆがまない）
+        let k = index(of: SIMD3<Float>(-1, 0, 0))
+        XCTAssertGreaterThan(s.radii[k], 0.45)
+        XCTAssertLessThan(s.radii[k], 1.2)
+    }
+
+    // MARK: 保存・メッシュ
 
     func testShapeCodableRoundTrip() throws {
         var s = SnowShape.pristine(seed: 6)
-        s.apply(tool: .carve, direction: up, size: 0.4, strength: 1)
-        s.apply(tool: .paint, direction: up, size: 0.4, strength: 2, color: SIMD3<Float>(0, 0, 1))
+        s.cutBlade(rotation: identity, planeX: -0.5, bandLow: -3, bandHigh: 3)
+        s.setTint(SIMD3<Float>(0, 0, 1))
         let decoded = try JSONDecoder().decode(SnowShape.self, from: JSONEncoder().encode(s))
         XCTAssertEqual(decoded, s)
+    }
+
+    func testOldShapeWithoutTintStillLoads() throws {
+        let s = SnowShape.pristine(seed: 3)
+        let json = "{\"seed\": 3, \"radii\": \"\(s.radii.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString())\"}"
+        let decoded = try JSONDecoder().decode(SnowShape.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.tint, [255, 255, 255])
+        XCTAssertEqual(decoded.radii, s.radii)
     }
 
     func testMeshBuffersAreConsistent() {
@@ -95,15 +155,29 @@ final class SculptTests: XCTestCase {
         let geo = SculptMesh.geometry(for: shape, material: SnowMaterial.make())
         XCTAssertEqual(geo.sources(for: .vertex).first?.vectorCount, SculptGrid.vertexCount)
         XCTAssertEqual(geo.sources(for: .normal).first?.vectorCount, SculptGrid.vertexCount)
-        XCTAssertEqual(geo.sources(for: .color).first?.vectorCount, SculptGrid.vertexCount)
         XCTAssertEqual(geo.sources(for: .texcoord).first?.vectorCount, SculptGrid.vertexCount)
         XCTAssertEqual(geo.elements.first?.primitiveCount, SculptGrid.rings * SculptGrid.segments * 2)
+    }
+
+    func testBladeSizesAreOrdered() {
+        XCTAssertLessThan(BladeSize.small.height, BladeSize.medium.height)
+        XCTAssertLessThan(BladeSize.medium.height, BladeSize.large.height)
+    }
+
+    // MARK: 直径
+
+    func testDiameterFormatAndMeasure() {
+        XCTAssertEqual(formatLength(meters: 0.58), "約58cm")
+        XCTAssertEqual(formatLength(meters: 1.24), "約1.2m")
+        let d = BallScale.diameter(steps: 0, extent: 1)
+        XCTAssertEqual(d, 2 * BallScale.r0, accuracy: 1e-9)
+        XCTAssertGreaterThan(BallScale.diameter(steps: 10_000, extent: 1), d)
+        XCTAssertEqual(BallScale.diameter(steps: 0, extent: 1.5), d * 1.5, accuracy: 1e-9)
     }
 
     // MARK: 作品
 
     private func placement(_ radius: Float, x: Float, y: Float, z: Float = 0) -> Placement {
-        // 半径 radius になる歩数を探す
         var steps = 0
         while Float(BallScale.radius(steps: steps)) < radius, steps < Snow.maxSteps { steps += 50 }
         return Placement(piece: SnowPiece(steps: steps, madeAt: Date(), shape: .pristine(seed: 1)), position: SIMD3<Float>(x, y, z))
@@ -137,7 +211,7 @@ final class SculptTests: XCTestCase {
     }
 
     func testArtworkWorldSyncsNodes() {
-        let world = ArtworkWorld(hour: 12, shadows: false)
+        let world = ArtworkWorld(daypart: .day)
         let a = placement(0.5, x: 0, y: 0.5)
         let b = placement(0.9, x: 2, y: 0.9)
         world.sync([a, b], selected: a.id)
@@ -150,39 +224,13 @@ final class SculptTests: XCTestCase {
         XCTAssertEqual(node?.simdScale.x ?? 0, b.piece.radius, accuracy: 1e-5)
     }
 
-    // MARK: 空
+    // MARK: 背景
 
-    func testSkyChangesContinuouslyWithTime() {
-        var previous = SkyState.at(hour: 0)
-        var h = 0.1
-        while h < 24 {
-            let s = SkyState.at(hour: h)
-            XCTAssertLessThan(simd_length(s.top - previous.top), 0.1, "h=\(h) 空の色が急に変わらない")
-            XCTAssertLessThan(simd_length(s.horizon - previous.horizon), 0.1, "h=\(h)")
-            previous = s
-            h += 0.1
-        }
-    }
-
-    func testSkyIsBrightAtNoonAndDarkAtMidnight() {
-        let noon = SkyState.at(hour: 12)
-        let night = SkyState.at(hour: 0)
-        XCTAssertGreaterThan(noon.top.z, night.top.z + 0.5)
-        XCTAssertGreaterThan(noon.ambient, 0.95)
-        XCTAssertLessThan(night.ambient, 0.45)
-        XCTAssertGreaterThan(noon.lightIntensity, 800)
-        XCTAssertTrue(noon.isSun)
-        XCTAssertFalse(night.isSun)
-        XCTAssertGreaterThan(night.stars, 0.9)
-        XCTAssertLessThan(noon.stars, 0.01)
-        XCTAssertGreaterThan(noon.lightDirection.y, 0.8, "正午の太陽はほぼ真上")
-    }
-
-    func testSunsetHorizonIsWarmAndTimeWraps() {
-        let dusk = SkyState.at(hour: 17.5)
-        XCTAssertGreaterThan(dusk.horizon.x, dusk.horizon.z, "夕方の地平線は赤っぽい")
-        let a = SkyState.at(hour: 3)
-        let b = SkyState.at(hour: 27)
-        XCTAssertEqual(simd_length(a.top - b.top), 0, accuracy: 1e-5)
+    func testDaypartByHour() {
+        XCTAssertEqual(Daypart.current(hour: 12), .day)
+        XCTAssertEqual(Daypart.current(hour: 6), .dusk)
+        XCTAssertEqual(Daypart.current(hour: 17), .dusk)
+        XCTAssertEqual(Daypart.current(hour: 23), .night)
+        XCTAssertEqual(Daypart.current(hour: 2), .night)
     }
 }

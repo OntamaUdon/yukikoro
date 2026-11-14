@@ -8,7 +8,6 @@ import simd
 final class ArtworkWorld {
     let scene = SCNScene()
     let cameraNode = SCNNode()
-    let rig: SkyRig
     var orbit = OrbitCamera(azimuth: 0.55, elevation: 0.28, distance: 7, target: SIMD3<Float>(0, 0.9, 0),
                             minDistance: 2.5, maxDistance: 40, minElevation: 0.02, maxElevation: 1.4)
 
@@ -17,12 +16,13 @@ final class ArtworkWorld {
     private var shapes: [UUID: SnowShape] = [:]
     private var blobs: [UUID: SCNNode] = [:]
 
-    init(hour: Double, shadows: Bool) {
-        rig = SkyRig(scene: scene, ground: true, shadows: shadows)
-        rig.apply(hour: hour)
+    init(daypart: Daypart) {
+        PhotoSky.apply(to: scene, daypart: daypart, background: true)
+        PhotoSky.addSun(to: scene, daypart: daypart, intensity: 1300)
+        scene.rootNode.addChildNode(PhotoSky.groundDisc(radius: 14))
         let cam = SCNCamera()
         cam.fieldOfView = 42
-        SceneSetup.configure(camera: cam, exposure: -0.3)
+        PhotoSky.configure(camera: cam, exposure: daypart == .day ? -0.5 : -0.2)
         cameraNode.camera = cam
         scene.rootNode.addChildNode(cameraNode)
         orbit.apply(to: cameraNode)
@@ -71,7 +71,7 @@ final class ArtworkWorld {
             if let existing = blobs[p.id] {
                 blob = existing
             } else {
-                blob = SkyRig.shadowBlob()
+                blob = PhotoSky.shadowBlob()
                 scene.rootNode.addChildNode(blob)
                 blobs[p.id] = blob
             }
@@ -137,17 +137,17 @@ enum SceneSnapshot {
     static func piece(_ piece: SnowPiece, size: CGSize, scale: CGFloat = 2) -> UIImage? {
         let key = "p-\(piece.id)-\(piece.shape.hashValue)-\(Int(size.width))x\(Int(size.height))" as NSString
         if let hit = cache.object(forKey: key) { return hit }
-        let world = SnowCameraScene(shape: piece.shape, hour: 12)
+        let world = SnowCameraScene(shape: piece.shape, daypart: .day)
         guard let image = image(scene: world.scene, pointOfView: world.cameraNode, size: size, scale: scale) else { return nil }
         cache.setObject(image, forKey: key)
         return image
     }
 
     /// 作品の全体像
-    static func artwork(_ artwork: Artwork, hour: Double, size: CGSize, scale: CGFloat = 2, useCache: Bool = true) -> UIImage? {
-        let key = "a-\(artwork.id)-\(artwork.updatedAt.timeIntervalSince1970)-\(Int(hour))-\(Int(size.width))x\(Int(size.height))" as NSString
+    static func artwork(_ artwork: Artwork, daypart: Daypart, size: CGSize, scale: CGFloat = 2, useCache: Bool = true) -> UIImage? {
+        let key = "a-\(artwork.id)-\(artwork.updatedAt.timeIntervalSince1970)-\(daypart)-\(Int(size.width))x\(Int(size.height))" as NSString
         if useCache, let hit = cache.object(forKey: key) { return hit }
-        let world = ArtworkWorld(hour: hour, shadows: false)
+        let world = ArtworkWorld(daypart: daypart)
         world.sync(artwork.placements)
         world.frameAll(artwork.placements)
         guard let image = image(scene: world.scene, pointOfView: world.cameraNode, size: size, scale: scale) else { return nil }
@@ -160,16 +160,15 @@ enum SceneSnapshot {
 final class SnowCameraScene {
     let scene = SCNScene()
     let cameraNode = SCNNode()
-    private let rig: SkyRig
 
-    init(shape: SnowShape, hour: Double) {
-        rig = SkyRig(scene: scene, ground: false, shadows: false)
-        rig.apply(hour: hour)
+    init(shape: SnowShape, daypart: Daypart) {
+        PhotoSky.apply(to: scene, daypart: daypart, background: true)
+        PhotoSky.addSun(to: scene, daypart: daypart, intensity: 1000)
         let node = SCNNode(geometry: SculptMesh.geometry(for: shape, material: SnowMaterial.make()))
         scene.rootNode.addChildNode(node)
         let cam = SCNCamera()
         cam.fieldOfView = 34
-        SceneSetup.configure(camera: cam, exposure: -0.3)
+        PhotoSky.configure(camera: cam, exposure: daypart == .day ? -0.5 : -0.2)
         cameraNode.camera = cam
         OrbitCamera(azimuth: 0.5, elevation: 0.3, distance: 4.4).apply(to: cameraNode)
         scene.rootNode.addChildNode(cameraNode)

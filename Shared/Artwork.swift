@@ -11,6 +11,9 @@ struct SnowPiece: Codable, Equatable, Identifiable {
 
     /// 作品の中での半径（場面の単位）
     var radius: Float { Float(BallScale.radius(steps: steps)) }
+
+    /// 直径（メートル）。削った形の最大幅で測る。
+    var diameter: Double { BallScale.diameter(steps: steps, extent: shape.maxExtent) }
 }
 
 /// 作品の中に置いたゆきだま

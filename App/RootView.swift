@@ -26,8 +26,17 @@ struct RootView: View {
         .fullScreenCover(isPresented: .constant(!store.state.onboarded)) {
             OnboardingView()
         }
+        .fullScreenCover(isPresented: $store.sculptingRolling) {
+            SculptView(shape: store.state.rollingShape, title: "雪玉を整える",
+                       radius: Float(BallScale.radius(steps: store.state.rollingSteps)),
+                       onDone: { shape in
+                           store.updateRolling(shape: shape)
+                           store.sculptingRolling = false
+                       },
+                       onCancel: { store.sculptingRolling = false })
+        }
         .fullScreenCover(item: sculptingPiece) { piece in
-            SculptView(shape: piece.shape, title: "ゆきだまを整える",
+            SculptView(shape: piece.shape, title: "ゆきだまを整える", radius: piece.radius,
                        onDone: { shape in
                            store.updateStock(id: piece.id, shape: shape)
                            store.sculptingPieceID = nil

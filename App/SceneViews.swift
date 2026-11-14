@@ -4,9 +4,12 @@ import SceneKit
 /// ホームの「転がる雪玉」
 struct BallSceneView: UIViewRepresentable {
     let steps: Int
+    let shape: SnowShape
+    let daypart: Daypart
+    var yaw: Float? = nil
 
     func makeCoordinator() -> BallScene {
-        BallScene(hourProvider: { SkyClock.hour() })
+        BallScene(daypart: daypart, yaw: yaw)
     }
 
     func makeUIView(context: Context) -> SCNView {
@@ -18,12 +21,12 @@ struct BallSceneView: UIViewRepresentable {
         view.preferredFramesPerSecond = 30
         view.isPlaying = true
         view.allowsCameraControl = false
-        context.coordinator.update(steps: steps)
+        context.coordinator.update(steps: steps, shape: shape)
         return view
     }
 
     func updateUIView(_ uiView: SCNView, context: Context) {
-        context.coordinator.update(steps: steps)
+        context.coordinator.update(steps: steps, shape: shape)
     }
 }
 
@@ -62,7 +65,7 @@ struct ArtworkThumbnail: View {
             }
         }
         .task(id: artwork.updatedAt) {
-            image = SceneSnapshot.artwork(artwork, hour: SkyClock.hour(), size: size)
+            image = SceneSnapshot.artwork(artwork, daypart: Daypart.current(hour: Int(SkyClock.hour())), size: size)
         }
     }
 }

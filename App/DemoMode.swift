@@ -23,14 +23,12 @@ enum DemoMode {
     static var tab: Int { value("-yukikoro-tab").flatMap(Int.init) ?? 0 }
     static var steps: Int { value("-yukikoro-steps").flatMap(Int.init) ?? 4_200 }
 
-    /// デモ用に道具で整えたゆきだま
+    /// デモ用に刃と色で整えたゆきだま
     private static func shaped(seed: UInt32, _ edit: (inout SnowShape) -> Void) -> SnowShape {
         var s = SnowShape.pristine(seed: seed)
         edit(&s)
         return s
     }
-
-    private static func dir(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> { simd_normalize(SIMD3<Float>(x, y, z)) }
 
     /// 動作確認用の状態（ゆきだま3つと、積み上げた作品1つ）
     static func state() -> GameState {
@@ -38,22 +36,20 @@ enum DemoMode {
         s.onboarded = true
         s.initialized = true
 
-        // 赤いマフラーを巻いた、顔のある雪玉
+        let identity = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
+        // 赤い胴体（左を刃で平らに削る）
         let body = shaped(seed: 3) { b in
-            for i in 0..<28 {
-                let a = Float(i) / 28 * 2 * .pi
-                b.apply(tool: .paint, direction: dir(sin(a), 0.1, cos(a)), size: 0.2, strength: 2.5, color: SIMD3<Float>(0.9, 0.2, 0.2))
-            }
+            b.cutBlade(rotation: identity, planeX: -0.7, bandLow: -0.4, bandHigh: 0.6)
+            b.setTint(SIMD3<Float>(0.98, 0.62, 0.62))
         }
+        // 頭（上を平らに）
         let head = shaped(seed: 8) { h in
-            for _ in 0..<26 { h.apply(tool: .carve, direction: dir(-0.28, 0.2, 1), size: 0.14, strength: 1) }
-            for _ in 0..<26 { h.apply(tool: .carve, direction: dir(0.28, 0.2, 1), size: 0.14, strength: 1) }
-            for _ in 0..<18 { h.apply(tool: .add, direction: dir(0, -0.05, 1), size: 0.16, strength: 1.4) }
-            h.apply(tool: .paint, direction: dir(0, -0.05, 1), size: 0.2, strength: 8, color: SIMD3<Float>(0.98, 0.58, 0.2))
+            h.cutBlade(rotation: simd_quatf(angle: 0.6, axis: SIMD3<Float>(0, 0, 1)), planeX: -0.8, bandLow: -3, bandHigh: 3)
+            h.setTint(SIMD3<Float>(0.99, 0.93, 0.55))
         }
         let base = shaped(seed: 21) { b in
-            for _ in 0..<30 { b.apply(tool: .carve, direction: dir(0.9, 0.5, 0.3), size: 0.4, strength: 1) }
-            for _ in 0..<10 { b.apply(tool: .smooth, direction: dir(0.9, 0.5, 0.3), size: 0.5, strength: 1) }
+            b.cutBlade(rotation: identity, planeX: -0.75, bandLow: -3, bandHigh: 3)
+            b.cutBlade(rotation: simd_quatf(angle: 1.2, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.8, bandLow: -3, bandHigh: 3)
         }
 
         let big = SnowPiece(id: UUID(), steps: 15_000, madeAt: Date(), shape: base)
@@ -78,13 +74,16 @@ enum DemoMode {
         s.stock = [
             SnowPiece(id: UUID(), steps: 3_200, madeAt: Date(), shape: SnowShape.pristine(seed: 5)),
             SnowPiece(id: UUID(), steps: 800, madeAt: Date(), shape: shaped(seed: 12) { b in
-                for _ in 0..<40 { b.apply(tool: .paint, direction: dir(0.2, 1, 0.4), size: 0.5, strength: 3, color: SIMD3<Float>(0.35, 0.75, 0.95)) }
+                b.setTint(SIMD3<Float>(0.62, 0.84, 0.98))
             }),
             SnowPiece(id: UUID(), steps: 6_500, madeAt: Date(), shape: shaped(seed: 17) { b in
-                for _ in 0..<32 { b.apply(tool: .carve, direction: dir(0.1, 0.2, 1), size: 0.5, strength: 1) }
+                b.cutBlade(rotation: identity, planeX: -0.6, bandLow: -3, bandHigh: 3)
             }),
         ]
         s.rollingSteps = steps
+        s.rollingShape = shaped(seed: 11) { b in
+            b.cutBlade(rotation: identity, planeX: -0.8, bandLow: -0.3, bandHigh: 0.9)
+        }
         s.totalSteps = 38_000 + steps
         s.credited[DayKey.key(for: Date())] = 5_200
         return s

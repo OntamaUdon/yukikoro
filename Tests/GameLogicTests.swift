@@ -1,4 +1,5 @@
 import XCTest
+import simd
 
 final class GameLogicTests: XCTestCase {
     // MARK: 歩数の台帳
@@ -224,8 +225,8 @@ final class GameLogicTests: XCTestCase {
         state.addBonus(steps: 4_000)
         var rng = SplitMix64(seed: 3)
         var piece = state.makePiece(using: &rng)!
-        piece.shape.apply(tool: .carve, direction: SIMD3<Float>(0, 1, 0), size: 0.4, strength: 1)
-        piece.shape.apply(tool: .paint, direction: SIMD3<Float>(1, 0, 0), size: 0.3, strength: 3, color: SIMD3<Float>(1, 0, 0))
+        piece.shape.cutBlade(rotation: simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.5, bandLow: -3, bandHigh: 3)
+        piece.shape.setTint(SIMD3<Float>(1, 0, 0))
         state.updateStock(id: piece.id, shape: piece.shape)
         var art = state.newArtwork()
         art.placements = [Placement(piece: piece, position: SIMD3<Float>(1, 2, 3), rotation: SIMD4<Float>(0, 0.7071, 0, 0.7071))]
@@ -244,5 +245,49 @@ final class GameLogicTests: XCTestCase {
         let old = try decoder.decode(GameState.self, from: Data("{\"rollingSteps\": 123}".utf8))
         XCTAssertEqual(old.rollingSteps, 123)
         XCTAssertTrue(old.stock.isEmpty)
+    }
+
+    // MARK: 成形しながら転がす
+
+    func testRollingBallKeepsItsShapeAndGrowsWithUniformThickness() {
+        var state = GameState()
+        state.addBonus(steps: 1_000)
+        let r1 = Float(BallScale.radius(steps: 1_000))
+        var shape = state.rollingShape
+        shape.cutBlade(rotation: simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)), planeX: -0.5, bandLow: -3, bandHigh: 3)
+        state.updateRolling(shape: shape)
+        let before = state.rollingShape
+
+        state.addBonus(steps: 4_000)
+        let r2 = Float(BallScale.radius(steps: 5_000))
+        XCTAssertGreaterThan(r2, r1)
+        for k in stride(from: 0, to: before.radii.count, by: 211) {
+            let delta = r2 * state.rollingShape.radii[k] - r1 * before.radii[k]
+            XCTAssertEqual(delta, r2 - r1, accuracy: 1e-3, "どこも同じ厚さだけ大きくなる")
+        }
+        XCTAssertNotEqual(state.rollingShape, before)
+    }
+
+    func testMakePieceTakesTheShapedBallAndStartsANewOne() {
+        var state = GameState()
+        state.addBonus(steps: 2_000)
+        var shape = state.rollingShape
+        shape.setTint(SIMD3<Float>(0, 1, 0))
+        state.updateRolling(shape: shape)
+        var rng = SplitMix64(seed: 4)
+        let piece = state.makePiece(using: &rng)
+        XCTAssertEqual(piece?.shape.tint, [0, 255, 0])
+        XCTAssertEqual(state.rollingShape.tint, [255, 255, 255], "次の雪玉は白いまっさらな玉")
+        XCTAssertEqual(state.rollingSteps, 0)
+    }
+
+    func testDiametersAreReported() {
+        var state = GameState()
+        state.addBonus(steps: 3_000)
+        XCTAssertGreaterThan(state.rollingDiameter, 0.5)
+        XCTAssertEqual(state.rollingDiameter, 2 * BallScale.radius(steps: 3_000) * Double(state.rollingShape.maxExtent), accuracy: 1e-9)
+        var rng = SplitMix64(seed: 1)
+        let piece = state.makePiece(using: &rng)!
+        XCTAssertGreaterThan(piece.diameter, 0.5)
     }
 }

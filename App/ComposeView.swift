@@ -19,7 +19,7 @@ final class ComposeController: NSObject, ObservableObject, UIGestureRecognizerDe
 
     init(artwork: Artwork) {
         self.artwork = artwork
-        world = ArtworkWorld(hour: SkyClock.hour(), shadows: true)
+        world = ArtworkWorld(daypart: Daypart.current(hour: Int(SkyClock.hour())))
         super.init()
         world.sync(artwork.placements)
         world.frameAll(artwork.placements)
@@ -203,6 +203,7 @@ struct ComposeCanvas: UIViewRepresentable {
 private struct SculptTarget: Identifiable {
     let id: UUID
     let shape: SnowShape
+    let radius: Float
 }
 
 /// 作品をつくる画面
@@ -240,7 +241,7 @@ struct ComposeView: View {
             if let shareImage { ActivityView(items: [shareImage]) }
         }
         .fullScreenCover(item: $sculpt) { target in
-            SculptView(shape: target.shape, title: "ゆきだまを整える",
+            SculptView(shape: target.shape, title: "ゆきだまを整える", radius: target.radius,
                        onDone: { shape in
                            c.updateShape(id: target.id, shape: shape)
                            sculpt = nil
@@ -262,7 +263,7 @@ struct ComposeView: View {
                 .onSubmit { c.commit() }
             Button {
                 c.commit()
-                shareImage = SceneSnapshot.artwork(c.artwork, hour: SkyClock.hour(), size: CGSize(width: 360, height: 450), scale: 3, useCache: false)
+                shareImage = SceneSnapshot.artwork(c.artwork, daypart: Daypart.current(hour: Int(SkyClock.hour())), size: CGSize(width: 360, height: 450), scale: 3, useCache: false)
                 showShare = shareImage != nil
             } label: {
                 Image(systemName: "square.and.arrow.up")
@@ -313,7 +314,7 @@ struct ComposeView: View {
                 actionButton("まわす", "arrow.clockwise") { c.rotateSelected(yaw: .pi / 4, pitch: 0) }
                 actionButton("かたむける", "arrow.triangle.2.circlepath") { c.rotateSelected(yaw: 0, pitch: .pi / 4) }
                 actionButton("おろす", "arrow.down.to.line") { c.settleSelected() }
-                actionButton("整える", "scissors") { sculpt = SculptTarget(id: p.id, shape: p.piece.shape) }
+                actionButton("整える", "scissors") { sculpt = SculptTarget(id: p.id, shape: p.piece.shape, radius: p.piece.radius) }
                 actionButton("もどす", "tray.and.arrow.down") {
                     if let piece = c.removeSelected() { store.returnToStock(piece) }
                 }
@@ -347,7 +348,7 @@ struct ComposeView: View {
             Group {
                 if store.state.stock.isEmpty {
                     ContentUnavailableView("ゆきだまがありません", systemImage: "circle.dotted",
-                                           description: Text("ホームで歩いて雪玉を転がし、「ゆきだまにする」を押すと増えます。"))
+                                           description: Text("ホームで雪玉を転がして形を整え、「作品に使う」を押すと増えます。"))
                 } else {
                     List(store.state.stock) { piece in
                         Button {
@@ -363,7 +364,7 @@ struct ComposeView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(formatSteps(piece.steps))歩ぶん")
                                         .font(.system(.body, design: .rounded, weight: .semibold))
-                                    Text(piece.shape.isModified ? "整えたゆきだま" : "まるいゆきだま")
+                                    Text("直径 \(formatLength(meters: piece.diameter))")
                                         .font(.system(.caption, design: .rounded))
                                         .foregroundStyle(.secondary)
                                 }

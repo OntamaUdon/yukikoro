@@ -13,7 +13,7 @@ struct StockView: View {
                     ContentUnavailableView {
                         Label("ゆきだまがありません", systemImage: "circle.dotted")
                     } description: {
-                        Text("ホームで歩いて雪玉を転がし、「ゆきだまにする」を押すと、ここに増えます。")
+                        Text("ホームで雪玉を転がして形を整え、「作品に使う」を押すと、ここに増えます。")
                     }
                 } else {
                     ScrollView {
@@ -28,7 +28,7 @@ struct StockView: View {
                             }
                         }
                         .padding(16)
-                        Text("タップして、削ったり色を塗ったりして形を整えます。整えたゆきだまは、「さくひん」で組み合わせて飾れます。")
+                        Text("タップして形を整え直せます（取り出したあとは、大きくはなりません）。「さくひん」で組み合わせて飾れます。")
                             .font(.system(.footnote, design: .rounded))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 20)
@@ -48,7 +48,7 @@ struct StockView: View {
             VStack(spacing: 2) {
                 Text("\(formatSteps(piece.steps))歩ぶん")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                Text(piece.shape.isModified ? "整えたゆきだま" : "まだ整えていません")
+                Text("直径 \(formatLength(meters: piece.diameter))")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.secondary)
             }

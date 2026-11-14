@@ -31,6 +31,11 @@ enum BallScale {
         1 - exp(-(radius(steps: steps) - r0) / 1.0)
     }
 
+    /// 直径（メートル）。場面の単位 1 = 1m として、形の最大幅で測る。
+    static func diameter(steps: Int, extent: Float) -> Double {
+        2 * radius(steps: steps) * Double(extent)
+    }
+
     /// 体積（半径³に比例。比較用）
     static func volume(radius r: Double) -> Double { 4.0 / 3.0 * Double.pi * r * r * r }
 
@@ -55,4 +60,10 @@ func formatSteps(_ n: Int) -> String {
     f.numberStyle = .decimal
     f.groupingSeparator = ","
     return f.string(from: NSNumber(value: n)) ?? "\(n)"
+}
+
+/// 長さの表示（1m未満は cm、それ以上は m）
+func formatLength(meters: Double) -> String {
+    if meters < 1 { return "約\(Int((meters * 100).rounded()))cm" }
+    return String(format: "約%.1fm", meters)
 }

@@ -16,6 +16,8 @@ struct GameState: Codable, Equatable {
     var initialized: Bool = false
     /// 今転がしている雪玉の歩数（達成上限 `Snow.maxSteps` まで）
     var rollingSteps: Int = 0
+    /// 今転がしている雪玉の形と色。歩数が増えると、この形のまま厚さ一定で一回り大きくなる。
+    var rollingShape: SnowShape = .pristine(seed: 11)
     /// 達成上限を超えて余った歩数。ゆきだまにしたあと、次の雪玉に持ち越す。
     var reserveSteps: Int = 0
     /// これまでに雪玉に加算した歩数の合計
@@ -30,7 +32,7 @@ struct GameState: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, rollingSteps, reserveSteps, totalSteps, credited, stock, artworks, createdAt
+        case version, onboarded, initialized, rollingSteps, rollingShape, reserveSteps, totalSteps, credited, stock, artworks, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -39,6 +41,7 @@ struct GameState: Codable, Equatable {
         onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
         initialized = try c.decodeIfPresent(Bool.self, forKey: .initialized) ?? false
         rollingSteps = try c.decodeIfPresent(Int.self, forKey: .rollingSteps) ?? 0
+        rollingShape = try c.decodeIfPresent(SnowShape.self, forKey: .rollingShape) ?? .pristine(seed: 11)
         reserveSteps = try c.decodeIfPresent(Int.self, forKey: .reserveSteps) ?? 0
         totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? 0
         credited = try c.decodeIfPresent([String: Int].self, forKey: .credited) ?? [:]
@@ -84,7 +87,9 @@ struct GameState: Codable, Equatable {
     private mutating func addToBall(_ steps: Int) {
         let room = max(0, Snow.maxSteps - rollingSteps)
         let toBall = min(steps, room)
+        let before = Float(BallScale.radius(steps: rollingSteps))
         rollingSteps += toBall
+        rollingShape.grow(fromRadius: before, toRadius: Float(BallScale.radius(steps: rollingSteps)))
         reserveSteps += steps - toBall
         totalSteps += steps
     }
@@ -109,11 +114,12 @@ struct GameState: Codable, Equatable {
     mutating func makePiece<G: RandomNumberGenerator>(using g: inout G, now: Date = Date()) -> SnowPiece? {
         guard canComplete else { return nil }
         let seed = UInt32(truncatingIfNeeded: g.next())
-        let piece = SnowPiece(id: UUID(), steps: rollingSteps, madeAt: now, shape: .pristine(seed: seed))
+        let piece = SnowPiece(id: UUID(), steps: rollingSteps, madeAt: now, shape: rollingShape)
         stock.append(piece)
         // 達成上限を超えて持ち越していた歩数があれば、次の雪玉に回す
         let carried = min(reserveSteps, Snow.maxSteps)
         rollingSteps = carried
+        rollingShape = .pristine(seed: UInt32(truncatingIfNeeded: g.next()))
         reserveSteps -= carried
         return piece
     }
@@ -122,6 +128,12 @@ struct GameState: Codable, Equatable {
         var g = SystemRandomNumberGenerator()
         return makePiece(using: &g, now: now)
     }
+
+    /// 転がしている雪玉の形を更新する（成形したとき）
+    mutating func updateRolling(shape: SnowShape) { rollingShape = shape }
+
+    /// 転がしている雪玉の直径（メートル）
+    var rollingDiameter: Double { BallScale.diameter(steps: rollingSteps, extent: rollingShape.maxExtent) }
 
     // MARK: ストックと作品
 

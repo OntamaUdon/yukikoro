@@ -49,6 +49,7 @@ enum SculptMesh {
         let row = SculptGrid.rowCount
         let dirs = SculptGrid.directions
         let p = positions(of: shape)
+        let tint = shape.tintRGB
 
         func at(_ i: Int, _ j: Int) -> SIMD3<Float> { p[i * row + ((j % seg) + seg) % seg] }
 
@@ -80,12 +81,7 @@ enum SculptMesh {
                 vertices.append(SCNVector3(pos.x, pos.y, pos.z))
                 normals.append(SCNVector3(n.x, n.y, n.z))
                 tangents.append(contentsOf: [t.x, t.y, t.z, 1])
-                colors.append(contentsOf: [
-                    Float(shape.colors[k * 3]) / 255,
-                    Float(shape.colors[k * 3 + 1]) / 255,
-                    Float(shape.colors[k * 3 + 2]) / 255,
-                    1,
-                ])
+                colors.append(contentsOf: [tint.x, tint.y, tint.z, 1])
             }
         }
 

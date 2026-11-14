@@ -6,8 +6,10 @@ struct HomeView: View {
 
     var body: some View {
         let state = store.state
+        let daypart = Daypart.current(hour: Int(SkyClock.hour()))
         ZStack(alignment: .bottom) {
-            BallSceneView(steps: state.rollingSteps)
+            BallSceneView(steps: state.rollingSteps, shape: state.rollingShape, daypart: daypart, yaw: nil)
+                .id(daypart)
                 .ignoresSafeArea()
 
             VStack {
@@ -56,11 +58,22 @@ struct HomeView: View {
                     .foregroundStyle(Palette.tint)
             }
 
-            Text("\(formatSteps(state.rollingSteps)) 歩")
-                .font(.system(size: 40, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(.easeOut(duration: 0.6), value: state.rollingSteps)
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(formatSteps(state.rollingSteps)) 歩")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.easeOut(duration: 0.6), value: state.rollingSteps)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text("直径")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    Text(formatLength(meters: state.rollingDiameter))
+                        .font(.system(.title3, design: .rounded, weight: .bold))
+                        .monospacedDigit()
+                }
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 ProgressView(value: progress(for: state))
@@ -70,17 +83,30 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button {
-                confirming = true
-            } label: {
-                Text("ゆきだまにする")
-                    .font(.system(.headline, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+            HStack(spacing: 10) {
+                Button {
+                    store.sculptingRolling = true
+                } label: {
+                    Label("整える", systemImage: "scissors")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    confirming = true
+                } label: {
+                    Label("作品に使う", systemImage: "tray.and.arrow.down")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(!state.canComplete)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!state.canComplete)
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
@@ -92,11 +118,11 @@ struct HomeView: View {
                 .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
                 .ignoresSafeArea(edges: .bottom)
         )
-        .confirmationDialog("この大きさでゆきだまにする？", isPresented: $confirming, titleVisibility: .visible) {
-            Button("ゆきだまにする") { store.makePiece() }
+        .confirmationDialog("この雪玉を作品に使う？", isPresented: $confirming, titleVisibility: .visible) {
+            Button("作品に使う") { store.makePiece() }
             Button("もう少し転がす", role: .cancel) {}
         } message: {
-            Text("\(formatSteps(state.rollingSteps))歩ぶんのゆきだまができます。削ったり色を塗ったりして、作品に使えます。")
+            Text("\(formatSteps(state.rollingSteps))歩ぶん・直径\(formatLength(meters: state.rollingDiameter))のゆきだまとして取り出します。取り出すと、もう大きくはなりません。次の雪玉を転がし始めます。")
         }
     }
 
@@ -111,8 +137,8 @@ struct HomeView: View {
         }
         if state.isAtCap {
             let carry = state.reserveSteps > 0 ? "（持ち越し \(formatSteps(state.reserveSteps))歩）" : ""
-            return "最大の大きさに達しました。ゆきだまにすると、次の雪玉へ歩数を持ち越せます。\(carry)"
+            return "最大の大きさに達しました。作品に使うと、次の雪玉へ歩数を持ち越せます。\(carry)"
         }
-        return "大きいほど、作品の主役になります。好きな大きさでゆきだまにしましょう。"
+        return "削って形を整えながら転がせます。大きくなっても、今の形のまま一回り大きくなります。"
     }
 }
