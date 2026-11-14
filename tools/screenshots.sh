@@ -16,14 +16,14 @@ xcrun simctl install "$UDID" "$APP"
 shot() {
   local name="$1"; shift
   xcrun simctl launch "$UDID" "$BUNDLE" "$@" >/dev/null
-  sleep 9
+  sleep 8
   xcrun simctl io "$UDID" screenshot "$OUT/$name.png"
   xcrun simctl terminate "$UDID" "$BUNDLE" || true
 }
 
-shot day-small     -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 20
-shot day-mid       -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 4200
-shot day-huge      -yukikoro-demo -yukikoro-hour 12 -yukikoro-steps 5000000
-shot dusk          -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-steps 90000
-shot night         -yukikoro-demo -yukikoro-hour 22 -yukikoro-steps 12500
-shot onboarding
+# 重さ(kg) 80 = 直径 0.8m、2200 = 直径 2.4m（最初の木の道にほぼ収まる）、1e6 = 次の道
+shot night-2400    -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 2200 -yukikoro-crew 1,6
+shot night-small   -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 160  -yukikoro-crew 0,3
+shot day-2400      -yukikoro-demo -yukikoro-hour 12   -yukikoro-mass 2200 -yukikoro-crew 1,6
+shot dusk-2400     -yukikoro-demo -yukikoro-hour 17.7 -yukikoro-mass 2200 -yukikoro-crew 2,3
+shot night-stage2  -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 800000 -yukikoro-crew 4,2
