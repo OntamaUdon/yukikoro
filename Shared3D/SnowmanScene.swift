@@ -64,7 +64,7 @@ enum SnowmanScene {
         }
     }()
 
-    static func make(species: Species, decorations: [Decoration], background: UIColor? = nil, animated: Bool = true) -> Built {
+    static func make(species: Species, decorations: [Decoration], background: UIColor? = nil, animated: Bool = true, tight: Bool = false) -> Built {
         let scene = SCNScene()
         scene.background.contents = background ?? UIColor.clear
         addLights(to: scene)
@@ -83,11 +83,12 @@ enum SnowmanScene {
 
         let camera = SCNNode()
         camera.camera = SCNCamera()
-        camera.camera?.fieldOfView = 25
+        camera.camera?.fieldOfView = tight ? 22 : 25
         camera.camera?.zNear = 0.1
         camera.camera?.zFar = 100
-        camera.position = SCNVector3(0, 1.55, 5.8)
-        camera.look(at: SCNVector3(0, 0.98, 0))
+        // tight: 図鑑・共有画像・ウィジェット用に、雪だるまを大きく写す
+        camera.position = tight ? SCNVector3(0, 1.45, 5.3) : SCNVector3(0, 1.55, 5.8)
+        camera.look(at: tight ? SCNVector3(0, 1.0, 0) : SCNVector3(0, 0.98, 0))
         scene.rootNode.addChildNode(camera)
         return Built(scene: scene, camera: camera, snowman: snowman)
     }
@@ -107,7 +108,7 @@ enum SnowmanSnapshot {
         if renderer == nil { renderer = SCNRenderer(device: device, options: nil) }
         guard let renderer else { return nil }
 
-        let built = SnowmanScene.make(species: species, decorations: decorations, background: background, animated: false)
+        let built = SnowmanScene.make(species: species, decorations: decorations, background: background, animated: false, tight: true)
         renderer.scene = built.scene
         renderer.pointOfView = built.camera
         let pixel = CGSize(width: size.width * scale, height: size.height * scale)

@@ -17,6 +17,12 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Upload generated Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodeproj
+          path: Yukikoro.xcodeproj
+
       - name: Show toolchain
         run: |
           xcodebuild -version

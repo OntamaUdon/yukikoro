@@ -100,8 +100,8 @@ final class BallScene: NSObject {
         camera.camera?.fieldOfView = 40
         camera.camera?.zNear = 0.1
         camera.camera?.zFar = 200
-        camera.position = SCNVector3(1.1, 2.6, 8.6)
-        camera.look(at: SCNVector3(-0.15, 0.55, 0))
+        camera.position = SCNVector3(0.9, 2.1, 6.6)
+        camera.look(at: SCNVector3(-0.1, 0.45, 0))
         scene.rootNode.addChildNode(camera)
     }
 
@@ -143,7 +143,7 @@ final class BallScene: NSObject {
         let old = steps
         steps = newSteps
         let fraction = Float(BallScale.fraction(newSteps))
-        let radius = 0.36 + 0.9 * fraction
+        let radius = 0.30 + 1.15 * fraction
         if animated {
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 1.4
