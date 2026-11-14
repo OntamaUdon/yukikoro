@@ -29,7 +29,7 @@ enum Shop {
                  kind: .pusher, force: 120, reach: 0.7, basePrice: 60, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0),
         ShopItem(id: "big", name: "でかゆきんこ", detail: "力もちの大きな仲間", symbol: "figure.strengthtraining.traditional",
                  kind: .pusher, force: 900, reach: 0.7, basePrice: 900, baseMaterials: 0, priceGrowth: 1.12, unlockDiameter: 0.3),
-        ShopItem(id: "plank", name: "そりいた", detail: "板で雪玉を押す。大きな雪玉も動かせる", symbol: "rectangle.fill",
+        ShopItem(id: "plank", name: "そりいた", detail: "板で雪玉を押す。大きな雪玉も動かせる", symbol: "hammer.fill",
                  kind: .pusher, force: 12_000, reach: 1.5, basePrice: 4_000, baseMaterials: 5, priceGrowth: 1.12, unlockDiameter: 1.5),
         ShopItem(id: "crawler", name: "でんどうクローラー", detail: "電気で動くクローラーが転がす", symbol: "bolt.fill",
                  kind: .pusher, force: 300_000, reach: 6, basePrice: 25_000, baseMaterials: 40, priceGrowth: 1.12, unlockDiameter: 2.8),

@@ -852,7 +852,7 @@ final class StageCoordinator {
             pool = 0.9
             sparkle = 16
             lamp = 1300
-            ballGlow = color(0.30, 0.32, 0.46)
+            ballGlow = color(0.36, 0.38, 0.54)
             camera.wantsHDR = true
             camera.bloomThreshold = 0.85
             camera.bloomBlurRadius = 14

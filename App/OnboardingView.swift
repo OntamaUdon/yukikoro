@@ -24,6 +24,9 @@ struct OnboardingView: View {
                 .font(Storybook.rounded(16, .medium))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Storybook.ink)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .storyCard(corner: 26)
                 Spacer()
                 VStack(spacing: 10) {
                     Button {
