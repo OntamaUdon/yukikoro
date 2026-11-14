@@ -21,20 +21,6 @@
                ReferencedContainer = "container:Yukikoro.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C9C4A0E8BB6773FFC6A80E51"
-               BuildableName = "YukikoroWidget.appex"
-               BlueprintName = "YukikoroWidget"
-               ReferencedContainer = "container:Yukikoro.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

@@ -16,7 +16,6 @@
 		0F44C1F9ABB58157238B4715 /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
 		11A8A8E6712A62B24DDAD5E6 /* fleece_normal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 1DE713F68BEBFFCB08181384 /* fleece_normal.jpg */; };
 		11FE7F206F8858463DE601F6 /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
-		1D8DB12128D7E915862ABF5F /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
 		1FCE694BBC070E7168C8ED5C /* Backdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67B6286B1C4C22DBA8489F42 /* Backdrop.swift */; };
 		24D24946383A3FC35A59AA81 /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
 		3276972A058244DB4A6056C1 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */; };
@@ -35,8 +34,6 @@
 		63AA47C893E10349F6AD5F7A /* CREDITS.md in Resources */ = {isa = PBXBuildFile; fileRef = EBC284D24D1624E738BF39D7 /* CREDITS.md */; };
 		63D71D1722D3096962B37B10 /* stierberg_sunrise_1k.hdr in Resources */ = {isa = PBXBuildFile; fileRef = 8AAB199FBB82FCD616EA1A7A /* stierberg_sunrise_1k.hdr */; };
 		6B245EAEFAFF6989D906B354 /* SnowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BC4795217944C6860589E8 /* SnowGeometry.swift */; };
-		6C0F347B7F62DE904984855B /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
-		6EBE562F2F5F107B83D709DB /* YukikoroWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0666223FA208B6D618EECE /* YukikoroWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		746813341D511A6C8D37A020 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
 		77BBCD48567ABDA7632C1900 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8552DDD202991821D118BA0 /* Assets.xcassets */; };
 		7BC33E3888F33EF50291D59A /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
@@ -44,18 +41,13 @@
 		802A4988C05DEDC924BE56F5 /* BallScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48167DB6D202F0769CBBE6D /* BallScene.swift */; };
 		85EA3F7C213F6E7075F67ED8 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE55531C82129E47543B21A /* Palette.swift */; };
 		89397FA07FC5A44CB95097F8 /* GameLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA43FE9CB06026A78809604 /* GameLogicTests.swift */; };
-		8C0CEFA84C228B3DBDEB7D62 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
 		8D81966F1809EF3DDF6CBB16 /* bark_normal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 9EAE23014451A75801BC2E21 /* bark_normal.jpg */; };
 		8DEEDB388A9B44C4C1E2054A /* SceneViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D8505F309D0BB7AB326A21B /* SceneViews.swift */; };
-		8E20D626E7A446B8D339680E /* SnowmanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */; };
 		9BCE9BF6A2026C42ED66E388 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
 		9C0C43035B4C3E20B28591C3 /* SnowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BC4795217944C6860589E8 /* SnowGeometry.swift */; };
 		AAFC52A4ED600409DC920512 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F57E5C3DDB83C598ACD0466 /* Storage.swift */; };
 		ACBCD277D8698586A5345D9D /* snow_ao.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A7BB1B856EBAA8C5B32BEC5E /* snow_ao.jpg */; };
-		B45192CF506BC85B64E9374B /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C9975DA4969754B0431DCC /* Format.swift */; };
 		B8E0AC3A4B01A4DEE8598BFD /* Scene3DTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */; };
-		B9886CE8979E209E89265AF3 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
-		BBE2836CD442C85CCCD02ACA /* YukikoroWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */; };
 		C0A1037AB7FC6853872C1F8A /* SnowmanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */; };
 		C44FCC134A11651152E7B838 /* fleece_rough.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DDCB08DDFE575302148F3193 /* fleece_rough.jpg */; };
 		C7D2AA63392C52937BFD222F /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3844FE06C085B960996B479B /* RecordsView.swift */; };
@@ -66,7 +58,6 @@
 		E1F48FED132340F3343D21A2 /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25ACC5C95A691218FF6B89 /* GameStore.swift */; };
 		E590425EDBD2620184C54CDC /* SnowmanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F77657C8C829259935097E /* SnowmanBuilder.swift */; };
 		E8CE7C04553B27B890C3BBAF /* PhotoAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E1213A3C13F06F45E4D919 /* PhotoAssets.swift */; };
-		EDBCDC6949F5AA0CC89B45C7 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13795C81BBE77D0C8188AFE3 /* Models.swift */; };
 		EF51D1B814C081813309C27E /* bark_diffuse.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DFB5EE1C1C0AA9E87EA141E4 /* bark_diffuse.jpg */; };
 		F1446FAAF5CBA9D59457C5BC /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7DE4A9F1AD4C27ACFAE58E /* GameState.swift */; };
 		F30FF04726EDD7C14CE915B7 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
@@ -74,32 +65,7 @@
 		F85DC22D2E8528E29BFC8ED3 /* HealthSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A215F74DF3DBDBA07DFA9C81 /* HealthSteps.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		AE6D63DABBEA484F1EA11BA4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 540E4D0630F0038774CB1A97 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C9C4A0E8BB6773FFC6A80E51;
-			remoteInfo = YukikoroWidget;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		6C9CC2F366E3000D6F8E4FC6 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				6EBE562F2F5F107B83D709DB /* YukikoroWidget.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		08558F75C7F515BEE185620D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C45B5D7F63B8EB05FC3E014 /* snow_rough.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_rough.jpg; sourceTree = "<group>"; };
 		0CB6ED371ED4D088AA90B3CD /* Yukikoro.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Yukikoro.entitlements; sourceTree = "<group>"; };
 		0D8505F309D0BB7AB326A21B /* SceneViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViews.swift; sourceTree = "<group>"; };
@@ -125,7 +91,6 @@
 		562F0B7AD8A58BD76A7598BD /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		67B6286B1C4C22DBA8489F42 /* Backdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backdrop.swift; sourceTree = "<group>"; };
 		6A7E9EA993A8C175C3458235 /* Scene3DTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3DTests.swift; sourceTree = "<group>"; };
-		6C0666223FA208B6D618EECE /* YukikoroWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = YukikoroWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8AAB199FBB82FCD616EA1A7A /* stierberg_sunrise_1k.hdr */ = {isa = PBXFileReference; path = stierberg_sunrise_1k.hdr; sourceTree = "<group>"; };
 		8BE55531C82129E47543B21A /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
 		8CD9D0E80ED1AB634210B6BB /* snow_albedo.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = snow_albedo.jpg; sourceTree = "<group>"; };
@@ -138,7 +103,6 @@
 		AA79AD79011FC1158183B204 /* MotionSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionSteps.swift; sourceTree = "<group>"; };
 		B778BF622A3F01E1F2E7F9A1 /* YukikoroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroApp.swift; sourceTree = "<group>"; };
 		BD601EA900AC0FE9E5BF56E4 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
-		D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YukikoroWidget.swift; sourceTree = "<group>"; };
 		D48167DB6D202F0769CBBE6D /* BallScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallScene.swift; sourceTree = "<group>"; };
 		D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Yukikoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDCB08DDFE575302148F3193 /* fleece_rough.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = fleece_rough.jpg; sourceTree = "<group>"; };
@@ -148,7 +112,6 @@
 		F3F7E9E9AD9C8E0F983CDDE2 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
 		F725390DBA4A50FAA3CA8B43 /* fleece_luma.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = fleece_luma.jpg; sourceTree = "<group>"; };
 		F7BCE2578B7BED06371E974C /* SnowmanFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanFactory.swift; sourceTree = "<group>"; };
-		F8DC882C77D546F00B3CE9E7 /* YukikoroWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YukikoroWidget.entitlements; sourceTree = "<group>"; };
 		FC0754801964DD3221FDF3D8 /* SnowmanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnowmanDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -161,16 +124,6 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		36B46A6C6750D3C94C26D5F9 /* Widget */ = {
-			isa = PBXGroup;
-			children = (
-				08558F75C7F515BEE185620D /* Info.plist */,
-				F8DC882C77D546F00B3CE9E7 /* YukikoroWidget.entitlements */,
-				D005B2B28F2B24279B90C153 /* YukikoroWidget.swift */,
-			);
-			path = Widget;
-			sourceTree = "<group>";
-		};
 		42BB3BEFDFFA358CD2043EBB = {
 			isa = PBXGroup;
 			children = (
@@ -179,7 +132,6 @@
 				AECEFD6DAC5E23A09D95A394 /* Shared */,
 				D8FF9C04F3EF6093351C5DAB /* Shared3D */,
 				D5A5D234D4527DBB2E313E10 /* Tests */,
-				36B46A6C6750D3C94C26D5F9 /* Widget */,
 				88EABF4FCD90DFE1AF7FCF2F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -189,7 +141,6 @@
 			children = (
 				D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */,
 				4874573F65F49A1F9FE85B46 /* YukikoroTests.xctest */,
-				6C0666223FA208B6D618EECE /* YukikoroWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -300,12 +251,10 @@
 			buildPhases = (
 				034BE9A226A4DDBAAA857823 /* Sources */,
 				D2FD85A01248E032312D9AF3 /* Resources */,
-				6C9CC2F366E3000D6F8E4FC6 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				88BB4D6E2548FA63AC60E454 /* PBXTargetDependency */,
 			);
 			name = Yukikoro;
 			packageProductDependencies = (
@@ -313,23 +262,6 @@
 			productName = Yukikoro;
 			productReference = D77BDB0360CD1AA6901A9B63 /* Yukikoro.app */;
 			productType = "com.apple.product-type.application";
-		};
-		C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B7BC66C3011F2E42BF51215C /* Build configuration list for PBXNativeTarget "YukikoroWidget" */;
-			buildPhases = (
-				BA52E8D8FB96BF22FAC5A070 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = YukikoroWidget;
-			packageProductDependencies = (
-			);
-			productName = YukikoroWidget;
-			productReference = 6C0666223FA208B6D618EECE /* YukikoroWidget.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -345,10 +277,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					A5B836A22E58E22A2C5B813E = {
-						DevelopmentTeam = "";
-						ProvisioningStyle = Automatic;
-					};
-					C9C4A0E8BB6773FFC6A80E51 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -369,7 +297,6 @@
 			projectRoot = "";
 			targets = (
 				A5B836A22E58E22A2C5B813E /* Yukikoro */,
-				C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */,
 				9DA991D94C75D831E5773840 /* YukikoroTests */,
 			);
 		};
@@ -456,30 +383,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		BA52E8D8FB96BF22FAC5A070 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B45192CF506BC85B64E9374B /* Format.swift in Sources */,
-				B9886CE8979E209E89265AF3 /* GameState.swift in Sources */,
-				8C0CEFA84C228B3DBDEB7D62 /* HealthSteps.swift in Sources */,
-				EDBCDC6949F5AA0CC89B45C7 /* Models.swift in Sources */,
-				1D8DB12128D7E915862ABF5F /* Palette.swift in Sources */,
-				8E20D626E7A446B8D339680E /* SnowmanFactory.swift in Sources */,
-				6C0F347B7F62DE904984855B /* Storage.swift in Sources */,
-				BBE2836CD442C85CCCD02ACA /* YukikoroWidget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		88BB4D6E2548FA63AC60E454 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C9C4A0E8BB6773FFC6A80E51 /* YukikoroWidget */;
-			targetProxy = AE6D63DABBEA484F1EA11BA4 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		32D52D41C8F4EE7CEB80D25C /* Release */ = {
@@ -496,40 +400,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ontamaudon.yukikoro;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		3801AED471A1DB5B3491D410 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Widget/YukikoroWidget.entitlements;
-				INFOPLIST_FILE = Widget/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ontamaudon.yukikoro.widget;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		9438BE42C8A343325D9D47EF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Widget/YukikoroWidget.entitlements;
-				INFOPLIST_FILE = Widget/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ontamaudon.yukikoro.widget;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -741,15 +611,6 @@
 			buildConfigurations = (
 				DAA3DE325CDB046AFFD936B7 /* Debug */,
 				AE462ECCDB495807A1EB0368 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		B7BC66C3011F2E42BF51215C /* Build configuration list for PBXNativeTarget "YukikoroWidget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				3801AED471A1DB5B3491D410 /* Debug */,
-				9438BE42C8A343325D9D47EF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

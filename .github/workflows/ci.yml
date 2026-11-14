@@ -54,14 +54,16 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | tee test.log | tail -n 80
 
+      # 画面撮影は約8分かかるので、手動で実行したときだけ動かす（Actions → CI → Run workflow）
       - name: Screenshots (simulator)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           APP=$(find build/Build/Products -maxdepth 3 -name Yukikoro.app | head -1)
           echo "App: $APP"
           bash tools/screenshots.sh "$APP" shots
 
       - name: Upload screenshots
-        if: always()
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
