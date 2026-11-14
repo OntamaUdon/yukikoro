@@ -25,6 +25,11 @@ jobs:
           if [ -z "${{ secrets.ASC_KEY_P8 }}" ]; then echo "::error::Secrets に ASC_KEY_P8 が入っていません"; exit 1; fi
           if grep -q "com.example" project.yml; then echo "::error::Bundle ID が仮のままです。tools/set_bundle_id.py で変えてください"; exit 1; fi
 
+      - name: Xcode 26 を使う（App Store Connect は iOS 26 SDK 以降でのビルドが必須）
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcodebuild -version
+
       - name: XcodeGen
         run: |
           brew install xcodegen
