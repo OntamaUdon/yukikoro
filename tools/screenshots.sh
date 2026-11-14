@@ -16,7 +16,7 @@ xcrun simctl install "$UDID" "$APP"
 shot() {
   local name="$1"; shift
   xcrun simctl launch "$UDID" "$BUNDLE" "$@" >/dev/null
-  sleep 7
+  sleep 9
   xcrun simctl io "$UDID" screenshot "$OUT/$name.png"
   xcrun simctl terminate "$UDID" "$BUNDLE" || true
 }
@@ -28,6 +28,9 @@ shot home-xl       -yukikoro-demo -yukikoro-hour 9  -yukikoro-steps 26000
 shot collection    -yukikoro-demo -yukikoro-hour 11 -yukikoro-tab 1
 shot settings      -yukikoro-demo -yukikoro-hour 11 -yukikoro-tab 2
 shot complete      -yukikoro-demo -yukikoro-hour 11 -yukikoro-complete
-shot gallery-0     -yukikoro-gallery 0
-shot gallery-1     -yukikoro-gallery 1
+shot g3d-0         -yukikoro-gallery3d 0
+shot g3d-1         -yukikoro-gallery3d 1
+shot snap-0        -yukikoro-snap 0
+shot ball-day      -yukikoro-ball 4200 -yukikoro-hour 11
+shot ball-night    -yukikoro-ball 12500 -yukikoro-hour 22
 shot onboarding

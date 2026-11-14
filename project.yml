@@ -23,6 +23,7 @@ targets:
     sources:
       - App
       - Shared
+      - Shared3D
     dependencies:
       - target: YukikoroWidget
     info:
@@ -81,6 +82,7 @@ targets:
     sources:
       - Tests
       - Shared
+      - Shared3D
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
