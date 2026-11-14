@@ -13,11 +13,10 @@
 
 | 場所 | 役割 |
 |---|---|
-| `Shared/` | ゲームロジック（歩数の台帳・サイズ段階・種類と飾りの抽選）、保存、HealthKit。アプリ・ウィジェット・テストで共有 |
+| `Shared/` | ゲームロジック（歩数の台帳・サイズ段階・種類と飾りの抽選）、保存、HealthKit。アプリ・テストで共有 |
 | `Shared3D/` | 3D の雪だるま・雪玉（SceneKit、写真素材の PBR 質感）。アプリとテストで共有 |
 | `Resources/Photoreal/` | 実写の素材（CC0: 雪道・雪原の HDRI、雪・樹皮・布のテクスチャ）。出典は `CREDITS.md`。`tools/prepare_assets.py` で加工 |
 | `App/` | 画面（ホーム・ずかん・せってい・最初の説明・完成シート・共有画像） |
-| `Widget/` | ホーム画面ウィジェット（小・中） |
 | `Tests/` | ゲームロジックの単体テスト |
 | `project.yml` | [XcodeGen](https://github.com/yonaskolb/XcodeGen) の設定（`Yukikoro.xcodeproj` はここから生成） |
 | `tools/make_icon.py` | アプリアイコンの生成スクリプト |
@@ -42,14 +41,14 @@ xcodegen generate
 要点だけ書くと、次のとおりです。
 
 1. Apple Developer Program に加入する（年会費が必要）。
-2. **Bundle ID を自分のものに変える**: `python tools/set_bundle_id.py com.yourname.yukikoro --team <TeamID>`（アプリ・ウィジェット・App Group・保存先の設定を一括で書き換えます）。
+2. **Bundle ID を自分のものに変える**: `python tools/set_bundle_id.py com.yourname.yukikoro --team <TeamID>`（アプリ・テスト用の設定を一括で書き換えます）。
 3. App Store Connect でアプリを作る。
 4. Xcode で Archive してアップロードする（Mac なしの場合は、GitHub Actions の手動ワークフロー。未検証）。
 5. TestFlight でテスターを招待して、iPhone にインストールする。
 
 ## 検証（CI）
 
-push のたびに GitHub Actions（macOS）が、アプリとウィジェットのビルドと単体テストを実行します。ローカルに Mac がなくても、コンパイルとロジックの確認ができます。画面の見た目と実機の歩数取得は、実機（TestFlight）でしか確認できません。
+push のたびに GitHub Actions（macOS）が、アプリのビルドと単体テストを実行します。ローカルに Mac がなくても、コンパイルとロジックの確認ができます。画面の見た目と実機の歩数取得は、実機（TestFlight）でしか確認できません。
 
 ## 自前の写真に差し替える
 
@@ -59,6 +58,6 @@ push のたびに GitHub Actions（macOS）が、アプリとウィジェット�
 
 - 背景の空・雪道は 1k の HDR なので、拡大するとぼけて見えます。より精細にするには 2k/4k に差し替えてください。
 
-- ウィジェットは 3D を直接描けないため、アプリが書き出した静止画（雪玉・最新の雪だるま）を表示します。画像はアプリを開いたときと雪だるまを作ったときに更新されます。数字は約15分おきに更新されますが、iOS の判断で間引かれることがあります。ヘルスケアが端末ロック中は読めないため、その間は最後に保存した状態を表示します。
+- ホーム画面ウィジェットは、最初の TestFlight では外しました（実装は Git のタグ `with-widget` に残してあります）。
 - 歩数の追加は、アプリを開いたとき（15秒ごと）に行います。開いていない間に歩いた分は、次に開いたときにまとめて加算されます（直近7日分まで）。
-- 効果音・通知・フレンド機能・課金は v1 には入っていません（理由は DESIGN.md）。
+- 効果音・通知・フレンド機能・課金・ウィジェットは v1 には入っていません（理由は DESIGN.md）。

@@ -7,9 +7,7 @@
 
 Bundle ID は世界で1つだけの名前（逆さにしたドメイン形式）。例: com.taro.yukikoro
  - アプリ本体      : <指定したID>
- - ウィジェット    : <指定したID>.widget
  - テスト          : <指定したID>.tests
- - App Group       : group.<指定したID>
 書き換え後に Xcode で開き直してください（XcodeGen を入れている場合は `xcodegen generate` でもよい）。
 """
 import argparse
@@ -21,9 +19,7 @@ OLD = "com.example.yukikoro"
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 FILES = [
     "project.yml",
-    "Shared/Storage.swift",
     "App/Yukikoro.entitlements",
-    "Widget/YukikoroWidget.entitlements",
     "Yukikoro.xcodeproj/project.pbxproj",
     "tools/screenshots.sh",
 ]
@@ -66,5 +62,3 @@ for rel in FILES:
 print()
 print(f"{changed} ファイルを{'書き換える予定です' if args.dry_run else '書き換えました'}。")
 print(f"  アプリ     : {new}")
-print(f"  ウィジェット: {new}.widget")
-print(f"  App Group  : group.{new}")

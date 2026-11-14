@@ -1,7 +1,7 @@
 import Foundation
 import HealthKit
 
-/// ヘルスケアから日別の歩数を読む（アプリ本体とウィジェットで共有）。
+/// ヘルスケアから日別の歩数を読む。
 enum HealthSteps {
     private static let store = HKHealthStore()
 

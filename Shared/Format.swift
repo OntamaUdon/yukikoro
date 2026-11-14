@@ -26,7 +26,7 @@ enum BallScale {
         return pow(pow(r0, q) + k * s, 1 / q)
     }
 
-    /// 大きさの割合（0〜1 未満）。ウィジェットなどの表示用。
+    /// 大きさの割合（0〜1 未満）。
     static func fraction(_ steps: Int) -> Double {
         1 - exp(-(radius(steps: steps) - r0) / 1.0)
     }

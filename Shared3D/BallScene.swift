@@ -126,31 +126,3 @@ final class BallScene: NSObject {
         }
     }()
 }
-
-/// ウィジェット用の、雪玉1個だけの静止画
-@MainActor
-enum BallSnapshot {
-    static func image(size: CGSize, scale: CGFloat = 2, background: UIColor) -> UIImage? {
-        guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-        let scene = SCNScene()
-        scene.background.contents = background
-        SnowmanScene.applyEnvironment(to: scene, daypart: .day, background: false)
-        SnowmanScene.addSun(to: scene, daypart: .day, castsShadow: false, intensity: 700)
-        let ball = BallScene.makeBallNode()
-        ball.position = SCNVector3(0, 1, 0)
-        ball.eulerAngles.x = 0.6
-        scene.rootNode.addChildNode(ball)
-        scene.rootNode.addChildNode(SnowmanScene.shadowBlob(size: 2.6))
-        let camera = SCNNode()
-        camera.camera = SCNCamera()
-        camera.camera?.fieldOfView = 26
-        SnowmanScene.configure(camera: camera.camera!)
-        camera.position = SCNVector3(0.4, 1.9, 6.4)
-        camera.look(at: SCNVector3(0, 0.9, 0))
-        scene.rootNode.addChildNode(camera)
-        let renderer = SCNRenderer(device: device, options: nil)
-        renderer.scene = scene
-        renderer.pointOfView = camera
-        return renderer.snapshot(atTime: 0, with: CGSize(width: size.width * scale, height: size.height * scale), antialiasingMode: .multisampling4X)
-    }
-}

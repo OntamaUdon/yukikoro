@@ -1,8 +1,7 @@
 import SwiftUI
 import Observation
-import WidgetKit
 
-/// 画面から使うゲームの窓口。歩数の同期・保存・ウィジェット更新をまとめる。
+/// 画面から使うゲームの窓口。歩数の同期・保存をまとめる。
 @MainActor
 @Observable
 final class GameStore {
@@ -16,7 +15,6 @@ final class GameStore {
 
     @ObservationIgnored private var lastSaved: GameState
     @ObservationIgnored private var lastHaptic = Date.distantPast
-    @ObservationIgnored private var lastWidgetReload = Date.distantPast
     /// デバッグ用のデモ表示中は、歩数の取得も保存もしない
     @ObservationIgnored private var isDemo = false
 
@@ -64,7 +62,7 @@ final class GameStore {
     func completeOnboarding() async {
         await HealthSteps.requestAuthorization()
         state.onboarded = true
-        persist(forceWidget: true)
+        persist()
         await refresh()
     }
 
@@ -74,53 +72,28 @@ final class GameStore {
         guard let result = state.complete() else { return }
         pendingResult = result
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        persist(forceWidget: true)
-        exportWidgetImages()
-    }
-
-    // MARK: ウィジェット用の画像
-
-    /// ウィジェットは 3D を描けないので、雪玉と最新の雪だるまを画像にして共有フォルダへ置く。
-    func exportWidgetImages() {
-        guard !isDemo else { return }
-        let rgb = SharedFiles.backgroundRGB
-        let background = UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
-        if let ball = BallSnapshot.image(size: CGSize(width: 160, height: 160), background: background),
-           let data = ball.pngData() {
-            try? data.write(to: SharedFiles.url(SharedFiles.ballImageName), options: .atomic)
-        }
-        if let latest = state.snowmen.last,
-           let image = SnowmanSnapshot.image(for: latest, size: CGSize(width: 200, height: 200), background: background),
-           let data = image.pngData() {
-            try? data.write(to: SharedFiles.url(SharedFiles.snowmanImageName), options: .atomic)
-        }
-        WidgetCenter.shared.reloadAllTimelines()
+        persist()
     }
 
     // MARK: 検証用
 
     func addDebugSteps(_ n: Int) {
         state.addBonus(steps: n)
-        persist(forceWidget: true)
+        persist()
     }
 
     func resetAll() {
         state = GameState()
         pendingResult = nil
-        persist(forceWidget: true)
+        persist()
     }
 
     // MARK: 内部
 
-    private func persist(forceWidget: Bool = false) {
+    private func persist() {
         guard !isDemo, state != lastSaved else { return }
         GameStorage.save(state)
         lastSaved = state
-        let now = Date()
-        if forceWidget || now.timeIntervalSince(lastWidgetReload) > 300 {
-            WidgetCenter.shared.reloadAllTimelines()
-            lastWidgetReload = now
-        }
     }
 
     private func tapHaptic(strong: Bool) {

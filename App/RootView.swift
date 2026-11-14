@@ -35,9 +35,6 @@ struct RootView: View {
         .sheet(item: $store.pendingResult) { result in
             CompletionView(result: result)
         }
-        .task {
-            store.exportWidgetImages()
-        }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {

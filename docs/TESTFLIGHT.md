@@ -45,7 +45,7 @@
 `com.自分の名前やハンドル.yukikoro` のようにします。
 
 - 使えるのは **小文字の英数字、ハイフン、ドット** です。例: `com.taro.yukikoro`
-- いまは仮の `com.example.yukikoro` が入っています。**そのままでは TestFlight に出せません**。
+- **このプロジェクトは `com.ontamaudon.yukikoro` に設定済みです**。そのまま使う場合、この手順2は飛ばして構いません。別の名前にしたいときだけ、次のコマンドで書き換えます。
 
 ### 書き換える（コマンド1つ）
 リポジトリのフォルダで次を実行します。Team ID が分かっていれば一緒に渡します。
@@ -55,11 +55,9 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 ```
 
 - 本当に書き換える前に内容を見たいときは、最後に `--dry-run` を付けます。
-- 次の4つが一度に変わります（手で直す必要はありません）。
+- 次の2つが一度に変わります（手で直す必要はありません）。
   - アプリ本体: `com.taro.yukikoro`
-  - ウィジェット: `com.taro.yukikoro.widget`
   - テスト用: `com.taro.yukikoro.tests`
-  - App Group（アプリとウィジェットでデータを共有する仕組み）: `group.com.taro.yukikoro`
 - 変えたら、変更を git に保存（コミット）して push しておきます。
 
 ---
@@ -83,12 +81,10 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 ### 3-1. バンドル ID が一覧に出ないとき（手でIDを登録する）
 1. https://developer.apple.com/account を開き、「Certificates, Identifiers & Profiles（証明書、ID、プロファイル）」→「Identifiers（ID）」。
 2. 「＋」→「App IDs」→「App」。
-3. 説明に「ゆきころ」、Bundle ID に「Explicit」で `com.taro.yukikoro` を入れます。
-4. 「Capabilities（機能）」の一覧で、**HealthKit** と **App Groups** にチェックを入れて登録します。
-5. 同じ手順でウィジェット用も作ります（`com.taro.yukikoro.widget`、機能は **App Groups** だけでよい。HealthKit も付けておくと安全です）。
-6. 左の「Identifiers」の絞り込みを「App Groups」にして「＋」で `group.com.taro.yukikoro` を登録します。
-7. 作った2つの App ID を開き、「App Groups」の「Edit」で、登録した App Group を選んで保存します。
+3. 説明に「ゆきころ」、Bundle ID に「Explicit」で `com.ontamaudon.yukikoro` を入れます。
+4. 「Capabilities（機能）」の一覧で、**HealthKit** にチェックを入れて登録します。
 
+> App ID は**この1つだけ**です（ウィジェットは最初の TestFlight では外してあるので、ウィジェット用の ID も App Group も要りません）。
 > 方式Aで Xcode の自動署名（Automatically manage signing）を使う場合は、Xcode が上の登録を自動でしてくれることが多いです。うまくいかないときだけ、この手順を手でやります。
 
 ---
@@ -108,14 +104,12 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 2. `Yukikoro.xcodeproj` をダブルクリックして Xcode で開きます。
    - 手順2のコマンドを Mac で実行する場合は、先にそれを済ませてから開きます。
    - `project.yml` を直接変えた場合だけ、`brew install xcodegen` のあと `xcodegen generate` で作り直します。
-3. 左のファイル一覧で一番上の **Yukikoro（青いアイコン）** を選び、**TARGETS** の中の次の**2つ**それぞれで設定します。
-   - **Yukikoro**（アプリ本体）
-   - **YukikoroWidget**（ウィジェット）
+3. 左のファイル一覧で一番上の **Yukikoro（青いアイコン）** を選び、**TARGETS** の **Yukikoro** を選びます。
    - 「Signing & Capabilities」タブを開き、
      - 「Automatically manage signing」に**チェック**
      - 「Team」に自分の Team（Developer Program のもの）を選択
      - 「Bundle Identifier」が手順2で決めた ID になっているか確認
-     - **HealthKit** と **App Groups** が表示され、App Group の中身が `group.com.taro.yukikoro` になっているか確認（赤い警告が出ていれば、クリックして Xcode に直させます）
+     - **HealthKit** が表示されているか確認（赤い警告が出ていれば、クリックして Xcode に直させます）
 4. 実機で動かして確認します（任意ですが、強く推奨）。
    - iPhone を USB でつなぎ、画面上部の実行先で自分の iPhone を選んで「▶」を押します。
    - 初回は iPhone の「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにして再起動します。
@@ -142,7 +136,7 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 4. **.p8 ファイルは秘密鍵です。人に渡したり、チャットに貼ったり、GitHub に置いたりしないでください。**
 
 ### 準備2: 手順3（アプリの作成と、必要なら 3-1 のID登録）を済ませる
-方式Bでは Xcode の代わりに自動署名を API キーで行うので、**ID と App Group を先に登録しておくと失敗しにくい**です（3-1 を実施）。
+方式Bでは Xcode の代わりに自動署名を API キーで行うので、**App ID を先に登録しておくと失敗しにくい**です（3-1 を実施）。
 
 ### 準備3: GitHub に秘密情報を登録する
 リポジトリの「Settings → Secrets and variables → Actions」で、「New repository secret」から次の4つを追加します。
@@ -182,7 +176,7 @@ python tools/set_bundle_id.py com.taro.yukikoro --team ABCDE12345
 2. 外部に配る最初のビルドには、**ベータ版 App 審査（Beta App Review）**が入ります（通常1日以内。内部テストには要りません）。
 3. 次の情報を入力するよう求められます。
    - **テスト内容（What to Test）**: 例は次のとおり。
-     > 歩くと雪玉が大きくなります。歩数が増えるか、雪だるまを作れるか、図鑑・共有・ウィジェットが動くかを試してください。気になったことは TestFlight のフィードバックで送ってください。
+     > 歩くと雪玉が大きくなります。歩数が増えるか、雪だるまを作れるか、図鑑・共有が動くかを試してください。気になったことは TestFlight のフィードバックで送ってください。
    - **ベータ版 App の説明**、**連絡先メール**、**フィードバック用メール**
    - **プライバシーポリシーの URL**（[PRIVACY.md](../PRIVACY.md) の内容を、誰でも開ける Web ページとして公開して、その URL を入れます。GitHub Pages や、ブログ、Notion の公開ページなどで構いません）
 4. 招待された人は、メールのリンクか公開リンクを iPhone で開いて TestFlight アプリから入れます。
@@ -201,7 +195,6 @@ TestFlight で入れたら、次を確認します（企画書 [DESIGN.md](../DE
 - [ ] 設定の「バージョン」を**5回タップ**すると「テスト用」メニューが出て、歩数を足せる（雪だるまの完成や、30,000歩の上限の確認に使えます）
 - [ ] 「雪だるまにする」で完成の演出が出て、ずかんに登録される
 - [ ] 共有ボタンで画像を送れる
-- [ ] ホーム画面にウィジェットを追加できて、雪玉が表示される
 - [ ] 画面が重くない、電池の減りが極端でない
 - [ ] 夜に開くと、夜の背景になる
 
@@ -212,15 +205,13 @@ TestFlight で入れたら、次を確認します（企画書 [DESIGN.md](../DE
 | 症状 | 原因と対処 |
 |---|---|
 | Xcode で「No profiles for 'com.…' were found」 | Team が未選択、または ID が登録されていません。Team を選び、「Automatically manage signing」にチェック。直らなければ手順 3-1 で ID を手で登録します。 |
-| 「App Group … is not available」や App Groups が赤い | App Group を作成できていません。Signing & Capabilities の App Groups の「＋」で `group.…` を追加、または 3-1 の 6〜7 を実施します。 |
 | HealthKit が使えないとエラー | App ID の Capabilities に HealthKit が入っていません（3-1 の 4）。 |
 | 「Bundle ID が一致しない」「アプリが見つからない」 | App Store Connect に作ったアプリの Bundle ID と、プロジェクトの ID が違います。手順2をやり直します。 |
 | アップロードしたのにビルドが出ない | 処理待ちです。最大1時間ほど待ちます。「Apple からのメール」に無効なビルドの理由が届くこともあります。 |
 | 「ビルド番号が既に使われている」 | 同じビルド番号は出せません。番号を増やして再アップロード（方式Bは自動で増えます）。 |
 | TestFlight アプリに出ない | ビルドをテストグループに追加したか、招待メールを承認したか、TestFlight に同じ Apple ID でサインインしているか確認。 |
 | 実機にインストールしたら歩数が 0 のまま | ヘルスケアの許可がオフです。「設定 → プライバシーとセキュリティ → ヘルスケア → ゆきころ」で歩数の読み取りをオンにします。 |
-| ウィジェットの雪玉が表示されない／古い | アプリを一度開くと更新されます。それでも出ない場合、App Group の設定（Bundle ID を変えたのに `group.…` が古いまま）が原因のことが多いです。手順2のスクリプトで直ります。 |
-| 方式B: ワークフローが赤い | 赤いステップのログの最後を読みます。Secrets の入力ミス（.p8 の途中が欠けている）、ID や App Group の未登録、API キーの権限不足が多い原因です。 |
+| 方式B: ワークフローが赤い | 赤いステップのログの最後を読みます。Secrets の入力ミス（.p8 の途中が欠けている）、ID の未登録、API キーの権限不足が多い原因です。 |
 
 ---
 
@@ -238,8 +229,8 @@ TestFlight で入れたら、次を確認します（企画書 [DESIGN.md](../DE
 | 内容 | ファイル |
 |---|---|
 | Bundle ID・Team・バージョン | `project.yml`（元の設定）、`Yukikoro.xcodeproj`（Xcode 用に生成済み） |
-| 権限（HealthKit・App Group） | `App/Yukikoro.entitlements`、`Widget/YukikoroWidget.entitlements` |
+| ウィジェット（外してある） | Git のタグ `with-widget` に実装が残っています（戻すときは企画書の「v1.1」を参照） |
+| 権限（HealthKit） | `App/Yukikoro.entitlements` |
 | ヘルスケア許可の説明文・暗号化の申告 | `App/Info.plist` |
-| App Group 名（アプリ内） | `Shared/Storage.swift` の `SharedConfig.appGroup` |
 | 一括書き換え | `tools/set_bundle_id.py` |
 | 方式B のワークフロー | `.github/workflows/testflight.yml` |

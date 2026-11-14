@@ -130,7 +130,7 @@ enum SnowmanScene {
         camera.camera = SCNCamera()
         camera.camera?.fieldOfView = 25
         configure(camera: camera.camera!)
-        // tight: 図鑑・共有画像・ウィジェット用に、少し近くから大きく写す（腕や耳が切れない範囲で）
+        // tight: 図鑑・共有画像用に、少し近くから大きく写す（腕や耳が切れない範囲で）
         camera.position = tight ? SCNVector3(0, 1.5, 5.4) : SCNVector3(0, 1.55, 5.8)
         camera.look(at: tight ? SCNVector3(0, 1.02, 0) : SCNVector3(0, 0.98, 0))
         scene.rootNode.addChildNode(camera)
@@ -138,7 +138,7 @@ enum SnowmanScene {
     }
 }
 
-/// シーンを画像にする（図鑑のサムネイル・共有画像・ウィジェット用）。メインスレッドで使う。
+/// シーンを画像にする（図鑑のサムネイル・共有画像用）。メインスレッドで使う。
 @MainActor
 enum SnowmanSnapshot {
     private static let device = MTLCreateSystemDefaultDevice()
