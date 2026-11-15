@@ -62,6 +62,9 @@ struct MainView: View {
     @State private var anim = RadiusAnimation.still(radius: SnowPhysics.initialRadius, mass: SnowPhysics.initialMass())
     @State private var appearedAt = Date()
     @State private var topHeight: CGFloat = 170
+    /// 拾った資材（ふえた分を、ちょっとのあいだ見せる）
+    @State private var pickupGain: Int?
+    @State private var pickupToken = 0
     @State private var bottomHeight: CGFloat = 130
 
     private var daypart: Daypart { Daypart.current(hour: Int(SkyClock.hour())) }
@@ -118,6 +121,15 @@ struct MainView: View {
             if DemoMode.sheet == "shop" { showShop = true }
             if DemoMode.sheet == "menu" { showMenu = true }
             #endif
+        }
+        .onChange(of: store.state.materials) { old, new in
+            guard new > old, !store.state.blackHole else { return }
+            pickupToken += 1
+            let token = pickupToken
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { pickupGain = new - old }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                if token == pickupToken { withAnimation(.easeOut(duration: 0.3)) { pickupGain = nil } }
+            }
         }
         .onChange(of: store.state.mass) { _, _ in retarget() }
         .onChange(of: store.state.pack) { _, _ in retarget() }
@@ -433,6 +445,18 @@ struct MainView: View {
                         .foregroundStyle(Storybook.ink)
                 }
                 .frame(width: 62)
+                .overlay(alignment: .top) {
+                    if let gain = pickupGain {
+                        Text("+\(formatSteps(gain))")
+                            .font(Storybook.rounded(17))
+                            .foregroundStyle(Color(red: 0.70, green: 0.48, blue: 0.28))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.white.opacity(0.95)))
+                            .offset(y: -26)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
             }
             laneBar(state: state, diameter: diameter)
         }
