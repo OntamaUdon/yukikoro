@@ -41,6 +41,8 @@ shot early-night     -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 300 -yuki
 shot plank-crew      -yukikoro-demo -yukikoro-hour 12   -yukikoro-mass 2500 -yukikoro-crew 2,3
 shot stage-heli      -yukikoro-demo -yukikoro-hour 22   -yukikoro-mass 5e11 -yukikoro-crew 4,3 -yukikoro-gravity 4
 DELAY=2.5 shot bh-squeeze  -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
-DELAY=4.2 shot bh-ring     -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
+DELAY=3.4 shot bh-flash    -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
+DELAY=4.6 shot bh-shock    -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
+DELAY=5.8 shot bh-ring     -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
 DELAY=9   shot bh-card     -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 0
 shot bh-after      -yukikoro-demo -yukikoro-hour 22 -yukikoro-blackhole 1
