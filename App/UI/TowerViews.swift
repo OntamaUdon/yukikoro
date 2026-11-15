@@ -75,12 +75,12 @@ enum TowerScene {
             UIColor(red: 0.98, green: 0.99, blue: 1.0, alpha: 1).setFill()
             cg.fill(CGRect(x: 0, y: 0, width: size, height: size))
             var generator = SplitMix64(seed: 11)
-            for _ in 0..<420 {
+            for _ in 0..<300 {
                 let x = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
                 let y = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
                 let r = 1.2 + CGFloat(generator.next() % 100) / 100 * 7
-                let alpha = 0.08 + CGFloat(generator.next() % 100) / 100 * 0.18
-                UIColor(red: 0.66, green: 0.78, blue: 0.96, alpha: alpha).setFill()
+                let alpha = 0.04 + CGFloat(generator.next() % 100) / 100 * 0.09
+                UIColor(red: 0.70, green: 0.82, blue: 0.98, alpha: alpha).setFill()
                 for dx in [-CGFloat(size), 0, CGFloat(size)] {
                     for dy in [-CGFloat(size), 0, CGFloat(size)] {
                         cg.fillEllipse(in: CGRect(x: x + dx - r, y: y + dy - r, width: r * 2, height: r * 2))
@@ -224,24 +224,16 @@ enum TowerScene {
         }
         // 玉と玉のつなぎめに、押しかためた雪のふくらみ
         for index in 1..<max(1, placed.count) {
-            let joint = SCNNode(geometry: SCNSphere(radius: placed[index].diameter * 0.40))
+            let joint = SCNNode(geometry: SCNSphere(radius: placed[index].diameter * 0.34))
             joint.geometry?.materials = [snow]
-            joint.scale = SCNVector3(1, 0.32, 1)
+            joint.scale = SCNVector3(1, 0.4, 1)
             joint.position = SCNVector3(0, Float(placed[index].bottom + placed[index].diameter * 0.03), 0)
             scene.rootNode.addChildNode(joint)
         }
         let height = max(0.2, y + (diameters.last ?? 0) * 0.06)
         let baseDiameter = diameters.first ?? 0.3
 
-        // 地面（まわりの面と同じ色）と、足もとのかげ
-        let floorColor = dark ? UIColor(red: 0.11, green: 0.16, blue: 0.27, alpha: 1) : UIColor(red: 0.79, green: 0.87, blue: 0.97, alpha: 1)
-        let floor = SCNFloor()
-        floor.reflectivity = 0
-        let floorMaterial = SCNMaterial()
-        floorMaterial.lightingModel = .constant
-        floorMaterial.diffuse.contents = floorColor
-        floor.materials = [floorMaterial]
-        scene.rootNode.addChildNode(SCNNode(geometry: floor))
+        // 足もとのかげ（地面は描かない。まわりの面と、なじませるため）
         let shadow = SCNPlane(width: baseDiameter * 2.2, height: baseDiameter * 2.2)
         let shadowMaterial = SCNMaterial()
         shadowMaterial.lightingModel = .constant
@@ -258,14 +250,14 @@ enum TowerScene {
         let ambient = SCNNode()
         ambient.light = SCNLight()
         ambient.light?.type = .ambient
-        ambient.light?.color = UIColor(red: 0.74, green: 0.82, blue: 0.97, alpha: 1)
-        ambient.light?.intensity = dark ? 500 : 800
+        ambient.light?.color = UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 1)
+        ambient.light?.intensity = dark ? 800 : 1_150
         scene.rootNode.addChildNode(ambient)
         let sun = SCNNode()
         sun.light = SCNLight()
         sun.light?.type = .directional
         sun.light?.color = UIColor(red: 1.0, green: 0.98, blue: 0.94, alpha: 1)
-        sun.light?.intensity = 1_000
+        sun.light?.intensity = 1_100
         sun.eulerAngles = SCNVector3(-0.7, 0.55, 0)
         scene.rootNode.addChildNode(sun)
 
