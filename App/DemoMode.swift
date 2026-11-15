@@ -49,6 +49,8 @@ enum DemoMode {
             let ids = ["kid", "big", "plank", "crawler", "heavy"]
             s.owned[ids[min(max(crew.tier, 0), ids.count - 1)]] = crew.count
         }
+        if let gravity = value("-yukikoro-gravity").flatMap(Int.init) { s.owned["gravity"] = gravity }
+        if mass != nil { s.debris = Debris.index(diameter: s.diameter) }
         if let materials = materials { s.materials = materials }
         s.markSeen()
         s.credited[DayKey.key(for: Date())] = 5_200
