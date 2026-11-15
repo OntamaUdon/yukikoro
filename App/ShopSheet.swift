@@ -1,37 +1,27 @@
 import SwiftUI
 
-/// おみせ。歩数と、木を倒して手に入れた資材で、雪玉を転がす仲間や機械を買う。
-struct ShopSheet: View {
+/// おみせ（画面の下半分に、いつも出ている）。歩数と、道ばたや倒した物で手に入れた資材で、雪玉を転がす仲間や機械を買う。
+struct ShopPanel: View {
     @Environment(GameStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        let state = store.state
+        VStack(spacing: 8) {
+            walletRow
+                .padding(.horizontal, 12)
             ScrollView {
-                VStack(spacing: 16) {
-                    walletRow
-                    powerCard
-                    ForEach(Shop.items) { item in
+                VStack(spacing: 12) {
+                    if !state.blackHole {
+                        powerCard
+                    }
+                    ForEach(Shop.items.filter { ($0.kind == .hole) == state.blackHole }) { item in
                         itemCard(item)
                     }
                 }
-                .padding(16)
-                .padding(.bottom, 12)
-            }
-            .background(
-                LinearGradient(colors: [Color(red: 0.84, green: 0.92, blue: 1.0), Storybook.paper], startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
-            )
-            .navigationTitle("おみせ")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("閉じる") { dismiss() }
-                        .font(Storybook.rounded(16))
-                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 16)
             }
         }
-        .presentationDetents([.large])
     }
 
     // MARK: 持ち物
@@ -40,7 +30,7 @@ struct ShopSheet: View {
         let state = store.state
         return HStack(spacing: 12) {
             walletPill(symbol: "figure.walk", title: "つかえる歩数", value: "\(formatSteps(state.points))歩", tint: Storybook.accent)
-            walletPill(symbol: "tree.fill", title: "資材", value: formatSteps(state.materials), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
+            walletPill(symbol: "shippingbox.fill", title: "資材", value: formatSteps(state.materials), tint: Color(red: 0.70, green: 0.48, blue: 0.28))
         }
     }
 
@@ -49,7 +39,7 @@ struct ShopSheet: View {
             Image(systemName: symbol)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 40, height: 40)
+                .frame(width: 36, height: 36)
                 .background(Circle().fill(tint.opacity(0.16)))
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
@@ -64,9 +54,9 @@ struct ShopSheet: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(Storybook.ink)
-        .padding(12)
+        .padding(8)
         .frame(maxWidth: .infinity)
-        .storyCard(corner: 22)
+        .storyCard(corner: 20)
     }
 
     // MARK: いまの力
@@ -190,6 +180,8 @@ struct ShopSheet: View {
             case .gravity:
                 chip("重さの +\(Int(Shop.liftPerGravity * 100))% の力")
                 chip("1歩 ×\(String(format: "%.1f", Shop.gravityReachGrowth))")
+            case .hole:
+                chip("育つ速さ +50%")
             }
         }
     }

@@ -57,68 +57,68 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showMenu = false
-    @State private var showShop = false
+    /// ブラックホールになる演出を始めた時刻（6 秒かける）
+    @State private var bhStart: Date?
     @State private var squishTick = 0
     @State private var anim = RadiusAnimation.still(radius: SnowPhysics.initialRadius, mass: SnowPhysics.initialMass())
     @State private var appearedAt = Date()
-    @State private var topHeight: CGFloat = 170
+    @State private var topHeight: CGFloat = 80
     /// 拾った資材（ふえた分を、ちょっとのあいだ見せる）
     @State private var pickupGain: Int?
     @State private var pickupToken = 0
-    @State private var bottomHeight: CGFloat = 130
 
     private var daypart: Daypart { Daypart.current(hour: Int(SkyClock.hour())) }
     private let gold = Color(red: 0.98, green: 0.72, blue: 0.20)
 
     var body: some View {
         GeometryReader { outer in
-            let top = outer.safeAreaInsets.top + topHeight
-            let bottom = bottomHeight + outer.safeAreaInsets.bottom
+            let half = outer.size.height * 0.5
+            let safeTop = outer.safeAreaInsets.top
+            let safeBottom = outer.safeAreaInsets.bottom
+            let hudTop = safeTop + topHeight
             ZStack {
-                // 動く絵だけを、毎フレーム描き直す（メニューなどの部品は描き直さない）
-                TimelineView(.animation) { timeline in
-                    scene(now: timeline.date, top: top, bottom: bottom)
-                }
-                .ignoresSafeArea()
-
                 VStack(spacing: 0) {
-                    VStack(spacing: 10) {
-                        topBar
-                        hero
+                    // 上半分: 3D の舞台と、今日の歩数
+                    ZStack(alignment: .top) {
+                        // 動く絵だけを、毎フレーム描き直す（メニューなどの部品は描き直さない）
+                        TimelineView(.animation) { timeline in
+                            scene(now: timeline.date, top: hudTop, height: half)
+                        }
+                        VStack(spacing: 0) {
+                            topHud
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.clear.preference(key: TopBlockHeightKey.self, value: geo.size.height)
+                                    }
+                                )
+                                .padding(.top, safeTop)
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    store.packSnow()
+                                    squishTick += 1
+                                }
+                        }
                     }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(key: TopBlockHeightKey.self, value: geo.size.height)
-                        }
-                    )
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            store.packSnow()
-                            squishTick += 1
-                        }
-                    bottomPanel
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(key: BottomPanelHeightKey.self, value: geo.size.height)
-                            }
-                        )
+                    .frame(height: half)
+                    .clipped()
+
+                    // 下半分: 雪玉の大きさ・重さ・資材と、おみせ
+                    bottomHalf(safeBottom: safeBottom)
+                        .frame(maxHeight: .infinity)
                 }
 
-                // ブラックホールになったあと（変化の動きが終わってから）、いちばん手前に出す
-                TimelineView(.periodic(from: .now, by: 0.5)) { timeline in
-                    if store.state.blackHole && timeline.date >= anim.start.addingTimeInterval(anim.duration) {
-                        endingView
-                    }
+                // ブラックホールになる演出（まぶしい光）と、そのあとの案内
+                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: bhStart == nil && !store.state.blackHole)) { timeline in
+                    blackHoleLayer(now: timeline.date)
                 }
             }
             .onPreferenceChange(TopBlockHeightKey.self) { topHeight = $0 }
-            .onPreferenceChange(BottomPanelHeightKey.self) { bottomHeight = $0 }
         }
+        .ignoresSafeArea()
         .onAppear {
             prepare()
             #if DEBUG
-            if DemoMode.sheet == "shop" { showShop = true }
             if DemoMode.sheet == "menu" { showMenu = true }
             #endif
         }
@@ -133,11 +133,28 @@ struct MainView: View {
         }
         .onChange(of: store.state.mass) { _, _ in retarget() }
         .onChange(of: store.state.pack) { _, _ in retarget() }
+        .onChange(of: store.state.blackHole) { _, isHole in
+            if isHole { startCollapseIfNeeded() } else { bhStart = nil }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { prepare() }
         }
         .sheet(isPresented: $showMenu) { MenuSheet() }
-        .sheet(isPresented: $showShop) { ShopSheet() }
+    }
+
+    /// ブラックホールになる演出を、まだ見ていなければ、いまの変化のあとで始める
+    private func startCollapseIfNeeded() {
+        let state = store.state
+        guard state.blackHole, !state.seenBlackHole, bhStart == nil else { return }
+        bhStart = max(Date().addingTimeInterval(0.6), anim.start.addingTimeInterval(anim.duration))
+    }
+
+    /// ブラックホールになる動きの進み（0〜1）。演出がないときは、ブラックホールなら 1。
+    private func collapseProgress(now: Date) -> Double {
+        let state = store.state
+        guard state.blackHole else { return 0 }
+        guard let start = bhStart else { return state.seenBlackHole ? 1 : 0 }
+        return min(1, max(0, now.timeIntervalSince(start) / 6))
     }
 
     // MARK: 変化の見せ方
@@ -149,6 +166,7 @@ struct MainView: View {
         let seenMass = state.seenMass ?? state.mass
         anim = .still(radius: state.seenRadius, mass: seenMass)
         retarget()
+        startCollapseIfNeeded()
     }
 
     private func retarget() {
@@ -190,7 +208,7 @@ struct MainView: View {
         return CrewLook(tier: tier, count: min(count, 8), gravity: state.ownedCount("gravity"))
     }
 
-    private func scene(now: Date, top: CGFloat, bottom: CGFloat) -> some View {
+    private func scene(now: Date, top: CGFloat, height: CGFloat) -> some View {
         let state = store.state
         let p = anim.progress(at: now)
         let radius = anim.radius(progress: p)
@@ -201,113 +219,102 @@ struct MainView: View {
             daypart: daypart,
             crew: crewLook(state),
             blackHole: state.blackHole,
+            collapse: collapseProgress(now: now),
             squishTick: squishTick
         )
         return ZStack {
-            StoryPanorama(daypart: daypart, topInset: top, bottomInset: bottom)
+            StoryPanorama(daypart: daypart, topInset: top, bottomInset: 0)
             GeometryReader { full in
                 SnowStage(input: input)
-                    .frame(width: full.size.width, height: max(1, full.size.height - top - bottom))
-                    .mask(
-                        LinearGradient(stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .black, location: 0.86),
-                            .init(color: .clear, location: 1),
-                        ], startPoint: .top, endPoint: .bottom)
-                    )
+                    .frame(width: full.size.width, height: max(1, full.size.height - top))
                     .padding(.top, top)
             }
             SnowFall(isDark: daypart.isDark)
         }
+        .frame(height: height)
     }
 
     // MARK: 上: 今日の歩数
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
-            // 一時的なテスト用（歩数を増やす）
-            Menu {
-                Button("+100歩") { store.addDebugSteps(100) }
-                Button("+1,000歩") { store.addDebugSteps(1_000) }
-                Button("+10,000歩") { store.addDebugSteps(10_000) }
-                Button("+100,000歩") { store.addDebugSteps(100_000) }
-                Button("+1,000,000歩") { store.addDebugSteps(1_000_000) }
-            } label: {
-                Text("テスト＋")
-                    .font(Storybook.rounded(13))
-                    .foregroundStyle(Storybook.ink)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Storybook.warm.opacity(0.9)))
-            }
-
-            Spacer()
-
-            Button {
-                showMenu = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-            }
-            .buttonStyle(StoryRoundButtonStyle(size: 40))
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-    }
-
-    private var hero: some View {
+    private var topHud: some View {
         let state = store.state
         let steps = store.todaySteps
         let fraction = DailyGoal.fraction(steps: steps)
         let reached = fraction >= 1
         let tint = reached ? gold : Storybook.accent
-        return HStack(spacing: 14) {
+        return HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .stroke(tint.opacity(0.18), lineWidth: 10)
+                    .stroke(tint.opacity(0.18), lineWidth: 7)
                 Circle()
                     .trim(from: 0, to: min(1, fraction))
-                    .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .stroke(tint, style: StrokeStyle(lineWidth: 7, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.easeOut(duration: 0.8), value: fraction)
                 Image(systemName: reached ? "star.fill" : "figure.walk")
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(tint)
             }
-            .frame(width: 76, height: 76)
+            .frame(width: 50, height: 50)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(formatSteps(steps))
-                        .font(Storybook.rounded(54))
+                        .font(Storybook.rounded(40))
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .contentTransition(.numericText())
                         .animation(.easeOut(duration: 0.6), value: steps)
                     Text("歩")
-                        .font(Storybook.rounded(20))
+                        .font(Storybook.rounded(16))
                 }
                 .foregroundStyle(Storybook.ink)
-
-                HStack(spacing: 10) {
-                    growthChip(state)
-                    Spacer(minLength: 0)
-                    weekBars(state)
-                }
-
                 HStack(spacing: 4) {
                     Image(systemName: "shoeprints.fill")
                     Text("はじめてから \(formatSteps(state.totalSteps))歩")
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
-                .font(Storybook.rounded(12))
+                .font(Storybook.rounded(11))
                 .foregroundStyle(Storybook.ink.opacity(0.55))
             }
+
+            Spacer(minLength: 4)
+
+            VStack(alignment: .trailing, spacing: 6) {
+                HStack(spacing: 8) {
+                    // 一時的なテスト用（歩数を増やす）
+                    Menu {
+                        Button("+100歩") { store.addDebugSteps(100) }
+                        Button("+1,000歩") { store.addDebugSteps(1_000) }
+                        Button("+10,000歩") { store.addDebugSteps(10_000) }
+                        Button("+100,000歩") { store.addDebugSteps(100_000) }
+                        Button("+1,000,000歩") { store.addDebugSteps(1_000_000) }
+                    } label: {
+                        Text("テスト＋")
+                            .font(Storybook.rounded(11))
+                            .foregroundStyle(Storybook.ink)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Storybook.warm.opacity(0.9)))
+                    }
+                    Button {
+                        showMenu = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
+                    .buttonStyle(StoryRoundButtonStyle(size: 32))
+                }
+                growthChip(state)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .storyCard(corner: 30)
         .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .storyCard(corner: 26)
+        .padding(.horizontal, 10)
+        .padding(.top, 4)
     }
 
     /// 今日ふえた分
@@ -350,71 +357,21 @@ struct MainView: View {
 
     // MARK: 下: 雪玉の大きさと、おみせ
 
-    private var bottomPanel: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TimelineView(.animation) { timeline in
+    private func bottomHalf(safeBottom: CGFloat) -> some View {
+        VStack(spacing: 8) {
+            TimelineView(.animation(minimumInterval: 1.0 / 20)) { timeline in
                 statsCard(now: timeline.date)
             }
-            shopButton
+            .padding(.horizontal, 12)
+            ShopPanel()
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 6)
-    }
-
-    /// 次に買えそうなものまでの進み具合（0〜1）。買えるものがあれば 1。
-    private func shopProgress(_ state: GameState) -> (fraction: Double, ready: Bool) {
-        if Shop.items.contains(where: { state.canBuy($0) }) { return (1, true) }
-        let goals = Shop.items.filter { state.isUnlocked($0) }.map { state.price($0) }
-        guard let cheapest = goals.min(), cheapest > 0 else { return (0, false) }
-        return (min(1, Double(state.points) / Double(cheapest)), false)
-    }
-
-    private var shopButton: some View {
-        let state = store.state
-        let goal = shopProgress(state)
-        return VStack(spacing: 4) {
-            Button {
-                showShop = true
-            } label: {
-                ZStack {
-                    Circle().fill(Storybook.accent)
-                    Circle()
-                        .stroke(Color.white.opacity(0.35), lineWidth: 5)
-                        .padding(3)
-                    Circle()
-                        .trim(from: 0, to: goal.fraction)
-                        .stroke(goal.ready ? gold : Color.white, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .padding(3)
-                        .animation(.easeOut(duration: 0.6), value: goal.fraction)
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 70, height: 70)
-                .overlay(alignment: .topTrailing) {
-                    if goal.ready {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 18, height: 18)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                    }
-                }
-                .shadow(color: goal.ready ? gold.opacity(0.8) : Storybook.shadow, radius: goal.ready ? 10 : 6, y: 3)
-            }
-            .buttonStyle(.plain)
-            HStack(spacing: 3) {
-                Image(systemName: "bolt.circle.fill")
-                    .foregroundStyle(gold)
-                Text(formatSteps(state.points))
-                    .monospacedDigit()
-            }
-            .font(Storybook.rounded(15))
-            .foregroundStyle(Storybook.ink)
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-            .frame(width: 82)
-        }
+        .padding(.top, 12)
+        .padding(.bottom, safeBottom)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [Color(red: 0.86, green: 0.93, blue: 1.0), Storybook.paper], startPoint: .top, endPoint: .bottom))
+                .shadow(color: Storybook.shadow, radius: 8, y: -2)
+        )
     }
 
     private func statsCard(now: Date) -> some View {
@@ -555,27 +512,51 @@ struct MainView: View {
 
     // MARK: ブラックホール
 
-    private var endingView: some View {
+    /// なる瞬間のまぶしい光と、なったあとの案内（つづける）、宇宙をのみこんだ最後の画面
+    @ViewBuilder
+    private func blackHoleLayer(now: Date) -> some View {
+        let state = store.state
+        let k = collapseProgress(now: now)
+        if state.blackHole {
+            let flash = max(0, 1 - abs(k - 0.38) / 0.1)
+            ZStack {
+                Color.white.opacity(flash * 0.95).ignoresSafeArea().allowsHitTesting(false)
+                if state.finished {
+                    endingCard(
+                        title: "宇宙をのみこんだ",
+                        message: "雪玉だったブラックホールは、\nとうとう、宇宙ぜんぶをのみこみました。\nここまで育てて、ありがとう。",
+                        button: "新しい雪玉ではじめる"
+                    ) { store.startOver(); bhStart = nil }
+                } else if !state.seenBlackHole && k >= 1 {
+                    endingCard(
+                        title: "ブラックホールになった",
+                        message: "雪玉は自分の重さでぎゅっとつぶれました。\nここからは、歩くたびに、まわりの星を\nすいこんで育ちます。",
+                        button: "つづける"
+                    ) { store.acknowledgeBlackHole() }
+                }
+            }
+        }
+    }
+
+    private func endingCard(title: String, message: String, button: String, action: @escaping () -> Void) -> some View {
         ZStack {
-            Color.black.opacity(0.78).ignoresSafeArea()
-            VStack(spacing: 18) {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: 16) {
                 Image(systemName: "circle.circle.fill")
-                    .font(.system(size: 64))
+                    .font(.system(size: 56))
                     .foregroundStyle(Color(red: 1.0, green: 0.62, blue: 0.2))
-                Text("ブラックホールになった")
+                Text(title)
                     .font(Storybook.rounded(26))
                     .foregroundStyle(.white)
-                Text("雪玉は、自分の重さでぎゅっとつぶれて、\nシュワルツシルト半径より小さくなりました。\nここまで育てて、ありがとう。")
+                Text(message)
                     .font(Storybook.rounded(15, .medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.9))
                 Text("歩いた歩数 \(formatSteps(store.state.totalSteps))歩")
                     .font(Storybook.rounded(14, .semibold))
                     .foregroundStyle(.white.opacity(0.75))
-                Button("新しい雪玉ではじめる") {
-                    store.startOver()
-                }
-                .buttonStyle(StoryButtonStyle(kind: .primary))
+                Button(button, action: action)
+                    .buttonStyle(StoryButtonStyle(kind: .primary))
             }
             .padding(24)
         }

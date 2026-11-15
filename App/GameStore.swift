@@ -89,6 +89,11 @@ final class GameStore {
     }
 
     /// ブラックホールになったあと、新しい雪玉ではじめる
+    func acknowledgeBlackHole() {
+        state.acknowledgeBlackHole()
+        persist()
+    }
+
     func startOver() {
         state = state.restarted()
         resetCount += 1

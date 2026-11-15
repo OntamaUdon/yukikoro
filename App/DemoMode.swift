@@ -51,6 +51,14 @@ enum DemoMode {
         }
         if let gravity = value("-yukikoro-gravity").flatMap(Int.init) { s.owned["gravity"] = gravity }
         if mass != nil { s.debris = Debris.index(diameter: s.diameter) }
+        // ブラックホール: "-yukikoro-blackhole 0"（なる演出を見る） / "-yukikoro-blackhole 1"（なったあと）
+        if let hole = value("-yukikoro-blackhole").flatMap(Int.init) {
+            s.mass = 1.2e33
+            s.stage = 20
+            s.blackHole = true
+            s.seenBlackHole = hole == 1
+            s.peakDiameter = max(s.peakDiameter, s.diameter)
+        }
         if let materials = materials { s.materials = materials }
         s.markSeen()
         s.credited[DayKey.key(for: Date())] = 5_200

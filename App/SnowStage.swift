@@ -21,6 +21,8 @@ struct StageInput: Equatable {
     var daypart: Daypart
     var crew: CrewLook
     var blackHole: Bool
+    /// ブラックホールになる動きの進み（0 = まだ、1 = なり終わった）。ブラックホールでないときは 0。
+    var collapse: Double = 0
     /// タップのたびに増える（ぎゅっとする動きの合図）
     var squishTick: Int
 }
@@ -117,6 +119,9 @@ final class StageCoordinator {
     private let ballMaterial = SCNMaterial()
     private let groundMaterial = SCNMaterial()
     private let ring = SCNNode()
+    private let cameraNode = SCNNode()
+    private var cameraBase = SIMD3<Float>(0, 0, 0)
+    private var wasCollapsing = false
     private let shadow = SCNNode()
     private let world = SCNNode()
     private let ground = SCNNode()
@@ -157,6 +162,9 @@ final class StageCoordinator {
         let arches: [SCNNode]
         let pool: SCNNode
         var archStage: Int?
+        /// 倒れる道の木が、画面のうしろへ出ていったか（もう戻らない）
+        var spent: [Bool]
+        var lastZ: [Double?]
     }
     private var layers: [LaneLayer] = []
 
@@ -188,10 +196,10 @@ final class StageCoordinator {
         camera.bloomThreshold = 0.8
         camera.bloomBlurRadius = 12
         camera.bloomIntensity = 0
-        let cameraNode = SCNNode()
         cameraNode.camera = camera
         let elevation = StageGeometry.elevation * .pi / 180
-        cameraNode.position = SCNVector3(0, Float(StageGeometry.distance * sin(elevation)), Float(StageGeometry.distance * cos(elevation)))
+        cameraBase = SIMD3(0, Float(StageGeometry.distance * sin(elevation)), Float(StageGeometry.distance * cos(elevation)))
+        cameraNode.position = SCNVector3(cameraBase.x, cameraBase.y, cameraBase.z)
         cameraNode.eulerAngles = SCNVector3(Float(-StageGeometry.pitch * .pi / 180), 0, 0)
         scene.rootNode.addChildNode(cameraNode)
 
@@ -303,8 +311,13 @@ final class StageCoordinator {
         }
         lastAngle = input.angle
 
+        let k = input.blackHole ? min(1, max(0, input.collapse)) : 0
+        let swapped = input.blackHole && k >= 0.4
+
         ball.eulerAngles = SCNVector3(Float(-input.angle.truncatingRemainder(dividingBy: 2 * .pi)), 0, 0)
-        world.scale = SCNVector3(s, s, s)
+        // なり始めは、まわりの世界が雪玉のほうへ ぎゅっと吸いこまれる
+        let squeeze = Float(k > 0 && !swapped ? 0.92 * pow(k / 0.4, 2) : 0)
+        world.scale = SCNVector3(s * (1 - squeeze), s, s * (1 - squeeze))
 
         // 地面が大きくなりすぎた雪玉のまわりでも途切れないように広げる
         let groundScale = Float(max(1.0, r / 4))
@@ -320,13 +333,14 @@ final class StageCoordinator {
             lastDaypart = input.daypart
             applyDaypart(input.daypart)
         }
-        if lastBlackHole != input.blackHole {
-            lastBlackHole = input.blackHole
-            applyBlackHole(input.blackHole)
+        if lastBlackHole != swapped {
+            lastBlackHole = swapped
+            applyBlackHole(swapped)
         }
+        applyCollapse(k: k, swapped: swapped, angle: input.angle)
         if input.squishTick != lastSquish {
             lastSquish = input.squishTick
-            squish()
+            if k == 0 { squish() }
         }
         orbit.eulerAngles = SCNVector3(0.5, Float(input.angle * 0.35), 0)
     }
@@ -557,34 +571,35 @@ final class StageCoordinator {
         pool.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
         root.addChildNode(pool)
         root.isHidden = true
-        return LaneLayer(root: root, holders: holders, arches: arches, pool: pool, archStage: nil)
+        return LaneLayer(root: root, holders: holders, arches: arches, pool: pool, archStage: nil,
+                         spent: Array(repeating: false, count: holders.count), lastZ: Array(repeating: nil, count: holders.count))
     }
 
+    private enum LaneRole { case falling, standing, distant }
+
     /// 雪玉の大きさに合わせて、見せる道を決める。
-    /// - 雪玉が幅いっぱいになるまで: その道の木が立っている
-    /// - 幅を超えたところ: その道の木が倒れていく
+    /// - いまの道: 雪玉が幅いっぱいになるまで、木が立っている
+    /// - 幅をこえたら: 前の道の木は、雪玉が当たったものから順に倒れる（まだ当たっていない前の木は立ったまま）
+    /// - 次の道の物（電柱・ビル・ヘリ・山）は、遠くに見えている。近づくにつれて、前の道の木が倒れたあとへ、せり上がる。
     private func updateLanes(radius r: Double) {
         var upright = 0
         while upright < 40 && r > Lane.width(stage: upright) / 2 * 1.0001 { upright += 1 }
 
         var fallingStage: Int?
-        var fall = 0.0
+        var grow = 1.0
         if upright >= 1 {
-            let previous = upright - 1
-            let half = Lane.width(stage: previous) / 2
-            let p = (r - half) / (0.15 * half)
-            if p < 1 {
-                fallingStage = previous
-                fall = max(0, p)
+            let half = Lane.width(stage: upright - 1) / 2
+            if r < 1.8 * half {
+                fallingStage = upright - 1
+                grow = min(1, max(0, (r / half - 1) / 0.8))
             }
         }
-        configure(0, stage: fallingStage, fall: fall)
-        configure(1, stage: upright, fall: 0)
-        // 次の道は、まだ見せない（外側に大きな物が見えてしまうので）
-        configure(2, stage: nil, fall: 0)
+        configure(0, stage: fallingStage, role: .falling, grow: 1, r: r)
+        configure(1, stage: upright, role: .standing, grow: grow, r: r)
+        configure(2, stage: upright + 1, role: .distant, grow: 0, r: r)
     }
 
-    private func configure(_ slot: Int, stage: Int?, fall: Double) {
+    private func configure(_ slot: Int, stage: Int?, role: LaneRole, grow: Double, r: Double) {
         guard let stage else {
             layers[slot].root.isHidden = true
             return
@@ -599,6 +614,8 @@ final class StageCoordinator {
         // 立っている物と光のアーチは、道が変わったときだけ作り直す
         if layers[slot].archStage != stage {
             layers[slot].archStage = stage
+            layers[slot].spent = Array(repeating: false, count: layer.holders.count)
+            layers[slot].lastZ = Array(repeating: nil, count: layer.holders.count)
             let variants = kind == .tree ? treeVariants : geometries(for: kind)
             for (index, holder) in layer.holders.enumerated() {
                 holder.childNodes.first?.geometry = variants[index % variants.count]
@@ -610,8 +627,8 @@ final class StageCoordinator {
 
         let spacing = 7 * f
         let period = spacing * Double(Self.pairsPerLane)
-        let near = 0.5 * spacing
-        let fallAngle = Float(fall * .pi / 2)
+        // 画面のうしろ（カメラより手前）まで残す。そこまで行けば、もう見えない。
+        let near = min(9 * r, 0.45 * period)
         let fs = Float(f)
         for index in 0..<(Self.pairsPerLane * 2) {
             let side: Double = index % 2 == 0 ? 1 : -1
@@ -620,16 +637,39 @@ final class StageCoordinator {
             if z < 0 { z += period }
             z = z - period + near
 
+            // 倒れる道の木は、うしろへ出ていったら戻ってこない
+            if role == .falling {
+                if let last = layers[slot].lastZ[index], z < last - period / 2 { layers[slot].spent[index] = true }
+                layers[slot].lastZ[index] = z
+            }
+
+            let ahead = -z / r
+            var shown = 1.0
+            var fall = 0.0
+            switch role {
+            case .falling:
+                // 雪玉が当たる（雪玉の前はしから中ほど）にしたがって、倒れる
+                fall = min(1, max(0, (z / r + 1.5) / 1.0))
+            case .standing:
+                let t = min(1, max(0, (ahead - 25) / 25))
+                shown = grow + (1 - grow) * t
+            case .distant:
+                shown = min(1, max(0, (ahead - 25) / 25))
+            }
+            let gone = role == .falling && layers[slot].spent[index]
+
             let holder = layer.holders[index]
             holder.position = SCNVector3(Float(side * (half + objectOffset * f)), 0, Float(z))
-            holder.scale = SCNVector3(fs, fs, fs)
-            holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
-            holder.isHidden = fall >= 1
+            let sc = fs * Float(shown)
+            holder.scale = SCNVector3(sc, sc, sc)
+            holder.eulerAngles = SCNVector3(0, 0, Float(-side * fall * .pi / 2))
+            holder.isHidden = gone || shown < 0.02
 
             if index % 2 == 0 {
                 let arch = layer.arches[index / 2]
                 arch.position = SCNVector3(0, 0, Float(z))
-                arch.isHidden = fall > 0 || !hasArch
+                arch.scale = SCNVector3(Float(shown), Float(shown), Float(shown))
+                arch.isHidden = !hasArch || shown < 0.05 || gone || (role == .falling && fall > 0)
             }
         }
 
@@ -637,7 +677,7 @@ final class StageCoordinator {
         let offset = scroll.truncatingRemainder(dividingBy: spacing)
         layer.pool.position = SCNVector3(0, 0.02 * fs, Float(near - period / 2 + (offset < 0 ? offset + spacing : offset)))
         layer.pool.scale = SCNVector3(fs, fs, fs)
-        layer.pool.isHidden = fall > 0 || kind == .mountain || kind == .range
+        layer.pool.isHidden = role != .standing || grow < 0.99 || kind == .mountain || kind == .range
     }
 
     // MARK: 道ばたの物（雪玉が拾って、資材になる）
@@ -903,9 +943,7 @@ final class StageCoordinator {
             return node
         }
 
-        let root = SCNNode()
-        switch tier {
-        case 0, 1:
+        func snowkid(into root: SCNNode, tier: Int) {
             let white = UIColor(white: 0.98, alpha: 1)
             let dark = UIColor(white: 0.12, alpha: 1)
             let main = tier == 0 ? UIColor(red: 0.95, green: 0.36, blue: 0.38, alpha: 1) : UIColor(red: 0.25, green: 0.50, blue: 0.95, alpha: 1)
@@ -974,6 +1012,12 @@ final class StageCoordinator {
                 band.position = SCNVector3(0, 0.98, 0)
                 root.addChildNode(band)
             }
+        }
+
+        let root = SCNNode()
+        switch tier {
+        case 0, 1:
+            snowkid(into: root, tier: tier)
         case 2:
             // そりいた: 板を 2 枚と、押すための持ち手
             let wood = UIColor(red: 0.72, green: 0.52, blue: 0.34, alpha: 1)
@@ -983,6 +1027,11 @@ final class StageCoordinator {
             root.addChildNode(box(0.06, 0.55, 0.06, darkWood, SCNVector3(-0.4, 0.45, 0.12)))
             root.addChildNode(box(0.06, 0.55, 0.06, darkWood, SCNVector3(0.4, 0.45, 0.12)))
             root.addChildNode(box(0.9, 0.05, 0.05, darkWood, SCNVector3(0, 0.75, 0.12)))
+            // 板のうしろで、ゆきんこが押す
+            let pusher = SCNNode()
+            snowkid(into: pusher, tier: 0)
+            pusher.position = SCNVector3(0, 0, 0.62)
+            root.addChildNode(pusher)
         case 3, 4:
             // クローラー（3 = でんどう、4 = おおがた）
             let big = tier == 4
@@ -991,8 +1040,13 @@ final class StageCoordinator {
             let metal = UIColor(white: 0.78, alpha: 1)
             // 車体と運転席
             root.addChildNode(box(0.86, 0.34, 1.2, body, SCNVector3(0, 0.50, 0.1)))
-            root.addChildNode(box(0.62, 0.34, 0.52, UIColor(white: 0.96, alpha: 1), SCNVector3(0, 0.84, 0.28)))
-            root.addChildNode(box(0.56, 0.16, 0.04, UIColor(red: 0.35, green: 0.60, blue: 0.90, alpha: 1), SCNVector3(0, 0.88, 0.0)))
+            root.addChildNode(box(0.62, 0.20, 0.52, UIColor(white: 0.96, alpha: 1), SCNVector3(0, 0.74, 0.30)))
+            // 運転席のゆきんこ（ハンドルをにぎる）
+            let driver = SCNNode()
+            snowkid(into: driver, tier: big ? 1 : 0)
+            driver.scale = SCNVector3(0.60, 0.60, 0.60)
+            driver.position = SCNVector3(0, 0.70, 0.34)
+            root.addChildNode(driver)
             // キャタピラ（左右）と車輪
             for side: Float in [-1, 1] {
                 root.addChildNode(box(0.24, 0.36, 1.55, dark, SCNVector3(side * 0.52, 0.18, 0.1)))
@@ -1010,7 +1064,7 @@ final class StageCoordinator {
             // ライト
             root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(-0.3, 0.62, -0.52)))
             root.addChildNode(glowing(0.07, UIColor(red: 1.0, green: 0.95, blue: 0.7, alpha: 1), SCNVector3(0.3, 0.62, -0.52)))
-            root.addChildNode(glowing(0.05, UIColor(red: 1.0, green: 0.45, blue: 0.30, alpha: 1), SCNVector3(0, 1.08, 0.3)))
+            root.addChildNode(glowing(0.05, UIColor(red: 1.0, green: 0.45, blue: 0.30, alpha: 1), SCNVector3(0.30, 0.90, 0.62)))
         default:
             break
         }
@@ -1075,6 +1129,51 @@ final class StageCoordinator {
         if !lastBlackHole { ballMaterial.emission.contents = ballGlow }
         sparkleSystem.birthRate = sparkle
         scene.fogColor = UIColor(StoryPalette.of(daypart).hillNear)
+    }
+
+    /// ブラックホールになる動き（約 6 秒）:
+    /// 0〜0.4 世界が吸いこまれて、雪玉がふるえて白くまぶしく光る → 0.4 でまっ黒に切りかわる → 輪がひろがり、雪玉はぎゅっと小さくなる
+    private func applyCollapse(k: Double, swapped: Bool, angle: Double) {
+        if swapped {
+            layers.forEach { $0.root.isHidden = true }
+            debrisRoot.isHidden = true
+            crew.isHidden = true
+            orbit.isHidden = true
+        } else {
+            crew.isHidden = false
+        }
+        if k > 0 {
+            wasCollapsing = true
+            ball.removeAllActions()
+            if swapped {
+                let t = min(1, (k - 0.4) / 0.6)
+                let eased = 1 - pow(1 - t, 3)
+                let size = Float(1 - 0.40 * eased)
+                ball.scale = SCNVector3(size, size, size)
+                // 輪は、いきおいよく広がって、少しゆれる
+                let u = min(1, (k - 0.4) / 0.4)
+                let back = 1 + 2.7 * pow(u - 1, 3) + 1.7 * pow(u - 1, 2)
+                let ringScale = Float(max(0.01, back) * (1 + 0.03 * sin(angle * 3)))
+                ring.scale = SCNVector3(ringScale, ringScale, ringScale)
+            } else {
+                let shake = 1 + 0.05 * sin(k * 260) * (k / 0.4)
+                let size = Float(shake)
+                ball.scale = SCNVector3(size, size, size)
+                ballMaterial.emission.contents = UIColor(white: CGFloat(min(1, k / 0.4)), alpha: 1)
+            }
+            // 画面のゆれ（ぎゅっとなるほど大きく、なり終わると静まる）
+            let amp = Float(k < 0.4 ? 0.12 * (k / 0.4) : 0.12 * max(0, 1 - (k - 0.4) / 0.35))
+            cameraNode.position = SCNVector3(cameraBase.x + amp * Float(sin(k * 900)), cameraBase.y + amp * Float(cos(k * 1300)), cameraBase.z)
+        } else if wasCollapsing {
+            wasCollapsing = false
+            ball.scale = SCNVector3(1, 1, 1)
+            ring.scale = SCNVector3(1, 1, 1)
+            cameraNode.position = SCNVector3(cameraBase.x, cameraBase.y, cameraBase.z)
+            ballMaterial.emission.contents = UIColor.black
+        }
+        if swapped && k >= 1 {
+            cameraNode.position = SCNVector3(cameraBase.x, cameraBase.y, cameraBase.z)
+        }
     }
 
     private func applyBlackHole(_ on: Bool) {
