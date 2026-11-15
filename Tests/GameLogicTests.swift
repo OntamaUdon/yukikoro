@@ -143,6 +143,14 @@ final class GameLogicTests: XCTestCase {
         XCTAssertEqual(GameState().diameter, 0.02, accuracy: 1e-9)
     }
 
+    /// 仲間の数による「1歩の距離ののび」を外した、チーム（Python の参考実装と比べるため）
+    private func plainTeam(_ owned: [String: Int]) -> PushTeam {
+        var team = Shop.team(owned: owned)
+        let crew = (owned["kid"] ?? 0) + (owned["big"] ?? 0)
+        team.reach /= 1 + Shop.crewReachBonus * Double(min(crew, Shop.maxCrewForBonus))
+        return team
+    }
+
     /// Python の試算（tools の参考実装と同じ式）と合うこと
     func testAdvanceMatchesReferenceSimulation() {
         let bare = PushTeam(force: 60, reach: 0.7, lift: 0)
@@ -152,7 +160,7 @@ final class GameLogicTests: XCTestCase {
             let m = SnowPhysics.advance(mass: m0, pack: 0, team: bare, steps: steps).mass
             XCTAssertEqual(m, expected, accuracy: expected * 0.02, "steps=\(steps)")
         }
-        let strong = Shop.team(owned: ["kid": 12, "big": 2, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 18])
+        let strong = plainTeam(["kid": 12, "big": 2, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 18])
         XCTAssertEqual(strong.force, 6_315_300, accuracy: 1)
         XCTAssertEqual(strong.lift, 0.6, accuracy: 1e-12)
         let a = SnowPhysics.advance(mass: 1e6, pack: 0, team: strong, steps: 10).mass
@@ -351,7 +359,7 @@ final class GameLogicTests: XCTestCase {
     }
 
     func testGravityTeamFellsBiggerTrees() {
-        let team = Shop.team(owned: ["kid": 20, "big": 14, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 12])
+        let team = plainTeam(["kid": 20, "big": 14, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 12])
         let result = SnowPhysics.advance(mass: 1e8, pack: 0, team: team, steps: 300, stage: 2)
         XCTAssertEqual(result.stage, 3)
         XCTAssertEqual(result.materials, 38_400)
@@ -361,6 +369,7 @@ final class GameLogicTests: XCTestCase {
     func testBlockedStateAndMaterialsInGameState() {
         var state = GameState()
         state.mass = state.laneCapMass
+        state.debris = Debris.index(diameter: state.diameter)
         XCTAssertTrue(state.isBlockedByTrees, "素手では木に負ける")
         XCTAssertEqual(state.toppleForceNeeded ?? 0, 14_962, accuracy: 20)
         state.owned = ["kid": 12, "big": 2, "plank": 1]
@@ -479,7 +488,10 @@ final class GameLogicTests: XCTestCase {
         XCTAssertEqual(none.lift, 0)
         let machines = Shop.team(owned: ["kid": 3, "plank": 2])
         XCTAssertEqual(machines.force, 60 + 3 * 120 + 2 * 12_000, accuracy: 1e-9)
-        XCTAssertEqual(machines.reach, 1.5, accuracy: 1e-12, "強い道具ほど1歩で遠くまで転がる")
+        // 強い道具ほど1歩で遠くまで転がる。ゆきんこが 3 人いると、さらに 24% のびる。
+        XCTAssertEqual(machines.reach, 1.5 * 1.24, accuracy: 1e-12)
+        XCTAssertEqual(Shop.team(owned: ["plank": 2]).reach, 1.5, accuracy: 1e-12)
+        XCTAssertEqual(Shop.team(owned: ["kid": 100]).reach, 0.7 * 3, accuracy: 1e-12, "25 人ぶんまで")
         let gravity = Shop.team(owned: ["gravity": 5])
         XCTAssertEqual(gravity.lift, 0.2, accuracy: 1e-12)
         XCTAssertEqual(gravity.reach, 100 * pow(1.8, 5), accuracy: 1e-6)
