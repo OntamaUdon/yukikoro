@@ -65,7 +65,11 @@ final class AppModel {
         }
         #endif
         // 署名のないシミュレーターのビルドでは、CloudKit の部品を作ると落ちるので、デモのときは作らない
+        #if targetEnvironment(simulator)
+        let repo: TowerRepository = InMemoryTowerRepository()
+        #else
         let repo: TowerRepository = demo ? InMemoryTowerRepository() : CloudKitTowerRepository()
+        #endif
         player = initial
         lastSavedPlayer = initial
         repository = repo

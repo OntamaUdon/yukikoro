@@ -28,6 +28,8 @@ enum DemoMode {
         player.onboarded = true
         player.initialized = true
         player.totalSteps = steps
+        // 「今日の歩数」にも、同じ歩数が出るように
+        player.credited[DayKey.key(for: Date())] = steps
         return player
     }
 }
