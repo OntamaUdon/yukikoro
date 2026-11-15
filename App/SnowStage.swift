@@ -239,6 +239,15 @@ final class StageCoordinator {
         ringMaterial.emission.contents = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 1)
         torus.materials = [ringMaterial]
         ring.geometry = torus
+        // 外がわの、うすく赤い輪
+        let outerTorus = SCNTorus(ringRadius: 2.7, pipeRadius: 0.06)
+        let outerMaterial = SCNMaterial()
+        outerMaterial.lightingModel = .constant
+        outerMaterial.diffuse.contents = UIColor(red: 1.0, green: 0.38, blue: 0.22, alpha: 1)
+        outerMaterial.emission.contents = UIColor(red: 1.0, green: 0.30, blue: 0.18, alpha: 1)
+        outerMaterial.transparency = 0.7
+        outerTorus.materials = [outerMaterial]
+        ring.addChildNode(SCNNode(geometry: outerTorus))
         ring.eulerAngles = SCNVector3(0.35, 0, 0.2)
         ring.isHidden = true
         scene.rootNode.addChildNode(ring)
@@ -1180,6 +1189,7 @@ final class StageCoordinator {
         ring.isHidden = !on
         if on {
             ballMaterial.diffuse.contents = UIColor.black
+            ballMaterial.emission.contents = UIColor.black
             ballMaterial.lightingModel = .constant
         } else {
             ballMaterial.diffuse.contents = Self.speckle(size: 256, base: UIColor(white: 0.97, alpha: 1), spots: 700, seed: 3, tint: UIColor(red: 0.80, green: 0.90, blue: 1.0, alpha: 1))

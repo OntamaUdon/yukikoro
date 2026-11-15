@@ -72,9 +72,10 @@ struct MainView: View {
 
     var body: some View {
         GeometryReader { outer in
-            let half = outer.size.height * 0.5
             let safeTop = outer.safeAreaInsets.top
             let safeBottom = outer.safeAreaInsets.bottom
+            let fullH = outer.size.height + safeTop + safeBottom
+            let half = fullH * 0.5
             let hudTop = safeTop + topHeight
             ZStack {
                 VStack(spacing: 0) {
@@ -113,9 +114,10 @@ struct MainView: View {
                     blackHoleLayer(now: timeline.date)
                 }
             }
+            .frame(width: outer.size.width, height: fullH)
+            .ignoresSafeArea()
             .onPreferenceChange(TopBlockHeightKey.self) { topHeight = $0 }
         }
-        .ignoresSafeArea()
         .onAppear {
             prepare()
             #if DEBUG
@@ -270,15 +272,23 @@ struct MainView: View {
                         .font(Storybook.rounded(16))
                 }
                 .foregroundStyle(Storybook.ink)
-                HStack(spacing: 4) {
-                    Image(systemName: "shoeprints.fill")
-                    Text("はじめてから \(formatSteps(state.totalSteps))歩")
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                HStack(spacing: 10) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "shoeprints.fill")
+                        Text("\(formatSteps(state.totalSteps))歩")
+                            .monospacedDigit()
+                    }
+                    HStack(spacing: 3) {
+                        Image(systemName: "bolt.circle.fill")
+                            .foregroundStyle(gold)
+                        Text("つかえる \(formatSteps(state.points))")
+                            .monospacedDigit()
+                    }
                 }
-                .font(Storybook.rounded(11))
-                .foregroundStyle(Storybook.ink.opacity(0.55))
+                .font(Storybook.rounded(12))
+                .foregroundStyle(Storybook.ink.opacity(0.65))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
             }
 
             Spacer(minLength: 4)
@@ -540,7 +550,7 @@ struct MainView: View {
 
     private func endingCard(title: String, message: String, button: String, action: @escaping () -> Void) -> some View {
         ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
+            Color.black.opacity(0.72).ignoresSafeArea()
             VStack(spacing: 16) {
                 Image(systemName: "circle.circle.fill")
                     .font(.system(size: 56))

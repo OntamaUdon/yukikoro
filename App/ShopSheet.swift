@@ -6,21 +6,17 @@ struct ShopPanel: View {
 
     var body: some View {
         let state = store.state
-        VStack(spacing: 8) {
-            walletRow
-                .padding(.horizontal, 12)
-            ScrollView {
-                VStack(spacing: 12) {
-                    if !state.blackHole {
-                        powerCard
-                    }
-                    ForEach(Shop.items.filter { ($0.kind == .hole) == state.blackHole }) { item in
-                        itemCard(item)
-                    }
+        ScrollView {
+            VStack(spacing: 12) {
+                ForEach(Shop.items.filter { ($0.kind == .hole) == state.blackHole }) { item in
+                    itemCard(item)
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 16)
+                if !state.blackHole {
+                    powerCard
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 16)
         }
     }
 
