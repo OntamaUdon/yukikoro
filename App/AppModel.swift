@@ -54,16 +54,18 @@ final class AppModel {
 
     init() {
         var initial = PlayerStorage.load()
-        var repo: TowerRepository = CloudKitTowerRepository()
         let location = LocationService()
+        var demo = false
         #if DEBUG
         if DemoMode.isOn {
             initial = DemoMode.player()
-            repo = InMemoryTowerRepository()
             location.testPoint = DemoMode.center
+            demo = true
             isDemo = true
         }
         #endif
+        // 署名のないシミュレーターのビルドでは、CloudKit の部品を作ると落ちるので、デモのときは作らない
+        let repo: TowerRepository = demo ? InMemoryTowerRepository() : CloudKitTowerRepository()
         player = initial
         lastSavedPlayer = initial
         repository = repo

@@ -14,11 +14,13 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
         static let betaClock = "BetaClock"
     }
 
-    private let container: CKContainer
+    private let containerID: String
+    /// 使うときまで作らない（CloudKit の権限が無いビルドで、起動時に落ちないように）
+    private lazy var container = CKContainer(identifier: containerID)
     private var database: CKDatabase { container.publicCloudDatabase }
 
     init(containerID: String = AppEnvironment.containerID) {
-        container = CKContainer(identifier: containerID)
+        self.containerID = containerID
     }
 
     // MARK: 共通
