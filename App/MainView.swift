@@ -473,23 +473,25 @@ struct MainView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Storybook.accent)
                 Text(value.replacingOccurrences(of: "約", with: ""))
-                    .font(Storybook.rounded(25))
+                    .font(Storybook.rounded(24))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.45)
+                    .minimumScaleFactor(0.3)
                     .foregroundStyle(Storybook.ink)
             }
             if let refSymbol, let refName, let times {
                 HStack(spacing: 4) {
                     Image(systemName: refSymbol)
                     Text(refName)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Text(formatTimes(times))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
                 .font(Storybook.rounded(12))
                 .foregroundStyle(Storybook.ink.opacity(0.62))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
             }
         }
         .frame(maxWidth: .infinity)

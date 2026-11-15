@@ -81,7 +81,7 @@ struct ShopSheet: View {
             bar("みんなの力", value: force, maximum: max(needed ?? force, force, resistance), tint: Storybook.accent)
             bar("雪玉の重さ", value: resistance, maximum: max(needed ?? force, force, resistance), tint: Color(red: 0.62, green: 0.62, blue: 0.74))
             if let needed {
-                bar("木を倒す力", value: needed, maximum: max(needed, force, resistance), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
+                bar("たおす力", value: needed, maximum: max(needed, force, resistance), tint: Color(red: 0.36, green: 0.62, blue: 0.40))
             }
         }
         .foregroundStyle(Storybook.ink)

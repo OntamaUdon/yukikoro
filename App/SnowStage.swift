@@ -307,7 +307,7 @@ final class StageCoordinator {
         world.scale = SCNVector3(s, s, s)
 
         // 地面が大きくなりすぎた雪玉のまわりでも途切れないように広げる
-        let groundScale = Float(max(1.0, r / 300))
+        let groundScale = Float(max(1.0, r / 4))
         ground.scale = SCNVector3(groundScale, groundScale, 1)
         let tile = Self.groundTile * Double(groundScale)
         ground.position = SCNVector3(0, 0, Float(scroll.truncatingRemainder(dividingBy: tile)))
@@ -701,7 +701,7 @@ final class StageCoordinator {
             let t = min(max((z + 1.7) / 1.5, 0), 1)
             let x = debrisLateral[index] * (1 - 0.85 * t)
             item.position = SCNVector3(Float(x), Float(0.9 * t * t), Float(z))
-            let scale = Float(1 - 0.85 * t)
+            let scale = Float(1.7 * (1 - 0.85 * t))
             item.scale = SCNVector3(scale, scale, scale)
             item.isHidden = t >= 1
         }
@@ -1069,7 +1069,7 @@ final class StageCoordinator {
         for material in bulbMaterials() {
             material.emission.intensity = bulbGlow
         }
-        windowMaterial.emission.intensity = bulbGlow * 0.55
+        windowMaterial.emission.intensity = bulbGlow * 0.32
         poolMaterial.transparency = pool
         lampLight.light?.intensity = lamp
         if !lastBlackHole { ballMaterial.emission.contents = ballGlow }
