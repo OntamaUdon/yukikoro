@@ -501,7 +501,7 @@ struct MainView: View {
         switch kind {
         case .tree: return "tree.fill"
         case .pole: return "lightbulb.fill"
-        case .car: return "car.fill"
+        case .helicopter: return "airplane"
         case .house: return "house.fill"
         case .building: return "building.2.fill"
         case .mountain, .range: return "mountain.2.fill"

@@ -51,6 +51,17 @@ enum SnowPhysics {
     static let initialRadius = 0.01
     /// 最初から持っている力（自分の手）
     static let bareHandForce = 60.0
+    /// ブラックホールになったあと、1歩ごとに重さがふえる割合（まわりの物を吸いこむ）
+    static let blackHoleRate = 0.0004
+    /// ここまで重くなったら、宇宙をのみこんだことにする（kg。観測できる宇宙のおよその質量）
+    static let universeMass = 1e53
+
+    /// ブラックホールのまま `steps` 歩ぶん育てる。`boost` は「すいこむ力」の台数。
+    static func blackHoleGrown(mass: Double, steps: Int, boost: Int = 0) -> Double {
+        guard steps > 0 else { return mass }
+        let rate = blackHoleRate * (1 + 0.5 * Double(max(0, boost)))
+        return min(universeMass, mass * exp(Double(steps) * log(1 + rate)))
+    }
 
     // MARK: 大きさ
 
@@ -194,7 +205,7 @@ enum Lane {
     static let widthGrowth = 5.0
     /// 木を倒すのに、雪玉を押す力の何倍の余裕が要るか
     static let toppleFactor = 1.2
-    static let rewardBase = 600.0
+    static let rewardBase = 3000.0
     static let rewardGrowth = 8.0
 
     static func width(stage: Int) -> Double { baseWidth * pow(widthGrowth, Double(stage)) }
@@ -264,15 +275,15 @@ enum Debris {
 
 /// 道の両側に立っているもの（段階ごとに、だんだん大きくなる）
 enum LaneKind: Int, CaseIterable {
-    case tree, pole, car, house, building, mountain, range
+    case tree, pole, house, building, helicopter, mountain, range
 
     var name: String {
         switch self {
         case .tree: return "き"
         case .pole: return "でんしんばしら"
-        case .car: return "くるま"
         case .house: return "いえ"
         case .building: return "ビル"
+        case .helicopter: return "ヘリ"
         case .mountain: return "やま"
         case .range: return "やまなみ"
         }

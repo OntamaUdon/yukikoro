@@ -387,9 +387,9 @@ final class StageCoordinator {
         case .pole:
             walls = [paint(0.46, 0.38, 0.32), paint(0.40, 0.36, 0.34)]
             trim = paint(0.18, 0.17, 0.18)
-        case .car:
-            walls = [paint(0.78, 0.18, 0.20), paint(0.18, 0.52, 0.62), paint(0.88, 0.66, 0.20)]
-            trim = paint(0.09, 0.09, 0.10)
+        case .helicopter:
+            walls = [paint(0.86, 0.20, 0.22), paint(0.22, 0.52, 0.80), paint(0.92, 0.72, 0.22)]
+            trim = paint(0.12, 0.12, 0.14)
         case .house:
             walls = [paint(0.93, 0.86, 0.72), paint(0.62, 0.74, 0.88), paint(0.72, 0.40, 0.32)]
             trim = paint(0.34, 0.22, 0.22)

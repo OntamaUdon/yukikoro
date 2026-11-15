@@ -234,16 +234,29 @@ final class GameLogicTests: XCTestCase {
         XCTAssertGreaterThan(b, a * 5)
     }
 
-    func testReachesBlackHoleAndStopsThere() {
+    func testBlackHoleKeepsGrowingAfterwards() {
         var state = GameState()
         state.mass = 9e32
         state.stage = 20
         state.addBonus(steps: 200_000)
         XCTAssertTrue(state.blackHole)
-        let frozen = state.mass
+        XCTAssertFalse(state.seenBlackHole)
+        let before = state.mass
         state.addBonus(steps: 1_000)
-        XCTAssertEqual(state.mass, frozen, "ブラックホールになったあとは変わらない")
-        XCTAssertGreaterThan(state.totalSteps, 200_000)
+        XCTAssertEqual(state.mass / before, exp(1_000 * log(1.0004)), accuracy: 1e-6, "吸いこんで育つ")
+        XCTAssertEqual(state.radius, SnowPhysics.schwarzschildRadius(mass: state.mass), accuracy: 1e-9)
+        // 買えるのは、ブラックホール用のものだけ
+        state.spent = 0
+        XCTAssertFalse(state.canBuy(Shop.item("kid")!))
+        let absorb = Shop.item("absorb")!
+        XCTAssertTrue(state.canBuy(absorb))
+        let fast = SnowPhysics.blackHoleGrown(mass: 1e33, steps: 1_000, boost: 4)
+        let slow = SnowPhysics.blackHoleGrown(mass: 1e33, steps: 1_000, boost: 0)
+        XCTAssertGreaterThan(fast, slow)
+        // 宇宙をのみこんだら、そこで止まる
+        XCTAssertEqual(SnowPhysics.blackHoleGrown(mass: 9e52, steps: 1_000_000), SnowPhysics.universeMass)
+        state.mass = SnowPhysics.universeMass
+        XCTAssertTrue(state.finished)
         let fresh = state.restarted()
         XCTAssertFalse(fresh.blackHole)
         XCTAssertEqual(fresh.radius, 0.01, accuracy: 1e-9)
@@ -269,8 +282,8 @@ final class GameLogicTests: XCTestCase {
         XCTAssertEqual(Lane.width(stage: 0), 3, accuracy: 1e-12)
         XCTAssertEqual(Lane.width(stage: 2), 75, accuracy: 1e-9)
         XCTAssertEqual(Lane.treeScale(stage: 1), 5, accuracy: 1e-12)
-        XCTAssertEqual(Lane.reward(stage: 0), 600)
-        XCTAssertEqual(Lane.reward(stage: 1), 4_800)
+        XCTAssertEqual(Lane.reward(stage: 0), 3_000)
+        XCTAssertEqual(Lane.reward(stage: 1), 24_000)
         // 半径が道の幅の半分になる重さ（密度 300 の球）
         XCTAssertEqual(Lane.capMass(stage: 0, pack: 0), 4_241.15, accuracy: 4)
         XCTAssertEqual(Lane.capMass(stage: 1, pack: 0), 530_143.8, accuracy: 530_143.8 * 0.01)
@@ -330,9 +343,9 @@ final class GameLogicTests: XCTestCase {
     func testLaneKindsGetBiggerAndStayAtTheLast() {
         XCTAssertEqual(Lane.kind(stage: 0), .tree)
         XCTAssertEqual(Lane.kind(stage: 1), .pole)
-        XCTAssertEqual(Lane.kind(stage: 2), .car)
-        XCTAssertEqual(Lane.kind(stage: 3), .house)
-        XCTAssertEqual(Lane.kind(stage: 4), .building)
+        XCTAssertEqual(Lane.kind(stage: 2), .house)
+        XCTAssertEqual(Lane.kind(stage: 3), .building)
+        XCTAssertEqual(Lane.kind(stage: 4), .helicopter)
         XCTAssertEqual(Lane.kind(stage: 5), .mountain)
         XCTAssertEqual(Lane.kind(stage: 40), .range)
         XCTAssertEqual(LaneKind.mountain.name, "やま")
@@ -354,7 +367,7 @@ final class GameLogicTests: XCTestCase {
         let team = Shop.team(owned: ["kid": 12, "big": 2, "plank": 1])
         let result = SnowPhysics.advance(mass: 4_240, pack: 0, team: team, steps: 100, stage: 0)
         XCTAssertEqual(result.stage, 1, "木が倒れて、次の道に進む")
-        XCTAssertEqual(result.materials, 600)
+        XCTAssertEqual(result.materials, 3_000)
         XCTAssertEqual(result.mass, 4_293.93, accuracy: 4_293.93 * 0.02)
     }
 
@@ -362,7 +375,7 @@ final class GameLogicTests: XCTestCase {
         let team = plainTeam(["kid": 20, "big": 14, "plank": 1, "crawler": 1, "heavy": 1, "gravity": 12])
         let result = SnowPhysics.advance(mass: 1e8, pack: 0, team: team, steps: 300, stage: 2)
         XCTAssertEqual(result.stage, 3)
-        XCTAssertEqual(result.materials, 38_400)
+        XCTAssertEqual(result.materials, 192_000)
         XCTAssertEqual(result.mass, 1.89767e8, accuracy: 1.89767e8 * 0.03)
     }
 
@@ -376,7 +389,7 @@ final class GameLogicTests: XCTestCase {
         XCTAssertFalse(state.isBlockedByTrees)
         state.addBonus(steps: 100)
         XCTAssertEqual(state.stage, 1)
-        XCTAssertEqual(state.materials, 600)
+        XCTAssertEqual(state.materials, 3_000)
         XCTAssertEqual(state.laneWidth, 15, accuracy: 1e-9)
     }
 
@@ -386,10 +399,10 @@ final class GameLogicTests: XCTestCase {
         state.peakDiameter = 2
         let plank = Shop.item("plank")!
         XCTAssertFalse(state.canBuy(plank), "資材がないと買えない")
-        state.materials = 5
+        state.materials = 25
         XCTAssertTrue(state.buy(plank))
         XCTAssertEqual(state.materials, 0)
-        XCTAssertEqual(state.materialPrice(plank), 6, "2つ目は少し高い")
+        XCTAssertEqual(state.materialPrice(plank), 28, "2つ目は少し高い")
     }
 
     func testSavesFromBeforeTreesKeepTheirProgress() throws {
@@ -478,7 +491,7 @@ final class GameLogicTests: XCTestCase {
         state.peakDiameter = 15
         XCTAssertTrue(state.isUnlocked(gravity))
         XCTAssertTrue(state.buy(gravity))
-        XCTAssertEqual(state.materials, 10_000 - 250, "資材も使う")
+        XCTAssertEqual(state.materials, 10_000 - 1_200, "資材も使う")
     }
 
     func testTeamFromOwnedItems() {

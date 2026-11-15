@@ -39,9 +39,9 @@ enum StageObjects {
         switch kind {
         case .tree: return 1.7
         case .pole: return 1.3
-        case .car: return 1.8
         case .house: return 3.4
         case .building: return 3.8
+        case .helicopter: return 3.6
         case .mountain: return 6.0
         case .range: return 8.0
         }
@@ -54,7 +54,7 @@ enum StageObjects {
         case .pole: return (7.8, 1.0)
         case .house: return (5.2, 0.8)
         case .building: return (12.5, 1.2)
-        case .car, .mountain, .range: return nil
+        case .helicopter, .mountain, .range: return nil
         }
     }
 
@@ -65,7 +65,7 @@ enum StageObjects {
         switch kind {
         case .tree: break
         case .pole: pole(&mesh)
-        case .car: car(&mesh, random: random)
+        case .helicopter: helicopter(&mesh)
         case .house: house(&mesh, random: random)
         case .building: building(&mesh, random: random)
         case .mountain: mountain(&mesh, height: 12, radius: 4.4, peaks: [(0, 0, 1)], random: random)
@@ -114,33 +114,39 @@ enum StageObjects {
         }
     }
 
-    // MARK: くるま
+    // MARK: ヘリコプター
 
-    private static func car(_ mesh: inout MeshBuilder, random: () -> Float) {
-        // 長いほうが z。車体と屋根の雪
-        mesh.box(0, lo: SIMD3(-1.25, 0.55, -2.8), hi: SIMD3(1.25, 1.65, 2.8))
-        mesh.box(0, lo: SIMD3(-1.05, 1.65, -1.2), hi: SIMD3(1.05, 2.55, 1.9), top: 2)
-        mesh.box(2, lo: SIMD3(-1.0, 2.55, -1.15), hi: SIMD3(1.0, 2.68, 1.85))
-        // まど（夜は室内灯）
+    private static func helicopter(_ mesh: inout MeshBuilder) {
+        // 機体（長いほうが z。前は -z）
+        mesh.box(0, lo: SIMD3(-1.05, 1.0, -2.2), hi: SIMD3(1.05, 2.7, 1.7), top: 2)
+        mesh.box(0, lo: SIMD3(-0.25, 1.9, 1.7), hi: SIMD3(0.25, 2.5, 5.6))
+        mesh.box(1, lo: SIMD3(-0.08, 2.0, 5.2), hi: SIMD3(0.08, 3.7, 5.7))
+        mesh.box(1, lo: SIMD3(-0.7, 2.45, 5.35), hi: SIMD3(0.7, 2.55, 5.65))
+        // まど
+        mesh.pane(5, center: SIMD3(0, 2.0, -2.2), width: 1.7, height: 1.0, normal: SIMD3(0, 0, -1))
         for side: Float in [-1, 1] {
-            mesh.pane(5, center: SIMD3(side * 1.05, 2.1, 0.35), width: 2.4, height: 0.6, normal: SIMD3(side, 0, 0))
+            mesh.pane(5, center: SIMD3(side * 1.05, 2.0, -0.9), width: 1.6, height: 0.9, normal: SIMD3(side, 0, 0))
         }
-        mesh.pane(5, center: SIMD3(0, 2.1, -1.2), width: 1.7, height: 0.6, normal: SIMD3(0, 0, -1))
-        mesh.pane(5, center: SIMD3(0, 2.1, 1.9), width: 1.7, height: 0.6, normal: SIMD3(0, 0, 1))
-        // タイヤ
-        for sx: Float in [-1, 1] {
-            for z: Float in [-1.7, 1.7] {
-                mesh.box(1, lo: SIMD3(sx * 1.25 - 0.18, 0, z - 0.5), hi: SIMD3(sx * 1.25 + 0.18, 0.95, z + 0.5))
+        // そり（足）
+        for side: Float in [-1, 1] {
+            mesh.box(1, lo: SIMD3(side * 0.9 - 0.06, 0.12, -2.0), hi: SIMD3(side * 0.9 + 0.06, 0.26, 1.6))
+            for z: Float in [-1.2, 0.8] {
+                mesh.box(1, lo: SIMD3(side * 0.9 - 0.05, 0.26, z - 0.05), hi: SIMD3(side * 0.9 + 0.05, 1.05, z + 0.05))
             }
         }
-        // ライト（まえとうしろ）
-        for sx: Float in [-0.75, 0.75] {
-            mesh.bulb(3, center: SIMD3(sx, 1.1, 2.86), size: 0.2)
-            mesh.bulb(4, center: SIMD3(sx, 1.1, -2.86), size: 0.14)
+        // ローター（十字の羽根）
+        mesh.box(1, lo: SIMD3(-0.15, 2.7, -0.15), hi: SIMD3(0.15, 3.15, 0.15))
+        mesh.box(1, lo: SIMD3(-3.4, 3.15, -0.16), hi: SIMD3(3.4, 3.22, 0.16), top: 2)
+        mesh.box(1, lo: SIMD3(-0.16, 3.15, -3.4), hi: SIMD3(0.16, 3.22, 3.4), top: 2)
+        // ライト
+        mesh.bulb(3, center: SIMD3(0, 1.3, -2.3), size: 0.2)
+        mesh.bulb(4, center: SIMD3(0, 3.8, 5.45), size: 0.12)
+        for sx: Float in [-1, 1] {
+            mesh.bulb(3, center: SIMD3(sx * 3.4, 3.2, 0), size: 0.1)
+            mesh.bulb(3, center: SIMD3(0, 3.2, sx * 3.4), size: 0.1)
         }
-        // 屋根のかざり電球
         for k in 0..<5 {
-            mesh.bulb(k % 2 == 0 ? 3 : 4, center: SIMD3(-0.8 + Float(k) * 0.4, 2.8, 0.35), size: 0.07)
+            mesh.bulb(k % 2 == 0 ? 3 : 4, center: SIMD3(-0.8 + Float(k) * 0.4, 2.8, 0.2), size: 0.06)
         }
     }
 

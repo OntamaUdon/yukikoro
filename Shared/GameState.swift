@@ -44,13 +44,15 @@ struct GameState: Codable, Equatable {
     var seenPack: Double? = nil
     /// ブラックホールになったか
     var blackHole: Bool = false
+    /// ブラックホールになった場面を、もう見せたか
+    var seenBlackHole: Bool = false
     var createdAt: Date = Date()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, debris, totalSteps, credited, baseline
-        case peakDiameter, seenMass, seenPack, dayKey, dayStartMass, blackHole, createdAt
+        case peakDiameter, seenMass, seenPack, dayKey, dayStartMass, blackHole, seenBlackHole, createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -86,6 +88,7 @@ struct GameState: Codable, Equatable {
             seenMass = try c.decodeIfPresent(Double.self, forKey: .seenMass)
             seenPack = try c.decodeIfPresent(Double.self, forKey: .seenPack)
             blackHole = try c.decodeIfPresent(Bool.self, forKey: .blackHole) ?? false
+            seenBlackHole = try c.decodeIfPresent(Bool.self, forKey: .seenBlackHole) ?? blackHole
         }
     }
 
@@ -110,6 +113,7 @@ struct GameState: Codable, Equatable {
         try c.encodeIfPresent(seenMass, forKey: .seenMass)
         try c.encodeIfPresent(seenPack, forKey: .seenPack)
         try c.encode(blackHole, forKey: .blackHole)
+        try c.encode(seenBlackHole, forKey: .seenBlackHole)
         try c.encode(createdAt, forKey: .createdAt)
     }
 
@@ -164,7 +168,12 @@ struct GameState: Codable, Equatable {
     private mutating func addSteps(_ steps: Int) {
         guard steps > 0 else { return }
         totalSteps += steps
-        guard !blackHole else { return }
+        if blackHole {
+            // ブラックホールになったあとも続く: まわりの物を吸いこんで育つ
+            mass = SnowPhysics.blackHoleGrown(mass: mass, steps: steps, boost: ownedCount("absorb"))
+            peakDiameter = max(peakDiameter, diameter)
+            return
+        }
         let result = SnowPhysics.advance(mass: mass, pack: pack, team: team, steps: steps, stage: stage, debris: debris)
         mass = result.mass
         blackHole = result.blackHole
@@ -192,7 +201,14 @@ struct GameState: Codable, Equatable {
     var team: PushTeam { Shop.team(owned: owned) }
 
     /// 雪玉の半径（メートル）
-    var radius: Double { SnowPhysics.radius(mass: mass, pack: pack) }
+    var radius: Double {
+        blackHole ? SnowPhysics.schwarzschildRadius(mass: mass) : SnowPhysics.radius(mass: mass, pack: pack)
+    }
+
+    /// 宇宙をのみこんだ（ほんとうの おしまい）
+    var finished: Bool { blackHole && mass >= SnowPhysics.universeMass }
+
+    mutating func acknowledgeBlackHole() { seenBlackHole = true }
 
     /// 雪玉の直径（メートル）
     var diameter: Double { 2 * radius }
@@ -227,6 +243,7 @@ struct GameState: Codable, Equatable {
 
     /// 木に雪玉がぶつかって、押す力が足りずに止まっているか
     var isBlockedByTrees: Bool {
+        guard !blackHole else { return false }
         let cap = laneCapMass
         return cap.isFinite && mass >= cap * 0.999 && !Lane.canTopple(capMass: cap, team: team)
     }
@@ -253,7 +270,8 @@ struct GameState: Codable, Equatable {
     func materialPrice(_ item: ShopItem) -> Int { Shop.materials(item, owned: ownedCount(item.id)) }
 
     func canBuy(_ item: ShopItem) -> Bool {
-        !blackHole && isUnlocked(item) && points >= price(item) && materials >= materialPrice(item)
+        (item.kind == .hole) == blackHole && !finished
+            && isUnlocked(item) && points >= price(item) && materials >= materialPrice(item)
     }
 
     @discardableResult
