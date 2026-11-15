@@ -6,7 +6,7 @@ import CoreLocation
 /// CloudKit（公開データベース）の置き場。レコードの種類と項目は docs/CLOUDKIT_SETUP.md のとおりに、管理画面で作っておく。
 /// 注意: 署名のないシミュレーターのビルドでは動かない。TestFlight の実機で使う。
 final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
-    private enum Type {
+    private enum RecordKind {
         static let tower = "Tower"
         static let ball = "Ball"
         static let report = "Report"
@@ -91,7 +91,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
             do {
                 record = try await database.record(for: id)
             } catch let error as CKError where error.code == .unknownItem {
-                record = CKRecord(recordType: Type.betaClock, recordID: id)
+                record = CKRecord(recordType: RecordKind.betaClock, recordID: id)
                 record["seq"] = Int64(1)
             }
             let next = Int((record["seq"] as? Int64) ?? 1) + 1
@@ -126,7 +126,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
     }
 
     private func ballRecord(_ ball: Ball) -> CKRecord {
-        let record = CKRecord(recordType: Type.ball, recordID: CKRecord.ID(recordName: ball.id))
+        let record = CKRecord(recordType: RecordKind.ball, recordID: CKRecord.ID(recordName: ball.id))
         record["towerID"] = ball.towerID
         record["index"] = Int64(ball.index)
         record["diameter"] = ball.diameter
@@ -140,7 +140,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
     }
 
     private func ballsOfTower(_ id: String) async throws -> [Ball] {
-        let query = CKQuery(recordType: Type.ball, predicate: NSPredicate(format: "towerID == %@", id))
+        let query = CKQuery(recordType: RecordKind.ball, predicate: NSPredicate(format: "towerID == %@", id))
         query.sortDescriptors = [NSSortDescriptor(key: "index", ascending: true)]
         let result = try await database.records(matching: query, resultsLimit: 200)
         return result.matchResults.compactMap { try? $0.1.get() }.compactMap { ball(from: $0) }
@@ -168,7 +168,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
             let center = CLLocation(latitude: near.lat, longitude: near.lon)
             let predicate = NSPredicate(format: "distanceToLocation:fromLocation:(location, %@) < %f AND periodId == %@",
                                         center, radius, periodId)
-            let query = CKQuery(recordType: Type.tower, predicate: predicate)
+            let query = CKQuery(recordType: RecordKind.tower, predicate: predicate)
             let result = try await database.records(matching: query, resultsLimit: 100)
             let records = result.matchResults.compactMap { try? $0.1.get() }
             return await withTaskGroup(of: Tower?.self) { group in
@@ -199,7 +199,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
 
     func placeBase(location: GeoPoint, prefecture: Int, periodId: String, ball: Ball, config: TowerConfig) async throws -> Tower {
         do {
-            let towerRecord = CKRecord(recordType: Type.tower, recordID: CKRecord.ID(recordName: ball.towerID))
+            let towerRecord = CKRecord(recordType: RecordKind.tower, recordID: CKRecord.ID(recordName: ball.towerID))
             towerRecord["location"] = CLLocation(latitude: location.lat, longitude: location.lon)
             towerRecord["periodId"] = periodId
             towerRecord["prefecture"] = Int64(prefecture)
@@ -233,7 +233,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
             } else {
                 predicate = NSPredicate(format: "periodId == %@", periodId)
             }
-            let query = CKQuery(recordType: Type.ball, predicate: predicate)
+            let query = CKQuery(recordType: RecordKind.ball, predicate: predicate)
             query.sortDescriptors = [NSSortDescriptor(key: "cumHeight", ascending: false)]
             let result = try await database.records(matching: query, resultsLimit: 100)
             let balls = result.matchResults.compactMap { try? $0.1.get() }.compactMap { ball(from: $0) }
@@ -261,7 +261,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
 
     func myBalls(ownerHash: String, limit: Int) async throws -> [Ball] {
         do {
-            let query = CKQuery(recordType: Type.ball, predicate: NSPredicate(format: "ownerHash == %@", ownerHash))
+            let query = CKQuery(recordType: RecordKind.ball, predicate: NSPredicate(format: "ownerHash == %@", ownerHash))
             let result = try await database.records(matching: query, resultsLimit: max(limit, 50))
             let balls = result.matchResults.compactMap { try? $0.1.get() }.compactMap { ball(from: $0) }
             return Array(balls.sorted { $0.createdAt > $1.createdAt }.prefix(limit))
@@ -272,7 +272,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
 
     func report(towerID: String, periodId: String, reason: Int) async throws {
         do {
-            let record = CKRecord(recordType: Type.report)
+            let record = CKRecord(recordType: RecordKind.report)
             record["towerID"] = towerID
             record["periodId"] = periodId
             record["reason"] = Int64(reason)
@@ -284,7 +284,7 @@ final class CloudKitTowerRepository: TowerRepository, @unchecked Sendable {
 
     func reportCounts(periodId: String) async throws -> [String: Int] {
         do {
-            let query = CKQuery(recordType: Type.report, predicate: NSPredicate(format: "periodId == %@", periodId))
+            let query = CKQuery(recordType: RecordKind.report, predicate: NSPredicate(format: "periodId == %@", periodId))
             let result = try await database.records(matching: query, resultsLimit: 400)
             var counts: [String: Int] = [:]
             let records = result.matchResults.compactMap { try? $0.1.get() }
