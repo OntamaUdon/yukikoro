@@ -1,43 +1,138 @@
 import SwiftUI
 import UIKit
 
-/// ソフトクレイモーフィズム + 雪。
-/// - 背景は「雪の夕ぐれ」の、青みの空色。白い雪玉が、白い背景にとけないようにするため。雪は、舞う雪のつぶと、白いふっくらしたカードで出す。
-/// - カードやボタンは、粘土のようにふくらんだ面: 明るい面、内がわの左上の白い光、右下の青いかげ、下へのびる青いやわらかい影。
-/// - 文字は濃い紺。押せる所は、形・アイコンでも分かるようにする。
-enum Soft {
-    private typealias RGBA = (CGFloat, CGFloat, CGFloat, CGFloat)
+/// 見た目（スタイル）。設定で切りかえられる。選んだものは、端末に覚えておく。
+enum SoftStyle: String, CaseIterable, Identifiable {
+    case snowDusk, pastel, mint, frost
 
-    private static func dynamic(light: RGBA, dark: RGBA) -> UIColor {
+    var id: String { rawValue }
+    static let storageKey = "uiStyle"
+
+    var title: String {
+        switch self {
+        case .snowDusk: return "雪の夕ぐれ"
+        case .pastel: return "パステル"
+        case .mint: return "ミント"
+        case .frost: return "しろいゆき"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .snowDusk: return "青い空に、白い雪が浮かぶ"
+        case .pastel: return "ピンクとむらさきの、やさしい色"
+        case .mint: return "みどりと水色の、すっきりした色"
+        case .frost: return "白とうす青の、しずかな色"
+        }
+    }
+
+    static var current: SoftStyle {
+        SoftStyle(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .snowDusk
+    }
+
+    typealias RGBA = (CGFloat, CGFloat, CGFloat, CGFloat)
+    struct Pair {
+        var light: RGBA
+        var dark: RGBA
+    }
+
+    struct Palette {
+        var skyTop: Pair
+        var skyBottom: Pair
+        var surface: Pair
+        var well: Pair
+        var ink: Pair
+        var accent: Pair
+        var buttonTop: Pair
+        var buttonBottom: Pair
+        var innerShade: Pair
+        var drop: Pair
+    }
+
+    var palette: Palette {
+        switch self {
+        case .snowDusk:
+            return Palette(
+                skyTop: Pair(light: (0.56, 0.72, 0.93, 1), dark: (0.06, 0.09, 0.19, 1)),
+                skyBottom: Pair(light: (0.76, 0.86, 0.97, 1), dark: (0.13, 0.19, 0.33, 1)),
+                surface: Pair(light: (0.965, 0.980, 1.0, 1), dark: (0.21, 0.28, 0.43, 1)),
+                well: Pair(light: (0.79, 0.87, 0.97, 1), dark: (0.11, 0.16, 0.27, 1)),
+                ink: Pair(light: (0.10, 0.16, 0.30, 1), dark: (0.94, 0.97, 1.0, 1)),
+                accent: Pair(light: (0.16, 0.40, 0.86, 1), dark: (0.50, 0.72, 1.0, 1)),
+                buttonTop: Pair(light: (0.34, 0.60, 0.98, 1), dark: (0.38, 0.62, 1.0, 1)),
+                buttonBottom: Pair(light: (0.15, 0.38, 0.84, 1), dark: (0.20, 0.40, 0.86, 1)),
+                innerShade: Pair(light: (0.50, 0.64, 0.88, 0.60), dark: (0.02, 0.05, 0.12, 0.65)),
+                drop: Pair(light: (0.20, 0.36, 0.68, 0.38), dark: (0.0, 0.02, 0.08, 0.55)))
+        case .pastel:
+            return Palette(
+                skyTop: Pair(light: (1.0, 0.86, 0.90, 1), dark: (0.16, 0.11, 0.21, 1)),
+                skyBottom: Pair(light: (0.90, 0.86, 1.0, 1), dark: (0.22, 0.16, 0.30, 1)),
+                surface: Pair(light: (1.0, 0.985, 0.975, 1), dark: (0.33, 0.25, 0.40, 1)),
+                well: Pair(light: (0.99, 0.82, 0.87, 1), dark: (0.20, 0.14, 0.26, 1)),
+                ink: Pair(light: (0.28, 0.15, 0.30, 1), dark: (0.98, 0.95, 1.0, 1)),
+                accent: Pair(light: (0.90, 0.32, 0.50, 1), dark: (1.0, 0.60, 0.72, 1)),
+                buttonTop: Pair(light: (1.0, 0.56, 0.67, 1), dark: (1.0, 0.58, 0.70, 1)),
+                buttonBottom: Pair(light: (0.92, 0.33, 0.51, 1), dark: (0.86, 0.34, 0.52, 1)),
+                innerShade: Pair(light: (0.92, 0.62, 0.76, 0.55), dark: (0.05, 0.0, 0.10, 0.60)),
+                drop: Pair(light: (0.85, 0.42, 0.60, 0.36), dark: (0.0, 0.0, 0.05, 0.50)))
+        case .mint:
+            return Palette(
+                skyTop: Pair(light: (0.76, 0.95, 0.89, 1), dark: (0.05, 0.16, 0.18, 1)),
+                skyBottom: Pair(light: (0.72, 0.88, 0.97, 1), dark: (0.10, 0.22, 0.28, 1)),
+                surface: Pair(light: (0.97, 1.0, 0.99, 1), dark: (0.18, 0.34, 0.36, 1)),
+                well: Pair(light: (0.78, 0.93, 0.90, 1), dark: (0.08, 0.20, 0.22, 1)),
+                ink: Pair(light: (0.07, 0.24, 0.26, 1), dark: (0.94, 1.0, 0.99, 1)),
+                accent: Pair(light: (0.05, 0.54, 0.55, 1), dark: (0.40, 0.88, 0.82, 1)),
+                buttonTop: Pair(light: (0.26, 0.80, 0.72, 1), dark: (0.30, 0.80, 0.75, 1)),
+                buttonBottom: Pair(light: (0.04, 0.52, 0.54, 1), dark: (0.06, 0.50, 0.52, 1)),
+                innerShade: Pair(light: (0.42, 0.74, 0.74, 0.55), dark: (0.0, 0.06, 0.08, 0.60)),
+                drop: Pair(light: (0.10, 0.44, 0.48, 0.34), dark: (0.0, 0.05, 0.06, 0.50)))
+        case .frost:
+            return Palette(
+                skyTop: Pair(light: (0.95, 0.975, 1.0, 1), dark: (0.08, 0.11, 0.19, 1)),
+                skyBottom: Pair(light: (0.86, 0.92, 0.99, 1), dark: (0.14, 0.19, 0.30, 1)),
+                surface: Pair(light: (1.0, 1.0, 1.0, 1), dark: (0.22, 0.28, 0.40, 1)),
+                well: Pair(light: (0.88, 0.93, 0.99, 1), dark: (0.12, 0.16, 0.26, 1)),
+                ink: Pair(light: (0.12, 0.18, 0.32, 1), dark: (0.94, 0.97, 1.0, 1)),
+                accent: Pair(light: (0.20, 0.44, 0.90, 1), dark: (0.52, 0.74, 1.0, 1)),
+                buttonTop: Pair(light: (0.40, 0.65, 1.0, 1), dark: (0.40, 0.64, 1.0, 1)),
+                buttonBottom: Pair(light: (0.18, 0.42, 0.88, 1), dark: (0.20, 0.42, 0.88, 1)),
+                innerShade: Pair(light: (0.66, 0.78, 0.96, 0.55), dark: (0.02, 0.05, 0.12, 0.60)),
+                drop: Pair(light: (0.40, 0.54, 0.80, 0.28), dark: (0.0, 0.02, 0.08, 0.50)))
+        }
+    }
+
+    /// 明るい・暗いに合わせて色がかわる UIColor
+    static func uiColor(_ pair: Pair) -> UIColor {
         UIColor { traits in
-            let c = traits.userInterfaceStyle == .dark ? dark : light
+            let c = traits.userInterfaceStyle == .dark ? pair.dark : pair.light
             return UIColor(red: c.0, green: c.1, blue: c.2, alpha: c.3)
         }
     }
 
-    // 画面の背景（上から下へ）
-    static let uiSkyTop = dynamic(light: (0.56, 0.72, 0.93, 1), dark: (0.06, 0.09, 0.19, 1))
-    static let uiSkyBottom = dynamic(light: (0.76, 0.86, 0.97, 1), dark: (0.13, 0.19, 0.33, 1))
-    // 粘土の面
-    static let uiSurface = dynamic(light: (0.965, 0.980, 1.0, 1), dark: (0.21, 0.28, 0.43, 1))
-    static let uiWell = dynamic(light: (0.79, 0.87, 0.97, 1), dark: (0.11, 0.16, 0.27, 1))
-    static let uiInk = dynamic(light: (0.10, 0.16, 0.30, 1), dark: (0.94, 0.97, 1.0, 1))
-    static let uiAccent = dynamic(light: (0.16, 0.40, 0.86, 1), dark: (0.50, 0.72, 1.0, 1))
+    static func color(_ pair: Pair) -> Color { Color(uiColor(pair)) }
+}
 
-    static let skyTop = Color(uiSkyTop)
-    static let skyBottom = Color(uiSkyBottom)
-    static let surface = Color(uiSurface)
-    static let well = Color(uiWell)
-    static let ink = Color(uiInk)
-    static let subInk = Color(uiInk).opacity(0.72)
-    static let accent = Color(uiAccent)
+/// ソフトクレイモーフィズム。選んだスタイル（`SoftStyle`）の色で、粘土のようにふくらんだ面を描く。
+/// - 面: 明るい面、内がわの左上の白い光、右下のかげ、下へのびるやわらかい影。
+/// - 文字は濃い色。押せる所は、形・アイコンでも分かるようにする。
+enum Soft {
+    private static var p: SoftStyle.Palette { SoftStyle.current.palette }
+
+    static var skyTop: Color { SoftStyle.color(p.skyTop) }
+    static var skyBottom: Color { SoftStyle.color(p.skyBottom) }
+    static var surface: Color { SoftStyle.color(p.surface) }
+    static var well: Color { SoftStyle.color(p.well) }
+    static var ink: Color { SoftStyle.color(p.ink) }
+    static var subInk: Color { SoftStyle.color(p.ink).opacity(0.72) }
+    static var accent: Color { SoftStyle.color(p.accent) }
+    static var buttonTop: Color { SoftStyle.color(p.buttonTop) }
+    static var buttonBottom: Color { SoftStyle.color(p.buttonBottom) }
+    static var innerShade: Color { SoftStyle.color(p.innerShade) }
+    static var drop: Color { SoftStyle.color(p.drop) }
 
     /// 内がわの光（左上）
     static let innerLight = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.22) : UIColor(white: 1, alpha: 0.95) })
-    /// 内がわのかげ（右下）
-    static let innerShade = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.02, green: 0.05, blue: 0.12, alpha: 0.65) : UIColor(red: 0.50, green: 0.64, blue: 0.88, alpha: 0.60) })
-    /// 面の下へのびる、やわらかい影
-    static let drop = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.0, green: 0.02, blue: 0.08, alpha: 0.55) : UIColor(red: 0.20, green: 0.36, blue: 0.68, alpha: 0.38) })
 
     static let good = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.45, green: 0.85, blue: 0.64, alpha: 1) : UIColor(red: 0.10, green: 0.50, blue: 0.34, alpha: 1) })
     static let warn = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1.0, green: 0.66, blue: 0.54, alpha: 1) : UIColor(red: 0.78, green: 0.24, blue: 0.20, alpha: 1) })
@@ -45,6 +140,19 @@ enum Soft {
 
     static func font(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
         .system(size: size, weight: weight, design: .rounded)
+    }
+}
+
+/// 画面の上の、大きなタイトル（ナビゲーションの標準のタイトルは、色を切りかえにくいので、自分で描く）
+struct SoftTitle: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(Soft.font(32))
+            .foregroundStyle(Soft.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
     }
 }
 
@@ -166,8 +274,7 @@ struct SoftButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let tint = AnyShapeStyle(LinearGradient(colors: [Color(red: 0.34, green: 0.60, blue: 0.98), Color(red: 0.15, green: 0.38, blue: 0.84)],
-                                                startPoint: .top, endPoint: .bottom))
+        let tint = AnyShapeStyle(LinearGradient(colors: [Soft.buttonTop, Soft.buttonBottom], startPoint: .top, endPoint: .bottom))
         configuration.label
             .font(Soft.font(17))
             .foregroundStyle(prominent ? Color.white : Soft.ink)

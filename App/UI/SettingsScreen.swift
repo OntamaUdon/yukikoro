@@ -4,11 +4,15 @@ import SwiftUI
 struct SettingsScreen: View {
     @Environment(AppModel.self) private var model
     @State private var confirmReset = false
+    @AppStorage(SoftStyle.storageKey) private var styleRaw = SoftStyle.snowDusk.rawValue
+    @AppStorage("mapBuildings") private var realisticBuildings = true
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    SoftTitle(text: "せってい")
+                    appearanceCard
                     nameCard
                     privacyCard
                     if AppEnvironment.isBeta { testCard }
@@ -22,8 +26,64 @@ struct SettingsScreen: View {
                 .padding(20)
             }
             .softScreen()
-            .navigationTitle("せってい")
+            .toolbar(.hidden, for: .navigationBar)
         }
+    }
+
+    // MARK: 見た目
+
+    private var appearanceCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("見た目", systemImage: "paintpalette.fill")
+                .font(Soft.font(14, .semibold))
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                ForEach(SoftStyle.allCases) { style in
+                    styleButton(style)
+                }
+            }
+            Toggle(isOn: $realisticBuildings) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("地図のビルを立体にする").font(Soft.font(14, .semibold))
+                    Text("切ると、平らな地図になります").font(Soft.font(11, .medium)).foregroundStyle(Soft.subInk)
+                }
+            }
+            .tint(Soft.accent)
+        }
+        .foregroundStyle(Soft.ink)
+        .padding(18)
+        .softCard(radius: 26)
+    }
+
+    private func styleButton(_ style: SoftStyle) -> some View {
+        let palette = style.palette
+        let selected = styleRaw == style.rawValue
+        return Button {
+            styleRaw = style.rawValue
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: -6) {
+                    Circle().fill(SoftStyle.color(palette.skyTop)).frame(width: 26, height: 26)
+                    Circle().fill(SoftStyle.color(palette.surface)).frame(width: 26, height: 26)
+                    Circle().fill(SoftStyle.color(palette.accent)).frame(width: 26, height: 26)
+                }
+                .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                Text(style.title).font(Soft.font(14))
+                Text(style.detail).font(Soft.font(10, .medium)).foregroundStyle(Soft.subInk)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(Soft.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(SoftInset(radius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Soft.accent, lineWidth: selected ? 3 : 0)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(style.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     // MARK: 名前

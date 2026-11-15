@@ -79,9 +79,11 @@ struct CarrySheet: View {
                 .padding(20)
             }
             .softScreen()
-            .navigationTitle("持っている雪玉")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("持っている雪玉").font(Soft.font(17)).foregroundStyle(Soft.ink)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("閉じる") { dismiss() }.font(Soft.font(16))
                 }

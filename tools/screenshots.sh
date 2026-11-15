@@ -23,13 +23,13 @@ shot() {
 
 # 画面確認用の起動引数（DEBUG のみ）: -yukikoro-demo -yukikoro-steps N -yukikoro-tab N -yukikoro-sheet tower|carry
 shot map          -yukikoro-demo -yukikoro-steps 3000
-# 起動に失敗したときの手がかり（落ちていれば、ここに出る）
-xcrun simctl spawn "$UDID" log show --style compact --last 2m --predicate 'process == "Yukikoro"' 2>/dev/null | grep -iE "fatal|crash|exception|terminat|error" | head -20 || true
-ls ~/Library/Logs/DiagnosticReports 2>/dev/null | head -5 || true
-shot map-big      -yukikoro-demo -yukikoro-steps 40000
+shot map-flat     -yukikoro-demo -yukikoro-steps 3000 -yukikoro-flatmap
 shot tower        -yukikoro-demo -yukikoro-steps 3000 -yukikoro-sheet tower
-shot carry        -yukikoro-demo -yukikoro-steps 12000 -yukikoro-sheet carry
-shot ranking      -yukikoro-demo -yukikoro-tab 1
-shot record       -yukikoro-demo -yukikoro-tab 2
 shot settings     -yukikoro-demo -yukikoro-tab 3
+shot pastel-map      -yukikoro-demo -yukikoro-style pastel
+shot pastel-tower    -yukikoro-demo -yukikoro-style pastel -yukikoro-sheet tower
+shot pastel-settings -yukikoro-demo -yukikoro-style pastel -yukikoro-tab 3
+shot mint-ranking    -yukikoro-demo -yukikoro-style mint -yukikoro-tab 1
+shot frost-record    -yukikoro-demo -yukikoro-style frost -yukikoro-tab 2
+shot carry        -yukikoro-demo -yukikoro-steps 12000 -yukikoro-sheet carry
 shot onboarding

@@ -8,6 +8,7 @@ struct RecordScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    SoftTitle(text: "きろく")
                     summary
                     if model.record.isEmpty {
                         VStack(spacing: 10) {
@@ -28,7 +29,7 @@ struct RecordScreen: View {
                 .padding(20)
             }
             .softScreen()
-            .navigationTitle("きろく")
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable { await model.loadRecord() }
             .task { await model.loadRecord() }
         }

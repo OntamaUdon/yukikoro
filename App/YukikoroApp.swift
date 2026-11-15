@@ -5,18 +5,11 @@ struct YukikoroApp: App {
     @State private var model = AppModel()
 
     init() {
-        let tab = UITabBarAppearance()
-        tab.configureWithOpaqueBackground()
-        tab.backgroundColor = Soft.uiSurface
-        UITabBar.appearance().standardAppearance = tab
-        UITabBar.appearance().scrollEdgeAppearance = tab
-
-        let nav = UINavigationBarAppearance()
-        nav.configureWithTransparentBackground()
-        nav.titleTextAttributes = [.foregroundColor: Soft.uiInk]
-        nav.largeTitleTextAttributes = [.foregroundColor: Soft.uiInk]
-        UINavigationBar.appearance().standardAppearance = nav
-        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        #if DEBUG
+        // 画面確認用: -yukikoro-style pastel|mint|frost|snowDusk、-yukikoro-flatmap（ビルを平らに）
+        if let style = DemoMode.value("-yukikoro-style") { UserDefaults.standard.set(style, forKey: SoftStyle.storageKey) }
+        if DemoMode.args.contains("-yukikoro-flatmap") { UserDefaults.standard.set(false, forKey: "mapBuildings") }
+        #endif
     }
 
     var body: some Scene {

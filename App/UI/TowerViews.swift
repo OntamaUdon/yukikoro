@@ -337,9 +337,11 @@ struct TowerSheet: View {
                 }
             }
             .softScreen()
-            .navigationTitle("雪だるま")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("雪だるま").font(Soft.font(17)).foregroundStyle(Soft.ink)
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     if let tower {
                         Menu {

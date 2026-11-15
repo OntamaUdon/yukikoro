@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(SoftStyle.storageKey) private var styleRaw = SoftStyle.snowDusk.rawValue
     @State private var selection: Int = {
         #if DEBUG
         return DemoMode.isOn ? DemoMode.tab : 0
@@ -14,19 +15,32 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             MapScreen()
+                .id(styleRaw)
+                .toolbarBackground(Soft.surface, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("ちず", systemImage: "map.fill") }
                 .tag(0)
             RankingScreen()
+                .id(styleRaw)
+                .toolbarBackground(Soft.surface, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("ランキング", systemImage: "trophy.fill") }
                 .tag(1)
             RecordScreen()
+                .id(styleRaw)
+                .toolbarBackground(Soft.surface, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("きろく", systemImage: "book.closed.fill") }
                 .tag(2)
             SettingsScreen()
+                .id(styleRaw)
+                .toolbarBackground(Soft.surface, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("せってい", systemImage: "gearshape.fill") }
                 .tag(3)
         }
         .tint(Soft.accent)
+        .id(styleRaw)
         .overlay(alignment: .top) { bannerView }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: model.banner)
         .fullScreenCover(isPresented: .constant(!model.player.onboarded)) {

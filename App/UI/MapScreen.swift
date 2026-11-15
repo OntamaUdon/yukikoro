@@ -6,8 +6,8 @@ struct MapScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
 
-    /// ビルを立体にする（見づらければ false にすると、平面になる）
-    private static let realisticBuildings = true
+    /// ビルを立体にするか（設定で切りかえる）
+    @AppStorage("mapBuildings") private var realisticBuildings = true
     private static let cameraDistance = 450.0
     private static let cameraPitch = 75.0
 
@@ -79,7 +79,7 @@ struct MapScreen: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: Self.realisticBuildings ? .realistic : .flat,
+        .mapStyle(.standard(elevation: realisticBuildings ? .realistic : .flat,
                             emphasis: .muted,
                             pointsOfInterest: .excludingAll))
         .ignoresSafeArea()

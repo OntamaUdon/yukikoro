@@ -9,6 +9,7 @@ struct RankingScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
+                    SoftTitle(text: "ランキング")
                     Picker("期間", selection: $showHall) {
                         Text("今週").tag(false)
                         Text("前の週（殿堂）").tag(true)
@@ -63,7 +64,7 @@ struct RankingScreen: View {
                 .padding(20)
             }
             .softScreen()
-            .navigationTitle("ランキング")
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable { await model.loadRanking() }
             .task { await model.loadRanking() }
             .onChange(of: model.betaSeq) { _, _ in Task { await model.loadRanking() } }
