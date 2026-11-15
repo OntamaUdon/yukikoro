@@ -1175,6 +1175,9 @@ final class StageCoordinator {
     /// ブラックホールになる動き（約 6 秒）:
     /// 0〜0.4 世界が吸いこまれて、雪玉がふるえて白くまぶしく光る → 0.4 でまっ黒に切りかわる → 輪がひろがり、雪玉はぎゅっと小さくなる
     private func applyCollapse(k: Double, swapped: Bool, angle: Double) {
+        // 円盤が地面にめりこまないように、ブラックホールのあいだは地面を消す
+        ground.isHidden = swapped
+        shadow.isHidden = swapped
         if swapped {
             layers.forEach { $0.root.isHidden = true }
             debrisRoot.isHidden = true
