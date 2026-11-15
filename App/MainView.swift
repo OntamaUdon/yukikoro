@@ -148,7 +148,18 @@ struct MainView: View {
     private func startCollapseIfNeeded() {
         let state = store.state
         guard state.blackHole, !state.seenBlackHole, bhStart == nil else { return }
-        bhStart = max(Date().addingTimeInterval(0.6), anim.start.addingTimeInterval(anim.duration))
+        let start = max(Date().addingTimeInterval(0.6), anim.start.addingTimeInterval(anim.duration))
+        bhStart = start
+        // ふるえが強まり、なる瞬間に どん と来る
+        let delay = start.timeIntervalSinceNow
+        for i in 0..<8 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.3 * Double(i)) {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.25 + 0.09 * Double(i))
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay + 2.4) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred(intensity: 1.0)
+        }
     }
 
     /// ブラックホールになる動きの進み（0〜1）。演出がないときは、ブラックホールなら 1。

@@ -120,6 +120,8 @@ final class StageCoordinator {
     private let groundMaterial = SCNMaterial()
     private let ring = SCNNode()
     private let cameraNode = SCNNode()
+    /// ブラックホールになる瞬間の、広がる光の波
+    private let shock = SCNNode()
     private var cameraBase = SIMD3<Float>(0, 0, 0)
     private var wasCollapsing = false
     private let shadow = SCNNode()
@@ -231,26 +233,56 @@ final class StageCoordinator {
         ball.geometry = sphere
         scene.rootNode.addChildNode(ball)
 
-        // ブラックホールのときの輪
-        let torus = SCNTorus(ringRadius: 1.9, pipeRadius: 0.14)
-        let ringMaterial = SCNMaterial()
-        ringMaterial.lightingModel = .constant
-        ringMaterial.diffuse.contents = UIColor(red: 1.0, green: 0.62, blue: 0.2, alpha: 1)
-        ringMaterial.emission.contents = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 1)
-        torus.materials = [ringMaterial]
-        ring.geometry = torus
-        // 外がわの、うすく赤い輪
-        let outerTorus = SCNTorus(ringRadius: 2.7, pipeRadius: 0.06)
-        let outerMaterial = SCNMaterial()
-        outerMaterial.lightingModel = .constant
-        outerMaterial.diffuse.contents = UIColor(red: 1.0, green: 0.38, blue: 0.22, alpha: 1)
-        outerMaterial.emission.contents = UIColor(red: 1.0, green: 0.30, blue: 0.18, alpha: 1)
-        outerMaterial.transparency = 0.7
-        outerTorus.materials = [outerMaterial]
-        ring.addChildNode(SCNNode(geometry: outerTorus))
-        ring.eulerAngles = SCNVector3(0.35, 0, 0.2)
+        // ブラックホール: 熱く光るガスの円盤（ゆっくり回る）、事象の地平面のふちの光、うしろにまわりこむ光
+        func glowMaterial(_ image: UIImage) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.lightingModel = .constant
+            m.diffuse.contents = image
+            m.blendMode = .add
+            m.writesToDepthBuffer = false
+            m.isDoubleSided = true
+            return m
+        }
+        let discImage = Self.discImage(size: 512)
+        let discPlane = SCNPlane(width: 8.8, height: 8.8)
+        discPlane.materials = [glowMaterial(discImage)]
+        let discNode = SCNNode(geometry: discPlane)
+        discNode.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
+        let spin = SCNNode()
+        spin.addChildNode(discNode)
+        spin.runAction(.repeatForever(.rotateBy(x: 0, y: 2 * .pi, z: 0, duration: 14)))
+        let tilt = SCNNode()
+        tilt.eulerAngles = SCNVector3(0.42, 0, 0.12)
+        tilt.addChildNode(spin)
+        ring.addChildNode(tilt)
+        // 円盤が雪玉のうしろにまわりこんで見える光（円盤を正面から見た形）
+        let lensPlane = SCNPlane(width: 6.2, height: 6.2)
+        lensPlane.materials = [glowMaterial(discImage)]
+        let lens = SCNNode(geometry: lensPlane)
+        lens.position = SCNVector3(0, 0, -0.3)
+        lens.opacity = 0.55
+        lens.runAction(.repeatForever(.rotateBy(x: 0, y: 0, z: 2 * .pi, duration: 22)))
+        ring.addChildNode(lens)
+        // 地平面のふちに、細く白熱する光の輪
+        let photonTorus = SCNTorus(ringRadius: 1.05, pipeRadius: 0.03)
+        let photonMaterial = SCNMaterial()
+        photonMaterial.lightingModel = .constant
+        photonMaterial.diffuse.contents = UIColor(red: 1.0, green: 0.93, blue: 0.75, alpha: 1)
+        photonMaterial.emission.contents = UIColor(red: 1.0, green: 0.85, blue: 0.55, alpha: 1)
+        photonTorus.materials = [photonMaterial]
+        let photon = SCNNode(geometry: photonTorus)
+        photon.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)
+        ring.addChildNode(photon)
         ring.isHidden = true
         scene.rootNode.addChildNode(ring)
+
+        // なる瞬間に、ぱっと広がる光の波
+        let shockPlane = SCNPlane(width: 2, height: 2)
+        shockPlane.materials = [glowMaterial(Self.shockImage(size: 256))]
+        shock.geometry = shockPlane
+        shock.constraints = [SCNBillboardConstraint()]
+        shock.isHidden = true
+        scene.rootNode.addChildNode(shock)
 
         // 雪玉の影
         let shadowPlane = SCNPlane(width: 3.4, height: 3.4)
@@ -1170,6 +1202,16 @@ final class StageCoordinator {
                 ball.scale = SCNVector3(size, size, size)
                 ballMaterial.emission.contents = UIColor(white: CGFloat(min(1, k / 0.4)), alpha: 1)
             }
+            // 光の波（なる瞬間から、広がって消える）
+            if swapped && k < 0.78 {
+                let t = (k - 0.4) / 0.38
+                let size = Float(0.6 + 11 * (1 - pow(1 - t, 2)))
+                shock.scale = SCNVector3(size, size, size)
+                shock.opacity = CGFloat(max(0, 1 - t))
+                shock.isHidden = false
+            } else {
+                shock.isHidden = true
+            }
             // 画面のゆれ（ぎゅっとなるほど大きく、なり終わると静まる）
             let amp = Float(k < 0.4 ? 0.12 * (k / 0.4) : 0.12 * max(0, 1 - (k - 0.4) / 0.35))
             cameraNode.position = SCNVector3(cameraBase.x + amp * Float(sin(k * 900)), cameraBase.y + amp * Float(cos(k * 1300)), cameraBase.z)
@@ -1177,6 +1219,7 @@ final class StageCoordinator {
             wasCollapsing = false
             ball.scale = SCNVector3(1, 1, 1)
             ring.scale = SCNVector3(1, 1, 1)
+            shock.isHidden = true
             cameraNode.position = SCNVector3(cameraBase.x, cameraBase.y, cameraBase.z)
             ballMaterial.emission.contents = UIColor.black
         }
@@ -1206,6 +1249,63 @@ final class StageCoordinator {
     }
 
     // MARK: 画像
+
+    /// ブラックホールのまわりの、熱いガスの円盤（内がわほど白く熱く、外へ行くほど赤く、すじ模様つき）
+    private static func discImage(size: Int) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { context in
+            let cg = context.cgContext
+            let center = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
+            let radius = CGFloat(size) / 2
+            let space = CGColorSpaceCreateDeviceRGB()
+            let colors = [
+                UIColor(red: 1.0, green: 0.97, blue: 0.86, alpha: 1.0),
+                UIColor(red: 1.0, green: 0.80, blue: 0.42, alpha: 0.95),
+                UIColor(red: 1.0, green: 0.52, blue: 0.16, alpha: 0.80),
+                UIColor(red: 0.72, green: 0.16, blue: 0.06, alpha: 0.42),
+                UIColor(red: 0.40, green: 0.05, blue: 0.02, alpha: 0.0),
+            ].map { $0.cgColor } as CFArray
+            if let gradient = CGGradient(colorsSpace: space, colors: colors, locations: [0, 0.16, 0.42, 0.74, 1.0]) {
+                cg.drawRadialGradient(gradient, startCenter: center, startRadius: radius * 0.22, endCenter: center, endRadius: radius, options: [])
+            }
+            // うずまくすじ（明るいすじと、くらいすき間）
+            var generator = SplitMix64(seed: 2024)
+            func random() -> CGFloat { CGFloat(generator.next() % 10_000) / 10_000 }
+            for _ in 0..<260 {
+                let r = radius * (0.26 + random() * 0.70)
+                let start = random() * 2 * .pi
+                let length = 0.15 + random() * 0.9
+                cg.setLineWidth(1 + random() * 4)
+                cg.setLineCap(.round)
+                if random() < 0.55 {
+                    cg.setBlendMode(.plusLighter)
+                    cg.setStrokeColor(UIColor(white: 1, alpha: 0.05 + random() * 0.18).cgColor)
+                } else {
+                    cg.setBlendMode(.destinationOut)
+                    cg.setStrokeColor(UIColor(white: 0, alpha: 0.10 + random() * 0.22).cgColor)
+                }
+                cg.addArc(center: center, radius: r, startAngle: start, endAngle: start + length, clockwise: false)
+                cg.strokePath()
+            }
+        }
+    }
+
+    /// 広がる光の波（細い光の輪）
+    private static func shockImage(size: Int) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { context in
+            let cg = context.cgContext
+            let center = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
+            let radius = CGFloat(size) / 2
+            let colors = [
+                UIColor(white: 1, alpha: 0).cgColor, UIColor(white: 1, alpha: 0).cgColor,
+                UIColor(red: 1.0, green: 0.92, blue: 0.75, alpha: 0.95).cgColor, UIColor(white: 1, alpha: 0).cgColor,
+            ] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.80, 0.92, 1.0]) {
+                cg.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: radius, options: [])
+            }
+        }
+    }
 
     private static func speckle(size: Int, base: UIColor, spots: Int, seed: UInt64, tint: UIColor) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
