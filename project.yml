@@ -23,11 +23,10 @@ targets:
     sources:
       - App
       - Shared
-      - Resources
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: ゆきころさんぽ
+        CFBundleDisplayName: ゆきころ
         CFBundleDevelopmentRegion: ja
         UILaunchScreen: {}
         UIApplicationSceneManifest:
@@ -37,11 +36,16 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSHealthShareUsageDescription: 歩いた歩数を読み取って、雪玉を大きくするために使います。データは端末の外には送信しません。
         NSHealthUpdateUsageDescription: ゆきころはヘルスケアにデータを書き込みません。歩数は読み取りのみに使います。
+        NSLocationWhenInUseUsageDescription: 近くの雪だるまを地図に出したり、雪玉をおいたり積んだりするために、いまの場所を使います。使うのはアプリを開いている間だけです。あなたの位置は送信せず、おいた雪玉の位置は、約50mの範囲でずらして保存します。
         NSMotionUsageDescription: ヘルスケアの歩数が使えない場合に、歩数を読み取って雪玉を大きくするために使います。
     entitlements:
       path: App/Yukikoro.entitlements
       properties:
         com.apple.developer.healthkit: true
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.ontamaudon.yukikoro
+        com.apple.developer.icloud-services:
+          - CloudKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ontamaudon.yukikoro
