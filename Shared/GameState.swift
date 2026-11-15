@@ -24,8 +24,10 @@ struct GameState: Codable, Equatable {
     var spent: Int = 0
     /// 倒した木の道の数（いま雪玉がいる道の番号）
     var stage: Int = 0
-    /// 持っている資材（木を倒すと手に入る）
+    /// 持っている資材（道ばたの物を拾ったり、木などを倒すと手に入る）
     var materials: Int = 0
+    /// ここまでに拾った道ばたの物の番号（まだなら -1）
+    var debris: Int = Debris.none
     /// これまでに加算した歩数の合計
     var totalSteps: Int = 0
     /// 日付ごとに「すでに加算した歩数」。差分だけ足すので二重加算も取りこぼしも起きない。
@@ -47,7 +49,7 @@ struct GameState: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, totalSteps, credited, baseline
+        case version, onboarded, initialized, mass, pack, owned, spent, stage, materials, debris, totalSteps, credited, baseline
         case peakDiameter, seenMass, seenPack, dayKey, dayStartMass, blackHole, createdAt
     }
 
@@ -68,6 +70,8 @@ struct GameState: Codable, Equatable {
             owned = try c.decodeIfPresent([String: Int].self, forKey: .owned) ?? [:]
             spent = try c.decodeIfPresent(Int.self, forKey: .spent) ?? 0
             materials = try c.decodeIfPresent(Int.self, forKey: .materials) ?? 0
+            // 拾い物ができる前の保存データは、いまの大きさまでの物は拾ったことにする
+            debris = try c.decodeIfPresent(Int.self, forKey: .debris) ?? Debris.index(diameter: 2 * SnowPhysics.radius(mass: mass, pack: pack))
             if let savedStage = try c.decodeIfPresent(Int.self, forKey: .stage) {
                 stage = savedStage
             } else {
@@ -96,6 +100,7 @@ struct GameState: Codable, Equatable {
         try c.encode(spent, forKey: .spent)
         try c.encode(stage, forKey: .stage)
         try c.encode(materials, forKey: .materials)
+        try c.encode(debris, forKey: .debris)
         try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(credited, forKey: .credited)
         try c.encode(baseline, forKey: .baseline)
@@ -160,11 +165,12 @@ struct GameState: Codable, Equatable {
         guard steps > 0 else { return }
         totalSteps += steps
         guard !blackHole else { return }
-        let result = SnowPhysics.advance(mass: mass, pack: pack, team: team, steps: steps, stage: stage)
+        let result = SnowPhysics.advance(mass: mass, pack: pack, team: team, steps: steps, stage: stage, debris: debris)
         mass = result.mass
         blackHole = result.blackHole
         stage = result.stage
         materials += result.materials
+        debris = result.debris
         peakDiameter = max(peakDiameter, diameter)
     }
 

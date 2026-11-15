@@ -134,23 +134,34 @@ enum SnowPhysics {
         var blackHole: Bool
         /// 倒した木の道の数（`stage` を渡したときだけ進む）
         var stage: Int
-        /// 木を倒して手に入れた資材
+        /// 木を倒したり、道ばたの物を拾ったりして手に入れた資材
         var materials: Int
+        /// ここまでに拾った物の番号（`debris` を渡したときだけ進む）
+        var debris: Int
     }
 
     /// 歩数ぶん進める。ブラックホールになったらそこで止める。
     /// `stage` を渡すと、木の道の幅より大きくなれない。力が足りなければ木にぶつかって止まり、
     /// 力が足りれば木を倒して（資材を得て）次の道に進む。
-    static func advance(mass: Double, pack: Double, team: PushTeam, steps: Int, stage: Int? = nil) -> AdvanceResult {
+    static func advance(mass: Double, pack: Double, team: PushTeam, steps: Int, stage: Int? = nil, debris: Int? = nil) -> AdvanceResult {
         var m = mass
         var currentStage = stage ?? 0
         var materials = 0
+        var picked = debris ?? Debris.none
         guard steps > 0 else {
-            return AdvanceResult(mass: m, blackHole: isBlackHole(mass: m, pack: pack), stage: currentStage, materials: 0)
+            return AdvanceResult(mass: m, blackHole: isBlackHole(mass: m, pack: pack), stage: currentStage, materials: 0, debris: picked)
         }
         var cap = stage == nil ? Double.infinity : Lane.capMass(stage: currentStage, pack: pack)
         for _ in 0..<steps {
             m = step(mass: m, pack: pack, team: team)
+            if debris != nil {
+                // 転がるうちに、道ばたの物（小石・枝・・・）を拾う
+                let reached = Debris.index(diameter: 2 * radius(mass: m, pack: pack))
+                while picked < reached {
+                    picked += 1
+                    materials += Debris.value(index: picked)
+                }
+            }
             while m > cap {
                 if Lane.canTopple(capMass: cap, team: team) {
                     materials += Lane.reward(stage: currentStage)
@@ -162,10 +173,10 @@ enum SnowPhysics {
                 }
             }
             if isBlackHole(mass: m, pack: pack) {
-                return AdvanceResult(mass: m, blackHole: true, stage: currentStage, materials: materials)
+                return AdvanceResult(mass: m, blackHole: true, stage: currentStage, materials: materials, debris: picked)
             }
         }
-        return AdvanceResult(mass: m, blackHole: false, stage: currentStage, materials: materials)
+        return AdvanceResult(mass: m, blackHole: false, stage: currentStage, materials: materials, debris: picked)
     }
 
     /// 固める 1 回ぶん（残りの 0.4% ずつ。半径がほんの少し縮む）
@@ -215,4 +226,59 @@ enum Lane {
     static func canTopple(capMass: Double, team: PushTeam) -> Bool {
         team.force + team.lift * capMass * SnowPhysics.gravity >= toppleForce(capMass: capMass)
     }
+}
+
+/// 道ばたに落ちている物。雪玉の直径が 1.2 倍になるたびに、ひとつ拾える（小石 → 枝 → ・・・ → 大きな岩）。
+/// 大きくなるほど、拾った物の資材が増える。
+enum Debris {
+    static let none = -1
+    /// いちばん小さい物を拾う直径（メートル）
+    static let firstDiameter = 0.02
+    static let ratio = 1.2
+    static let maxIndex = 400
+
+    /// この直径までに拾った物の番号（まだ何も拾っていなければ -1）
+    static func index(diameter: Double) -> Int {
+        guard diameter >= firstDiameter else { return none }
+        return min(maxIndex, Int(floor(log(diameter / firstDiameter) / log(ratio))))
+    }
+
+    /// 番号 `index` の物を拾ったときの資材
+    static func value(index: Int) -> Int {
+        guard index >= 0 else { return 0 }
+        return max(1, Int(min(1e12, 0.5 * pow(1.15, Double(index))).rounded()))
+    }
+
+    /// 拾う物の名前（直径で変わる）
+    static func name(index: Int) -> String {
+        switch firstDiameter * pow(ratio, Double(index)) {
+        case ..<0.05: return "こいし"
+        case ..<0.12: return "えだ"
+        case ..<0.3: return "まつぼっくり"
+        case ..<0.8: return "おおきな えだ"
+        case ..<1.6: return "いわ"
+        default: return "きりかぶ"
+        }
+    }
+}
+
+/// 道の両側に立っているもの（段階ごとに、だんだん大きくなる）
+enum LaneKind: Int, CaseIterable {
+    case tree, pole, car, house, building, mountain, range
+
+    var name: String {
+        switch self {
+        case .tree: return "き"
+        case .pole: return "でんしんばしら"
+        case .car: return "くるま"
+        case .house: return "いえ"
+        case .building: return "ビル"
+        case .mountain: return "やま"
+        case .range: return "やまなみ"
+        }
+    }
+}
+
+extension Lane {
+    static func kind(stage: Int) -> LaneKind { LaneKind(rawValue: min(max(stage, 0), LaneKind.allCases.count - 1)) ?? .range }
 }

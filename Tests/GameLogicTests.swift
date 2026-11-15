@@ -283,6 +283,53 @@ final class GameLogicTests: XCTestCase {
         XCTAssertFalse(Lane.canTopple(capMass: huge, team: Shop.team(owned: ["kid": 50, "big": 50])))
     }
 
+    // MARK: 道ばたの物
+
+    func testDebrisIndexGrowsWithDiameter() {
+        XCTAssertEqual(Debris.index(diameter: 0.01), Debris.none)
+        XCTAssertEqual(Debris.index(diameter: 0.02), 0)
+        // 1.2 倍になるたびに 1 つ
+        XCTAssertEqual(Debris.index(diameter: 0.02 * 1.2 * 1.001), 1)
+        XCTAssertEqual(Debris.index(diameter: 3.0), 27)
+        XCTAssertEqual(Debris.value(index: Debris.none), 0)
+        XCTAssertEqual(Debris.value(index: 0), 1)
+        XCTAssertGreaterThan(Debris.value(index: 27), Debris.value(index: 10))
+        XCTAssertFalse(Debris.name(index: 0).isEmpty)
+    }
+
+    func testAdvancePicksUpDebrisOnlyWhenAsked() {
+        let team = Shop.team(owned: ["kid": 5])
+        let without = SnowPhysics.advance(mass: SnowPhysics.initialMass(), pack: 0, team: team, steps: 200, stage: 0)
+        XCTAssertEqual(without.materials, 0)
+        let with = SnowPhysics.advance(mass: SnowPhysics.initialMass(), pack: 0, team: team, steps: 200, stage: 0, debris: Debris.none)
+        XCTAssertGreaterThan(with.materials, 0)
+        XCTAssertEqual(with.mass, without.mass, accuracy: without.mass * 1e-9)
+        XCTAssertEqual(with.debris, Debris.index(diameter: 2 * SnowPhysics.radius(mass: with.mass, pack: 0)))
+        // 同じ物を二度は拾わない
+        let again = SnowPhysics.advance(mass: with.mass, pack: 0, team: team, steps: 0, stage: 0, debris: with.debris)
+        XCTAssertEqual(again.materials, 0)
+    }
+
+    func testGameStateCollectsDebrisAsItGrows() {
+        var state = GameState()
+        state.owned = ["kid": 5]
+        XCTAssertEqual(state.materials, 0)
+        state.addBonus(steps: 300)
+        XCTAssertGreaterThan(state.materials, 20)
+        XCTAssertEqual(state.debris, Debris.index(diameter: state.diameter))
+    }
+
+    func testLaneKindsGetBiggerAndStayAtTheLast() {
+        XCTAssertEqual(Lane.kind(stage: 0), .tree)
+        XCTAssertEqual(Lane.kind(stage: 1), .pole)
+        XCTAssertEqual(Lane.kind(stage: 2), .car)
+        XCTAssertEqual(Lane.kind(stage: 3), .house)
+        XCTAssertEqual(Lane.kind(stage: 4), .building)
+        XCTAssertEqual(Lane.kind(stage: 5), .mountain)
+        XCTAssertEqual(Lane.kind(stage: 40), .range)
+        XCTAssertEqual(LaneKind.mountain.name, "やま")
+    }
+
     func testWeakTeamStopsAtTheTrees() {
         let weak = Shop.team(owned: ["kid": 12, "big": 2])
         let result = SnowPhysics.advance(mass: 4_240.9, pack: 0, team: weak, steps: 10, stage: 0)

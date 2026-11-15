@@ -53,7 +53,7 @@ struct SnowStage: UIViewRepresentable {
 }
 
 /// 頂点を直接組み立てるための道具。三角形の向きは、法線のヒントに合わせて自動で直す。
-private struct MeshBuilder {
+struct MeshBuilder {
     typealias Vertex = (p: SIMD3<Float>, n: SIMD3<Float>)
 
     var positions: [SCNVector3] = []
@@ -128,6 +128,16 @@ final class StageCoordinator {
     private let sparkleSystem = SCNParticleSystem()
     /// 雪玉・仲間・足元をあたたかく照らす、街灯のような光
     private let lampLight = SCNNode()
+    /// 道ばたに落ちている物（小石・枝・まつぼっくり）。雪玉に拾われて消える。
+    private let debrisRoot = SCNNode()
+    private var debrisItems: [SCNNode] = []
+    private var debrisLateral: [Double] = []
+    /// 雪玉の半径を 1 としたときの、転がった道のり
+    private var scrollUnits: Double = 0
+    /// 木いがいの、道に立つ物の形（種類ごと）
+    private var objectGeometries: [LaneKind: [SCNGeometry]] = [:]
+    private let windowMaterial = SCNMaterial()
+    private var treeVariants: [SCNGeometry] = []
 
     // 木の道に使う材料
     private let trunkMaterial = SCNMaterial()
@@ -159,6 +169,8 @@ final class StageCoordinator {
     private var lastBlackHole = false
 
     private static let pairsPerLane = 10
+    private static let debrisCount = 16
+    private static let debrisGap = 2.3
     private static let tierSizes: [Double] = [0.8, 2.2, 3.0, 5.0, 12.0]
     private static let groundTile = 8.0
 
@@ -254,7 +266,7 @@ final class StageCoordinator {
 
         setUpMaterials()
         // 左右 2 列の木の道。落ちていく道・いまの道・次の道の 3 本ぶんを用意しておく。
-        let variants = (0..<3).map { index -> SCNGeometry in
+        treeVariants = (0..<3).map { index -> SCNGeometry in
             let seed = UInt64(index + 1) * 7_919
             let full = makeTreeGeometry(seed: seed)
             // 画面で小さくなったら、枝の少ない簡単な形にかえる
@@ -262,11 +274,12 @@ final class StageCoordinator {
             return full
         }
         for _ in 0..<3 {
-            let layer = makeLane(variants: variants)
+            let layer = makeLane(variants: treeVariants)
             world.addChildNode(layer.root)
             layers.append(layer)
         }
         world.addChildNode(crew)
+        setUpDebris()
 
         // 重力そうちの玉（雪玉のまわりを回る）
         scene.rootNode.addChildNode(orbit)
@@ -286,6 +299,7 @@ final class StageCoordinator {
 
         if let last = lastAngle {
             scroll += (input.angle - last) * r
+            scrollUnits += input.angle - last
         }
         lastAngle = input.angle
 
@@ -299,6 +313,7 @@ final class StageCoordinator {
         ground.position = SCNVector3(0, 0, Float(scroll.truncatingRemainder(dividingBy: tile)))
 
         updateLanes(radius: r)
+        updateDebris(radius: r)
         updateCrew(input.crew, radius: r, angle: input.angle)
 
         if lastDaypart != input.daypart {
@@ -338,6 +353,11 @@ final class StageCoordinator {
             material.emission.intensity = 0
         }
 
+        windowMaterial.lightingModel = .lambert
+        windowMaterial.diffuse.contents = UIColor(red: 0.13, green: 0.17, blue: 0.27, alpha: 1)
+        windowMaterial.emission.contents = UIColor(red: 1.0, green: 0.78, blue: 0.42, alpha: 1)
+        windowMaterial.emission.intensity = 0
+
         poolMaterial.lightingModel = .constant
         poolMaterial.diffuse.contents = Self.poolImage(size: 256)
         poolMaterial.diffuse.wrapS = .repeat
@@ -350,6 +370,42 @@ final class StageCoordinator {
     }
 
     private func bulbMaterials() -> [SCNMaterial] { [goldBulb, iceBulb] }
+
+    /// 木いがいの、道に立つ物（種類ごとに形を用意しておく）
+    private func geometries(for kind: LaneKind) -> [SCNGeometry] {
+        if let cached = objectGeometries[kind] { return cached }
+        func paint(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.lightingModel = .lambert
+            m.diffuse.contents = UIColor(red: r, green: g, blue: b, alpha: 1)
+            return m
+        }
+        let walls: [SCNMaterial]
+        let trim: SCNMaterial
+        switch kind {
+        case .tree: return []
+        case .pole:
+            walls = [paint(0.46, 0.38, 0.32), paint(0.40, 0.36, 0.34)]
+            trim = paint(0.18, 0.17, 0.18)
+        case .car:
+            walls = [paint(0.78, 0.18, 0.20), paint(0.18, 0.52, 0.62), paint(0.88, 0.66, 0.20)]
+            trim = paint(0.09, 0.09, 0.10)
+        case .house:
+            walls = [paint(0.93, 0.86, 0.72), paint(0.62, 0.74, 0.88), paint(0.72, 0.40, 0.32)]
+            trim = paint(0.34, 0.22, 0.22)
+        case .building:
+            walls = [paint(0.56, 0.59, 0.66), paint(0.42, 0.49, 0.62)]
+            trim = paint(0.24, 0.26, 0.30)
+        case .mountain, .range:
+            walls = [paint(0.40, 0.45, 0.58), paint(0.46, 0.46, 0.56)]
+            trim = paint(0.34, 0.38, 0.50)
+        }
+        let list = walls.enumerated().map { index, wall in
+            StageObjects.geometry(kind: kind, seed: UInt64(index + 1) * 4_217, materials: [wall, trim, snowMaterial, goldBulb, iceBulb, windowMaterial])
+        }
+        objectGeometries[kind] = list
+        return list
+    }
 
     /// 針葉樹（トウヒ）の形。高さは約 8。
     /// 幹は先が細くなる円錐。そこに、下ほど長い枝の輪が 16 段つく。枝は少しもち上がってから、先がたれて、上に雪がのる。
@@ -461,12 +517,13 @@ final class StageCoordinator {
         return mesh.geometry(materials: [trunkMaterial, needleMaterial, snowMaterial, goldBulb, iceBulb])
     }
 
-    /// 木の道をまたぐ、光のアーチ（メートルで作る）
-    private func makeArchGeometry(half: Double, f: Double) -> SCNGeometry {
+    /// 道をまたぐ、光のアーチ（メートルで作る）
+    private func makeArchGeometry(half: Double, f: Double, kind: LaneKind) -> SCNGeometry? {
+        guard let shape = StageObjects.arch(kind) else { return nil }
         var mesh = MeshBuilder(elementCount: 2)
-        let reach = Float(half + 1.7 * f)
-        let height = Float(6.4 * f)
-        let sag = Float(1.1 * f)
+        let reach = Float(half + StageObjects.offset(kind) * f)
+        let height = Float(shape.height * f)
+        let sag = Float(shape.sag * f)
         let count = 26
         for j in 0...count {
             let t = Float(j) / Float(count)
@@ -523,7 +580,8 @@ final class StageCoordinator {
         }
         configure(0, stage: fallingStage, fall: fall)
         configure(1, stage: upright, fall: 0)
-        configure(2, stage: upright + 1, fall: 0)
+        // 次の道は、まだ見せない（外側に大きな物が見えてしまうので）
+        configure(2, stage: nil, fall: 0)
     }
 
     private func configure(_ slot: Int, stage: Int?, fall: Double) {
@@ -533,15 +591,22 @@ final class StageCoordinator {
         }
         let layer = layers[slot]
         layer.root.isHidden = false
+        let kind = Lane.kind(stage: stage)
         let f = Lane.treeScale(stage: stage)
         let half = Lane.width(stage: stage) / 2
+        let offset = StageObjects.offset(kind)
 
-        // 光のアーチは、道が変わったときだけ作り直す
+        // 立っている物と光のアーチは、道が変わったときだけ作り直す
         if layers[slot].archStage != stage {
             layers[slot].archStage = stage
-            let geometry = makeArchGeometry(half: half, f: f)
+            let variants = kind == .tree ? treeVariants : geometries(for: kind)
+            for (index, holder) in layer.holders.enumerated() {
+                holder.childNodes.first?.geometry = variants[index % variants.count]
+            }
+            let geometry = makeArchGeometry(half: half, f: f, kind: kind)
             for arch in layer.arches { arch.geometry = geometry }
         }
+        let hasArch = StageObjects.arch(kind) != nil
 
         let spacing = 7 * f
         let period = spacing * Double(Self.pairsPerLane)
@@ -556,15 +621,15 @@ final class StageCoordinator {
             z = z - period + near
 
             let holder = layer.holders[index]
-            holder.position = SCNVector3(Float(side * (half + 1.7 * f)), 0, Float(z))
+            holder.position = SCNVector3(Float(side * (half + offset * f)), 0, Float(z))
             holder.scale = SCNVector3(fs, fs, fs)
             holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
-            holder.isHidden = fall >= 1 || (slot == 2 && (index / 2) % 2 == 1)
+            holder.isHidden = fall >= 1
 
             if index % 2 == 0 {
                 let arch = layer.arches[index / 2]
                 arch.position = SCNVector3(0, 0, Float(z))
-                arch.isHidden = fall > 0
+                arch.isHidden = fall > 0 || !hasArch
             }
         }
 
@@ -572,7 +637,74 @@ final class StageCoordinator {
         let offset = scroll.truncatingRemainder(dividingBy: spacing)
         layer.pool.position = SCNVector3(0, 0.02 * fs, Float(near - period / 2 + (offset < 0 ? offset + spacing : offset)))
         layer.pool.scale = SCNVector3(fs, fs, fs)
-        layer.pool.isHidden = fall > 0
+        layer.pool.isHidden = fall > 0 || kind == .mountain || kind == .range
+    }
+
+    // MARK: 道ばたの物（雪玉が拾って、資材になる）
+
+    private func setUpDebris() {
+        var generator = SplitMix64(seed: 77)
+        func random() -> Float { Float(generator.next() % 10_000) / 10_000 }
+        func paint(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.lightingModel = .lambert
+            m.diffuse.contents = UIColor(red: r, green: g, blue: b, alpha: 1)
+            return m
+        }
+        for index in 0..<Self.debrisCount {
+            let item = SCNNode()
+            switch index % 3 {
+            case 0:
+                // 小石
+                let stone = SCNNode(geometry: SCNSphere(radius: 0.10))
+                stone.geometry?.materials = [paint(0.52, 0.54, 0.60)]
+                stone.scale = SCNVector3(1.1, 0.65, 0.9)
+                stone.position = SCNVector3(0, 0.06, 0)
+                item.addChildNode(stone)
+            case 1:
+                // 木の枝（ちょっと曲がった 2 本）
+                for k in 0..<2 {
+                    let twig = SCNNode(geometry: SCNCylinder(radius: 0.02, height: k == 0 ? 0.6 : 0.34))
+                    twig.geometry?.materials = [paint(0.42, 0.29, 0.18)]
+                    twig.eulerAngles = SCNVector3(0, Float(k) * 0.9, Float.pi / 2)
+                    twig.position = SCNVector3(Float(k) * 0.08, 0.03 + Float(k) * 0.03, Float(k) * 0.06)
+                    item.addChildNode(twig)
+                }
+            default:
+                // まつぼっくり
+                let cone = SCNNode(geometry: SCNCone(topRadius: 0.01, bottomRadius: 0.075, height: 0.2))
+                cone.geometry?.materials = [paint(0.50, 0.33, 0.20)]
+                cone.eulerAngles = SCNVector3(0, 0, Float.pi / 2.4)
+                cone.position = SCNVector3(0, 0.07, 0)
+                item.addChildNode(cone)
+            }
+            item.eulerAngles = SCNVector3(0, random() * 6.28, 0)
+            debrisRoot.addChildNode(item)
+            debrisItems.append(item)
+            debrisLateral.append(Double(random() - 0.5) * 1.5)
+        }
+        debrisRoot.position = SCNVector3(0, -1, 0)
+        scene.rootNode.addChildNode(debrisRoot)
+    }
+
+    /// 雪玉がまだ小さい間（最初の道のあいだ）、道ばたの物を転がして拾う
+    private func updateDebris(radius r: Double) {
+        let visible = r <= Lane.width(stage: 0) / 2
+        debrisRoot.isHidden = !visible
+        guard visible else { return }
+        let period = Self.debrisGap * Double(Self.debrisCount)
+        for (index, item) in debrisItems.enumerated() {
+            var z = (Double(index) * Self.debrisGap + scrollUnits).truncatingRemainder(dividingBy: period)
+            if z < 0 { z += period }
+            z = z - period + 0.5
+            // 雪玉に近づくと、ぐっと吸いこまれて小さくなる
+            let t = min(max((z + 1.7) / 1.5, 0), 1)
+            let x = debrisLateral[index] * (1 - 0.85 * t)
+            item.position = SCNVector3(Float(x), Float(0.9 * t * t), Float(z))
+            let scale = Float(1 - 0.85 * t)
+            item.scale = SCNVector3(scale, scale, scale)
+            item.isHidden = t >= 1
+        }
     }
 
     // MARK: 光の粒（夜に、金色の粒がゆっくり漂う）
@@ -653,18 +785,90 @@ final class StageCoordinator {
         }
 
         orbit.childNodes.forEach { $0.removeFromParentNode() }
-        let orbMaterial = SCNMaterial()
-        orbMaterial.lightingModel = .constant
-        orbMaterial.diffuse.contents = UIColor(red: 0.72, green: 0.55, blue: 1.0, alpha: 1)
-        orbMaterial.emission.contents = UIColor(red: 0.62, green: 0.40, blue: 1.0, alpha: 1)
-        let orbs = min(look.gravity, 6)
-        for i in 0..<orbs {
-            let orb = SCNNode(geometry: SCNSphere(radius: 0.13))
-            orb.geometry?.materials = [orbMaterial]
-            let a = Double(i) / Double(max(orbs, 1)) * 2 * .pi
-            orb.position = SCNVector3(Float(cos(a) * 1.75), 0, Float(sin(a) * 1.75))
-            orbit.addChildNode(orb)
+        // じゅうりょくそうち: 雪玉のまわりに浮かぶ装置。光る核と回る輪から、雪玉へ向けて光の筋がのびる。
+        let pods = min(look.gravity, 6)
+        for i in 0..<pods {
+            let a = Double(i) / Double(max(pods, 1)) * 2 * .pi
+            let pivot = SCNNode()
+            pivot.eulerAngles = SCNVector3(0, Float(-a), 0)
+            let pod = Self.makeGravityPod()
+            pod.position = SCNVector3(1.78, 0, 0)
+            pivot.addChildNode(pod)
+            // 雪玉へのびる光の筋
+            let beamMaterial = SCNMaterial()
+            beamMaterial.lightingModel = .constant
+            beamMaterial.diffuse.contents = UIColor(red: 0.62, green: 0.55, blue: 1.0, alpha: 1)
+            beamMaterial.emission.contents = UIColor(red: 0.55, green: 0.45, blue: 1.0, alpha: 1)
+            beamMaterial.blendMode = .add
+            beamMaterial.writesToDepthBuffer = false
+            beamMaterial.transparency = 0.5
+            let beam = SCNNode(geometry: SCNCylinder(radius: 0.012, height: 0.62))
+            beam.geometry?.materials = [beamMaterial]
+            beam.eulerAngles = SCNVector3(0, 0, Float.pi / 2)
+            beam.position = SCNVector3(1.42, 0, 0)
+            pivot.addChildNode(beam)
+            orbit.addChildNode(pivot)
         }
+    }
+
+    /// 浮かぶ重力そうち 1 つぶん
+    private static func makeGravityPod() -> SCNNode {
+        func shiny(_ color: UIColor, emission: UIColor? = nil, additive: Bool = false, alpha: CGFloat = 1) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.lightingModel = emission == nil ? .blinn : .constant
+            m.diffuse.contents = color
+            if let emission { m.emission.contents = emission }
+            if additive {
+                m.blendMode = .add
+                m.writesToDepthBuffer = false
+                m.transparency = alpha
+            }
+            return m
+        }
+        let root = SCNNode()
+        let dark = UIColor(red: 0.22, green: 0.24, blue: 0.34, alpha: 1)
+        let violet = UIColor(red: 0.66, green: 0.48, blue: 1.0, alpha: 1)
+        let cyan = UIColor(red: 0.45, green: 0.85, blue: 1.0, alpha: 1)
+
+        // 台座（下に向かって細くなる脚）
+        let leg = SCNNode(geometry: SCNCone(topRadius: 0.13, bottomRadius: 0.03, height: 0.26))
+        leg.geometry?.materials = [shiny(dark)]
+        leg.position = SCNVector3(0, -0.25, 0)
+        root.addChildNode(leg)
+        let plate = SCNNode(geometry: SCNCylinder(radius: 0.17, height: 0.04))
+        plate.geometry?.materials = [shiny(UIColor(red: 0.5, green: 0.52, blue: 0.62, alpha: 1))]
+        plate.position = SCNVector3(0, -0.11, 0)
+        root.addChildNode(plate)
+        // 3 本のささえ
+        for k in 0..<3 {
+            let arm = SCNNode(geometry: SCNCylinder(radius: 0.012, height: 0.3))
+            arm.geometry?.materials = [shiny(dark)]
+            let angle = Float(k) / 3 * 2 * .pi
+            arm.position = SCNVector3(cos(angle) * 0.12, 0.04, sin(angle) * 0.12)
+            arm.eulerAngles = SCNVector3(sin(angle) * 0.35, 0, -cos(angle) * 0.35)
+            root.addChildNode(arm)
+        }
+        // 光る核と、ぼんやりしたまわりの光
+        let core = SCNNode(geometry: SCNSphere(radius: 0.10))
+        core.geometry?.materials = [shiny(violet, emission: violet)]
+        core.position = SCNVector3(0, 0.14, 0)
+        root.addChildNode(core)
+        let halo = SCNNode(geometry: SCNSphere(radius: 0.2))
+        halo.geometry?.materials = [shiny(violet, emission: violet, additive: true, alpha: 0.28)]
+        halo.position = core.position
+        root.addChildNode(halo)
+        // 回る輪（2 本。たがいにちがう向き）
+        for (k, color) in [violet, cyan].enumerated() {
+            let ring = SCNNode(geometry: SCNTorus(ringRadius: 0.19 + CGFloat(k) * 0.04, pipeRadius: 0.009))
+            ring.geometry?.materials = [shiny(color, emission: color)]
+            ring.position = core.position
+            ring.eulerAngles = SCNVector3(Float.pi / 2.2 * Float(k + 1) * 0.6, 0, Float(k) * 0.8)
+            ring.runAction(.repeatForever(.rotateBy(x: 0, y: CGFloat(k == 0 ? 2 : -2.6), z: 0, duration: 1.6)))
+            root.addChildNode(ring)
+        }
+        // 核がゆっくり脈うつ
+        core.runAction(.repeatForever(.sequence([.scale(to: 1.18, duration: 0.8), .scale(to: 0.92, duration: 0.8)])))
+        return root
     }
 
     /// 高さ約 1 の仲間（正面は -z、雪玉のほう）
@@ -865,6 +1069,7 @@ final class StageCoordinator {
         for material in bulbMaterials() {
             material.emission.intensity = bulbGlow
         }
+        windowMaterial.emission.intensity = bulbGlow * 0.55
         poolMaterial.transparency = pool
         lampLight.light?.intensity = lamp
         if !lastBlackHole { ballMaterial.emission.contents = ballGlow }
