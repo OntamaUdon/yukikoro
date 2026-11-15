@@ -282,6 +282,14 @@ struct MainView: View {
                     Spacer(minLength: 0)
                     weekBars(state)
                 }
+
+                HStack(spacing: 4) {
+                    Image(systemName: "shoeprints.fill")
+                    Text("はじめてから \(formatSteps(state.totalSteps))歩")
+                        .monospacedDigit()
+                }
+                .font(Storybook.rounded(12))
+                .foregroundStyle(Storybook.ink.opacity(0.55))
             }
         }
         .padding(.horizontal, 16)
@@ -341,35 +349,59 @@ struct MainView: View {
         .padding(.bottom, 6)
     }
 
+    /// 次に買えそうなものまでの進み具合（0〜1）。買えるものがあれば 1。
+    private func shopProgress(_ state: GameState) -> (fraction: Double, ready: Bool) {
+        if Shop.items.contains(where: { state.canBuy($0) }) { return (1, true) }
+        let goals = Shop.items.filter { state.isUnlocked($0) }.map { state.price($0) }
+        guard let cheapest = goals.min(), cheapest > 0 else { return (0, false) }
+        return (min(1, Double(state.points) / Double(cheapest)), false)
+    }
+
     private var shopButton: some View {
         let state = store.state
+        let goal = shopProgress(state)
         return VStack(spacing: 4) {
             Button {
                 showShop = true
             } label: {
-                Image(systemName: "cart.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 64, height: 64)
-                    .background(Circle().fill(Storybook.accent))
-                    .overlay(alignment: .topTrailing) {
-                        if Shop.items.contains(where: { state.canBuy($0) }) {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 16, height: 16)
-                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                        }
+                ZStack {
+                    Circle().fill(Storybook.accent)
+                    Circle()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 5)
+                        .padding(3)
+                    Circle()
+                        .trim(from: 0, to: goal.fraction)
+                        .stroke(goal.ready ? gold : Color.white, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .padding(3)
+                        .animation(.easeOut(duration: 0.6), value: goal.fraction)
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 70, height: 70)
+                .overlay(alignment: .topTrailing) {
+                    if goal.ready {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 18, height: 18)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
                     }
-                    .shadow(color: Storybook.shadow, radius: 6, y: 3)
+                }
+                .shadow(color: goal.ready ? gold.opacity(0.8) : Storybook.shadow, radius: goal.ready ? 10 : 6, y: 3)
             }
             .buttonStyle(.plain)
-            Text(formatSteps(state.points))
-                .font(Storybook.rounded(13))
-                .monospacedDigit()
-                .foregroundStyle(Storybook.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .frame(width: 72)
+            HStack(spacing: 3) {
+                Image(systemName: "bolt.circle.fill")
+                    .foregroundStyle(gold)
+                Text(formatSteps(state.points))
+                    .monospacedDigit()
+            }
+            .font(Storybook.rounded(15))
+            .foregroundStyle(Storybook.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .frame(width: 82)
         }
     }
 
@@ -379,11 +411,28 @@ struct MainView: View {
         let radius = anim.radius(progress: p)
         let mass = anim.mass(progress: p)
         let diameter = 2 * radius
+        let lengthRef = ScaleReference.nearest(to: diameter)
+        let massRef = MassReference.nearest(to: mass)
         return VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                stat("arrow.left.and.right.circle.fill", formatLength(meters: diameter))
-                stat("scalemass.fill", formatMass(kg: mass))
-                stat("shippingbox.fill", formatSteps(state.materials))
+            HStack(alignment: .top, spacing: 6) {
+                bigStat(symbol: "arrow.left.and.right.circle.fill", value: formatLength(meters: diameter),
+                        refSymbol: lengthRef?.reference.symbol, refName: lengthRef?.reference.name, times: lengthRef?.times)
+                Divider().frame(height: 52)
+                bigStat(symbol: "scalemass.fill", value: formatMass(kg: mass),
+                        refSymbol: massRef?.reference.symbol, refName: massRef?.reference.name, times: massRef?.times)
+                Divider().frame(height: 52)
+                VStack(spacing: 2) {
+                    Image(systemName: "shippingbox.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.70, green: 0.48, blue: 0.28))
+                    Text(formatSteps(state.materials))
+                        .font(Storybook.rounded(20))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .foregroundStyle(Storybook.ink)
+                }
+                .frame(width: 62)
             }
             laneBar(state: state, diameter: diameter)
         }
@@ -392,19 +441,45 @@ struct MainView: View {
         .storyCard(corner: 26)
     }
 
-    private func stat(_ symbol: String, _ value: String) -> some View {
-        VStack(spacing: 2) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Storybook.accent)
-            Text(value.replacingOccurrences(of: "約", with: ""))
-                .font(Storybook.rounded(16))
-                .monospacedDigit()
+    /// 大きな数字と、「何と同じくらいか」の目印
+    private func bigStat(symbol: String, value: String, refSymbol: String?, refName: String?, times: Double?) -> some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Storybook.accent)
+                Text(value.replacingOccurrences(of: "約", with: ""))
+                    .font(Storybook.rounded(25))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.45)
+                    .foregroundStyle(Storybook.ink)
+            }
+            if let refSymbol, let refName, let times {
+                HStack(spacing: 4) {
+                    Image(systemName: refSymbol)
+                    Text(refName)
+                    Text(formatTimes(times))
+                        .monospacedDigit()
+                }
+                .font(Storybook.rounded(12))
+                .foregroundStyle(Storybook.ink.opacity(0.62))
                 .lineLimit(1)
-                .minimumScaleFactor(0.55)
-                .foregroundStyle(Storybook.ink)
+                .minimumScaleFactor(0.6)
+            }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func laneSymbol(_ kind: LaneKind) -> String {
+        switch kind {
+        case .tree: return "tree.fill"
+        case .pole: return "lightbulb.fill"
+        case .car: return "car.fill"
+        case .house: return "house.fill"
+        case .building: return "building.2.fill"
+        case .mountain, .range: return "mountain.2.fill"
+        }
     }
 
     /// 雪玉が木の道の幅にどれだけ近づいたか。ぶつかって止まっているときは赤で、必要な力を出す。
@@ -426,7 +501,7 @@ struct MainView: View {
                         }
                     }
                     .frame(height: 12)
-                    Image(systemName: "tree.fill")
+                    Image(systemName: laneSymbol(Lane.kind(stage: state.stage)))
                         .font(.system(size: 17))
                         .foregroundStyle(Color(red: 0.28, green: 0.52, blue: 0.38))
                 }

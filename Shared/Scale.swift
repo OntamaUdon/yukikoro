@@ -30,4 +30,48 @@ struct ScaleReference: Equatable {
     static func next(after diameter: Double) -> ScaleReference? {
         all.first { $0.height > diameter }
     }
+
+    /// 直径にいちばん近い（見た目の比で）目印と、その何倍か
+    static func nearest(to diameter: Double) -> (reference: ScaleReference, times: Double)? {
+        guard diameter > 0 else { return nil }
+        guard let best = all.min(by: { abs(log(diameter / $0.height)) < abs(log(diameter / $1.height)) }) else { return nil }
+        return (best, diameter / best.height)
+    }
+}
+
+/// 重さを比べるための目印
+struct MassReference: Equatable {
+    let name: String
+    /// 重さ（kg）
+    let mass: Double
+    let symbol: String
+
+    static let all: [MassReference] = [
+        MassReference(name: "どんぐり", mass: 0.004, symbol: "leaf.fill"),
+        MassReference(name: "りんご", mass: 0.3, symbol: "carrot.fill"),
+        MassReference(name: "ねこ", mass: 4, symbol: "cat.fill"),
+        MassReference(name: "ひと", mass: 60, symbol: "figure.stand"),
+        MassReference(name: "ピアノ", mass: 300, symbol: "pianokeys"),
+        MassReference(name: "くるま", mass: 1_500, symbol: "car.fill"),
+        MassReference(name: "バス", mass: 12_000, symbol: "bus.fill"),
+        MassReference(name: "ひこうき", mass: 280_000, symbol: "airplane"),
+        MassReference(name: "ビル", mass: 1e8, symbol: "building.2.fill"),
+        MassReference(name: "やま", mass: 1e13, symbol: "mountain.2.fill"),
+        MassReference(name: "つき", mass: 7.3e22, symbol: "moon.fill"),
+        MassReference(name: "ちきゅう", mass: 6e24, symbol: "globe.asia.australia.fill"),
+        MassReference(name: "たいよう", mass: 2e30, symbol: "sun.max.fill"),
+    ]
+
+    static func nearest(to mass: Double) -> (reference: MassReference, times: Double)? {
+        guard mass > 0 else { return nil }
+        guard let best = all.min(by: { abs(log(mass / $0.mass)) < abs(log(mass / $1.mass)) }) else { return nil }
+        return (best, mass / best.mass)
+    }
+}
+
+/// 「×2.1」「×340」のような倍率の文字
+func formatTimes(_ value: Double) -> String {
+    if value < 10 { return String(format: "×%.1f", value) }
+    if value < 1_000 { return "×\(Int(value.rounded()))" }
+    return "×" + formatMass(kg: value).replacingOccurrences(of: "kg", with: "")
 }

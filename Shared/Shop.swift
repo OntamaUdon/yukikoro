@@ -57,6 +57,10 @@ enum Shop {
     /// 重力そうち 1 つごとに、1歩で転がる距離が何倍になるか
     static let gravityReachGrowth = 1.8
 
+    /// ゆきんこ・でかゆきんこ 1 人ごとに、1歩で転がる距離が何割のびるか（25 人まで）
+    static let crewReachBonus = 0.08
+    static let maxCrewForBonus = 25
+
     /// 持っているものから、チームの力を決める
     static func team(owned: [String: Int]) -> PushTeam {
         var force = SnowPhysics.bareHandForce
@@ -73,6 +77,9 @@ enum Shop {
             lift = min(maxLift, liftPerGravity * Double(gravityCount))
             reach = max(reach, 100 * pow(gravityReachGrowth, Double(gravityCount)))
         }
+        // 仲間が増えるほど、1歩で転がる距離ものびる（雪玉が軽いうちは、数が多いほどはっきり速くなる）
+        let crew = (owned["kid"] ?? 0) + (owned["big"] ?? 0)
+        reach *= 1 + crewReachBonus * Double(min(crew, maxCrewForBonus))
         return PushTeam(force: force, reach: reach, lift: lift)
     }
 }

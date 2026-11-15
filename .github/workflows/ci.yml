@@ -54,6 +54,10 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | tee test.log | tail -n 80
 
+      - name: Show compile errors
+        if: failure()
+        run: grep -hE "error:|failed" build.log test.log 2>/dev/null | sort -u | head -60 || true
+
       # 画面撮影は約8分かかるので、手動で実行したときだけ動かす（Actions → CI → Run workflow）
       - name: Screenshots (simulator)
         if: github.event_name == 'workflow_dispatch'
