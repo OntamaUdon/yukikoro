@@ -594,7 +594,7 @@ final class StageCoordinator {
         let kind = Lane.kind(stage: stage)
         let f = Lane.treeScale(stage: stage)
         let half = Lane.width(stage: stage) / 2
-        let offset = StageObjects.offset(kind)
+        let objectOffset = StageObjects.offset(kind)
 
         // 立っている物と光のアーチは、道が変わったときだけ作り直す
         if layers[slot].archStage != stage {
@@ -621,7 +621,7 @@ final class StageCoordinator {
             z = z - period + near
 
             let holder = layer.holders[index]
-            holder.position = SCNVector3(Float(side * (half + offset * f)), 0, Float(z))
+            holder.position = SCNVector3(Float(side * (half + objectOffset * f)), 0, Float(z))
             holder.scale = SCNVector3(fs, fs, fs)
             holder.eulerAngles = SCNVector3(0, 0, Float(-side) * fallAngle)
             holder.isHidden = fall >= 1
