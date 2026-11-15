@@ -95,7 +95,7 @@ struct MapScreen: View {
             Image(systemName: "figure.walk.circle.fill")
                 .font(.system(size: 30))
                 .foregroundStyle(Soft.accent)
-                .background(Circle().fill(Soft.background))
+                .background(Circle().fill(Soft.surface))
             Image(systemName: "arrowtriangle.down.fill")
                 .font(.system(size: 10))
                 .foregroundStyle(Soft.accent)

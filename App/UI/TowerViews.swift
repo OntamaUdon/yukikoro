@@ -1,6 +1,7 @@
 import SwiftUI
 import SceneKit
 import UIKit
+import simd
 
 // MARK: 地図の印
 
@@ -9,6 +10,11 @@ struct TowerMarker: View {
     let tower: Tower
     var inRange = false
     var config: TowerConfig = .standard
+
+    /// 雪玉ごとに、でこぼこの形が変わるための数（雪玉の id から決まる）
+    static func seed(for ball: Ball) -> UInt64 {
+        ball.id.unicodeScalars.reduce(UInt64(17)) { $0 &* 31 &+ UInt64($1.value) } % 100_000
+    }
 
     /// 雪玉 1 つの、画面での大きさ（直径 m から）
     static func discSize(_ diameter: Double) -> CGFloat {
@@ -24,7 +30,7 @@ struct TowerMarker: View {
         VStack(spacing: 2) {
             ZStack(alignment: .bottom) {
                 Ellipse()
-                    .fill(Soft.shade)
+                    .fill(Soft.drop)
                     .frame(width: base * 0.95, height: base * 0.26)
                     .blur(radius: 2)
                     .offset(y: base * 0.06)
@@ -36,7 +42,7 @@ struct TowerMarker: View {
                 }
                 ForEach(0..<tower.balls.count, id: \.self) { index in
                     let lower = sizes.prefix(index).reduce(0) { $0 + $1 * overlap }
-                    SnowBallDisc(size: sizes[index], face: index == tower.balls.count - 1)
+                    SnowBallDisc(size: sizes[index], seed: TowerMarker.seed(for: tower.balls[index]))
                         .offset(y: -lower)
                         .accessibilityHidden(true)
                 }
@@ -53,7 +59,7 @@ struct TowerMarker: View {
                 .foregroundStyle(Soft.ink)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
-                .background(Capsule().fill(Soft.background.opacity(0.92)))
+                .background(Capsule().fill(Soft.surface))
         }
     }
 }
@@ -61,19 +67,20 @@ struct TowerMarker: View {
 // MARK: 3D の塔
 
 enum TowerScene {
-    private static func speckle(size: Int = 128) -> UIImage {
+    /// 雪のざらざら（白地に、うす青のつぶ）
+    private static func speckle(size: Int = 256) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
         return renderer.image { context in
             let cg = context.cgContext
-            UIColor(white: 0.98, alpha: 1).setFill()
+            UIColor(red: 0.98, green: 0.99, blue: 1.0, alpha: 1).setFill()
             cg.fill(CGRect(x: 0, y: 0, width: size, height: size))
             var generator = SplitMix64(seed: 11)
-            for _ in 0..<160 {
+            for _ in 0..<420 {
                 let x = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
                 let y = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
-                let r = 1.2 + CGFloat(generator.next() % 100) / 100 * 5
-                let alpha = 0.10 + CGFloat(generator.next() % 100) / 100 * 0.16
-                UIColor(red: 0.78, green: 0.88, blue: 1.0, alpha: alpha).setFill()
+                let r = 1.2 + CGFloat(generator.next() % 100) / 100 * 7
+                let alpha = 0.08 + CGFloat(generator.next() % 100) / 100 * 0.18
+                UIColor(red: 0.66, green: 0.78, blue: 0.96, alpha: alpha).setFill()
                 for dx in [-CGFloat(size), 0, CGFloat(size)] {
                     for dy in [-CGFloat(size), 0, CGFloat(size)] {
                         cg.fillEllipse(in: CGRect(x: x + dx - r, y: y + dy - r, width: r * 2, height: r * 2))
@@ -83,91 +90,183 @@ enum TowerScene {
         }
     }
 
-    static func make(diameters: [Double]) -> SCNScene {
+    /// きらきら光る点（つやの地図。ほとんど黒で、白い点だけ光る）
+    private static func glitter(size: Int = 256) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { context in
+            let cg = context.cgContext
+            UIColor.black.setFill()
+            cg.fill(CGRect(x: 0, y: 0, width: size, height: size))
+            var generator = SplitMix64(seed: 29)
+            for _ in 0..<150 {
+                let x = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
+                let y = CGFloat(generator.next() % 1_000) / 1_000 * CGFloat(size)
+                let r = 0.8 + CGFloat(generator.next() % 100) / 100 * 1.6
+                UIColor(white: 0.9 + CGFloat(generator.next() % 100) / 1_000, alpha: 1).setFill()
+                cg.fillEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
+            }
+        }
+    }
+
+    /// 足もとの、うす青いかげ
+    private static func shadowImage(size: Int = 128) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { context in
+            let cg = context.cgContext
+            let colors = [UIColor(red: 0.20, green: 0.34, blue: 0.62, alpha: 0.55).cgColor, UIColor(red: 0.20, green: 0.34, blue: 0.62, alpha: 0).cgColor] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
+                let c = CGPoint(x: CGFloat(size) / 2, y: CGFloat(size) / 2)
+                cg.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: CGFloat(size) / 2, options: [])
+            }
+        }
+    }
+
+    /// でこぼこの雪玉（球の表面を、ゆるやかにへこませたりふくらませたりする）
+    private static func lumpySphere(radius: Double, seed: Double, material: SCNMaterial) -> SCNGeometry {
+        let rings = 28
+        let segments = 48
+        let stride = segments + 1
+        func noise(_ x: Double, _ y: Double, _ z: Double) -> Double {
+            0.55 * sin(2.3 * x + 1.7 * y + seed) * cos(1.9 * z - 0.7 * x + seed * 0.7)
+                + 0.30 * sin(4.7 * y - 3.1 * z + seed * 1.3) * cos(3.7 * x + 2.1 * y)
+                + 0.15 * sin(8.9 * x + 6.3 * z + seed * 2.1)
+        }
+        var positions: [SIMD3<Float>] = []
+        var uvs: [CGPoint] = []
+        for i in 0...rings {
+            let v = Double(i) / Double(rings)
+            let phi = v * .pi
+            for j in 0...segments {
+                let u = Double(j) / Double(segments)
+                let theta = u * 2 * .pi
+                let x = sin(phi) * cos(theta)
+                let y = cos(phi)
+                let z = sin(phi) * sin(theta)
+                let r = radius * (1 + 0.04 * noise(x, y, z))
+                positions.append(SIMD3(Float(x * r), Float(y * r), Float(z * r)))
+                uvs.append(CGPoint(x: u * 2, y: v * 2))
+            }
+        }
+        var indices: [UInt32] = []
+        var accumulated = [SIMD3<Float>](repeating: .zero, count: positions.count)
+        for i in 0..<rings {
+            for j in 0..<segments {
+                let a = UInt32(i * stride + j)
+                let b = a + 1
+                let c = UInt32((i + 1) * stride + j)
+                let d = c + 1
+                for tri in [(a, c, b), (b, c, d)] {
+                    indices += [tri.0, tri.1, tri.2]
+                    let p0 = positions[Int(tri.0)], p1 = positions[Int(tri.1)], p2 = positions[Int(tri.2)]
+                    let n = simd_cross(p1 - p0, p2 - p0)
+                    accumulated[Int(tri.0)] += n
+                    accumulated[Int(tri.1)] += n
+                    accumulated[Int(tri.2)] += n
+                }
+            }
+        }
+        // つなぎめ（東西の端）と、てっぺん・底の、法線をそろえる
+        for i in 0...rings {
+            let left = i * stride
+            let right = i * stride + segments
+            let sum = accumulated[left] + accumulated[right]
+            accumulated[left] = sum
+            accumulated[right] = sum
+        }
+        for row in [0, rings] {
+            var sum = SIMD3<Float>.zero
+            for j in 0...segments { sum += accumulated[row * stride + j] }
+            for j in 0...segments { accumulated[row * stride + j] = sum }
+        }
+        var normals: [SCNVector3] = []
+        for (index, n) in accumulated.enumerated() {
+            var unit = simd_length(n) > 1e-8 ? simd_normalize(n) : simd_normalize(positions[index])
+            // 外向きにそろえる
+            if simd_dot(unit, simd_normalize(positions[index])) < 0 { unit = -unit }
+            normals.append(SCNVector3(unit.x, unit.y, unit.z))
+        }
+        let geometry = SCNGeometry(
+            sources: [
+                SCNGeometrySource(vertices: positions.map { SCNVector3($0.x, $0.y, $0.z) }),
+                SCNGeometrySource(normals: normals),
+                SCNGeometrySource(textureCoordinates: uvs),
+            ],
+            elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)]
+        )
+        geometry.materials = [material]
+        return geometry
+    }
+
+    static func make(diameters: [Double], dark: Bool = false) -> SCNScene {
         let scene = SCNScene()
         scene.background.contents = UIColor.clear
-        let texture = speckle()
+
         let snow = SCNMaterial()
-        snow.lightingModel = .lambert
-        snow.diffuse.contents = texture
+        snow.lightingModel = .blinn
+        snow.diffuse.contents = speckle()
         snow.diffuse.wrapS = .repeat
         snow.diffuse.wrapT = .repeat
-
-        func paint(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> SCNMaterial {
-            let m = SCNMaterial()
-            m.lightingModel = .lambert
-            m.diffuse.contents = UIColor(red: r, green: g, blue: b, alpha: 1)
-            return m
-        }
-        let dark = paint(0.14, 0.17, 0.27)
-        let carrot = paint(1.0, 0.58, 0.20)
-        let scarf = paint(0.88, 0.30, 0.34)
+        snow.specular.contents = glitter()
+        snow.specular.wrapS = .repeat
+        snow.specular.wrapT = .repeat
+        snow.shininess = 0.35
+        snow.isDoubleSided = true
 
         var y = 0.0
-        var tops: [(center: Double, radius: Double)] = []
-        for d in diameters {
-            let sphere = SCNSphere(radius: d / 2)
-            sphere.segmentCount = 48
-            sphere.materials = [snow]
-            let node = SCNNode(geometry: sphere)
+        var placed: [(bottom: Double, diameter: Double)] = []
+        for (index, d) in diameters.enumerated() {
+            let node = SCNNode(geometry: lumpySphere(radius: d / 2, seed: Double(index) * 1.7 + 0.5, material: snow))
             node.position = SCNVector3(0, Float(y + d / 2), 0)
+            node.eulerAngles = SCNVector3(Float(index) * 0.4, Float(index) * 1.3, Float(index) * 0.2)
             scene.rootNode.addChildNode(node)
-            tops.append((y + d / 2, d / 2))
+            placed.append((y, d))
             y += d * 0.94
         }
-        let height = max(0.2, y + (diameters.last ?? 0) * 0.06)
-
-        // 一番上の雪玉に、顔
-        if let last = tops.last {
-            let r = last.radius
-            let c = last.center
-            for sign in [-1.0, 1.0] {
-                let eye = SCNNode(geometry: SCNSphere(radius: r * 0.09))
-                eye.geometry?.materials = [dark]
-                eye.position = SCNVector3(Float(sign * r * 0.3), Float(c + r * 0.2), Float(r * 0.92))
-                scene.rootNode.addChildNode(eye)
-            }
-            let nose = SCNNode(geometry: SCNCone(topRadius: 0, bottomRadius: r * 0.11, height: r * 0.5))
-            nose.geometry?.materials = [carrot]
-            nose.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)
-            nose.position = SCNVector3(0, Float(c), Float(r * 1.12))
-            scene.rootNode.addChildNode(nose)
-            for k in -2...2 {
-                let dot = SCNNode(geometry: SCNSphere(radius: r * 0.04))
-                dot.geometry?.materials = [dark]
-                let t = Double(k) / 2
-                let smile = c - r * 0.28 + abs(t) * r * 0.06
-                dot.position = SCNVector3(Float(t * r * 0.3), Float(smile), Float(r * 0.93))
-                scene.rootNode.addChildNode(dot)
-            }
-            // 首に、マフラー（2 つ以上積まれているとき）
-            if tops.count >= 2 {
-                let neckY = c - r * 0.92
-                let ring = SCNNode(geometry: SCNTorus(ringRadius: r * 0.62, pipeRadius: r * 0.12))
-                ring.geometry?.materials = [scarf]
-                ring.position = SCNVector3(0, Float(neckY + r * 0.1), 0)
-                scene.rootNode.addChildNode(ring)
-            }
+        // 玉と玉のつなぎめに、押しかためた雪のふくらみ
+        for index in 1..<max(1, placed.count) {
+            let joint = SCNNode(geometry: SCNSphere(radius: placed[index].diameter * 0.40))
+            joint.geometry?.materials = [snow]
+            joint.scale = SCNVector3(1, 0.32, 1)
+            joint.position = SCNVector3(0, Float(placed[index].bottom + placed[index].diameter * 0.03), 0)
+            scene.rootNode.addChildNode(joint)
         }
+        let height = max(0.2, y + (diameters.last ?? 0) * 0.06)
+        let baseDiameter = diameters.first ?? 0.3
 
-        // 地面
+        // 地面（まわりの面と同じ色）と、足もとのかげ
+        let floorColor = dark ? UIColor(red: 0.11, green: 0.16, blue: 0.27, alpha: 1) : UIColor(red: 0.79, green: 0.87, blue: 0.97, alpha: 1)
         let floor = SCNFloor()
         floor.reflectivity = 0
-        floor.materials = [paint(0.90, 0.94, 0.99)]
+        let floorMaterial = SCNMaterial()
+        floorMaterial.lightingModel = .constant
+        floorMaterial.diffuse.contents = floorColor
+        floor.materials = [floorMaterial]
         scene.rootNode.addChildNode(SCNNode(geometry: floor))
+        let shadow = SCNPlane(width: baseDiameter * 2.2, height: baseDiameter * 2.2)
+        let shadowMaterial = SCNMaterial()
+        shadowMaterial.lightingModel = .constant
+        shadowMaterial.diffuse.contents = shadowImage()
+        shadowMaterial.writesToDepthBuffer = false
+        shadowMaterial.isDoubleSided = true
+        shadow.materials = [shadowMaterial]
+        let shadowNode = SCNNode(geometry: shadow)
+        shadowNode.eulerAngles = SCNVector3(-Float.pi / 2, 0, 0)
+        shadowNode.position = SCNVector3(0, 0.003, 0)
+        scene.rootNode.addChildNode(shadowNode)
 
-        // 光
+        // 光（左上から。きらきらが光るように、強めの 1 本）
         let ambient = SCNNode()
         ambient.light = SCNLight()
         ambient.light?.type = .ambient
-        ambient.light?.color = UIColor(red: 0.78, green: 0.84, blue: 0.96, alpha: 1)
-        ambient.light?.intensity = 850
+        ambient.light?.color = UIColor(red: 0.74, green: 0.82, blue: 0.97, alpha: 1)
+        ambient.light?.intensity = dark ? 500 : 800
         scene.rootNode.addChildNode(ambient)
         let sun = SCNNode()
         sun.light = SCNLight()
         sun.light?.type = .directional
-        sun.light?.intensity = 900
-        sun.eulerAngles = SCNVector3(-0.8, 0.6, 0)
+        sun.light?.color = UIColor(red: 1.0, green: 0.98, blue: 0.94, alpha: 1)
+        sun.light?.intensity = 1_000
+        sun.eulerAngles = SCNVector3(-0.7, 0.55, 0)
         scene.rootNode.addChildNode(sun)
 
         // カメラ
@@ -190,17 +289,21 @@ enum TowerScene {
 
 struct TowerSceneView: UIViewRepresentable {
     let diameters: [Double]
+    @Environment(\.colorScheme) private var colorScheme
 
     final class Coordinator {
         var last: [Double] = []
+        var lastDark = false
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> SCNView {
         let view = SCNView(frame: .zero)
-        view.scene = TowerScene.make(diameters: diameters)
+        let dark = colorScheme == .dark
+        view.scene = TowerScene.make(diameters: diameters, dark: dark)
         context.coordinator.last = diameters
+        context.coordinator.lastDark = dark
         view.backgroundColor = .clear
         view.isOpaque = false
         view.antialiasingMode = .multisampling4X
@@ -210,9 +313,11 @@ struct TowerSceneView: UIViewRepresentable {
     }
 
     func updateUIView(_ view: SCNView, context: Context) {
-        if context.coordinator.last != diameters {
+        let dark = colorScheme == .dark
+        if context.coordinator.last != diameters || context.coordinator.lastDark != dark {
             context.coordinator.last = diameters
-            view.scene = TowerScene.make(diameters: diameters)
+            context.coordinator.lastDark = dark
+            view.scene = TowerScene.make(diameters: diameters, dark: dark)
         }
     }
 }

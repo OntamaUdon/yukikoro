@@ -37,7 +37,7 @@ struct RecordScreen: View {
     private var summary: some View {
         VStack(spacing: 14) {
             HStack(spacing: 14) {
-                SnowBallDisc(size: 54, face: true)
+                SnowBallDisc(size: 58)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.player.nickname)
                         .font(Soft.font(20))

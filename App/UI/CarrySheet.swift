@@ -14,7 +14,7 @@ struct CarrySheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    SnowBallDisc(size: CGFloat(80 + min(120, 110 * pow(diameter, 0.5))), face: true)
+                    SnowBallDisc(size: CGFloat(110 + min(130, 110 * pow(diameter, 0.5))))
                         .padding(.top, 10)
                     VStack(spacing: 4) {
                         Text(formatLength(meters: diameter))

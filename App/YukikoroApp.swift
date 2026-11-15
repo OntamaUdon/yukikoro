@@ -7,7 +7,7 @@ struct YukikoroApp: App {
     init() {
         let tab = UITabBarAppearance()
         tab.configureWithOpaqueBackground()
-        tab.backgroundColor = Soft.uiBackground
+        tab.backgroundColor = Soft.uiSurface
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
 

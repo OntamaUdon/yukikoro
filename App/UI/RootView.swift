@@ -72,7 +72,7 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 22) {
             Spacer()
-            SnowBallDisc(size: 120, face: true)
+            SnowBallDisc(size: 150)
             Text("ゆきころ")
                 .font(Soft.font(34))
                 .foregroundStyle(Soft.ink)
