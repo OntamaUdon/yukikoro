@@ -44,13 +44,14 @@ jobs:
               return r.json()
 
           print("=== 最近のビルド（権限） ===")
-          builds = get("/v1/builds", **{"filter[app]": app, "sort": "-uploadedDate", "limit": 3})
+          builds = get("/v1/builds", **{"filter[app]": app, "sort": "-uploadedDate", "limit": 3,
+                                        "include": "buildBundles", "fields[buildBundles]": "bundleId,bundleType,entitlements"})
+          inc = {(i["type"], i["id"]): i for i in (builds or {}).get("included", [])}
           for b in (builds or {}).get("data", []):
               a = b["attributes"]
               print("ビルド", a.get("version"), "| 処理:", a.get("processingState"), "| 期限切れ:", a.get("expired"))
-              bundles = get("/v1/builds/%s/buildBundles" % b["id"])
-              for bb in (bundles or {}).get("data", []):
-                  ba = bb["attributes"]
+              for ref in b.get("relationships", {}).get("buildBundles", {}).get("data", []) or []:
+                  ba = inc.get((ref["type"], ref["id"]), {}).get("attributes", {})
                   print("  bundleId:", ba.get("bundleId"), "| type:", ba.get("bundleType"))
                   print("  entitlements:", ba.get("entitlements"))
 
