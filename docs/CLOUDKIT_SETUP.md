@@ -19,7 +19,7 @@
 ## 2. コンテナを作る
 
 1. 同じ **Identifiers** 画面の左上のメニューを **iCloud Containers** にする。
-2. **+** → Description: `ゆきころ`、Identifier: `iCloud.com.ontamaudon.yukikoro` → **Continue** → **Register**。
+2. **+** → Description: `yukikoro`（日本語は「invalid」になる。名前の表示だけなので、何でもよい）、Identifier: `iCloud.com.ontamaudon.yukikoro` → **Continue** → **Register**。
 3. もう一度、手順 1 の App ID の画面へ戻り、iCloud の **Configure**（または Edit）で、いま作ったコンテナにチェックを入れて **Save**。
 
 > TestFlight の書き出しは「自動署名」なので、ここまでで、プロファイルに iCloud が入ります。
