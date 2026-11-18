@@ -51,6 +51,16 @@ jobs:
           set -o pipefail
           xcodebuild archive             -project Yukikoro.xcodeproj             -scheme Yukikoro             -configuration Release             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Yukikoro.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             DEVELOPMENT_TEAM="$TEAM_ID"             CURRENT_PROJECT_VERSION="${{ github.run_number }}"             | tail -n 30
 
+      - name: 権限（iCloud・HealthKit）をアプリに書き込む（署名なしのアーカイブでは抜け落ちるため）
+        run: |
+          APP="$RUNNER_TEMP/Yukikoro.xcarchive/Products/Applications/Yukikoro.app"
+          echo "--- 書き込む権限（project.yml から生成）"
+          cat App/Yukikoro.entitlements
+          grep -q "icloud-services" App/Yukikoro.entitlements || { echo "::error::entitlements に iCloud がありません"; exit 1; }
+          codesign --force --sign - --timestamp=none --entitlements App/Yukikoro.entitlements "$APP"
+          echo "--- アプリに入った権限"
+          codesign -d --entitlements :- "$APP" 2>/dev/null
+
       - name: App Store Connect へアップロード
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
