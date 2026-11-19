@@ -12,6 +12,8 @@ struct MapScreen: View {
     private static let cameraPitch = 75.0
 
     @State private var position: MapCameraPosition = .automatic
+    /// いまの地図のカメラの高さ（m）。雪玉を実寸で描くための、画面の縮尺に使う
+    @State private var cameraDistance = MapScreen.cameraDistance
     @State private var didCenter = false
     @State private var selectedTower: Tower?
     @State private var showCarry = false
@@ -53,6 +55,14 @@ struct MapScreen: View {
         CLLocationCoordinate2D(latitude: point.lat, longitude: point.lon)
     }
 
+    /// 地図の縮尺: 1m が、画面で何ポイントか。カメラから中心までの距離と、縦の視野角（約 30°）から求める近似。
+    /// 地図は斜めに見るので、手前と奥では、ずれる。中心あたりで、実寸に合う。
+    private var pointsPerMeter: Double {
+        let visibleHeight = 2 * cameraDistance * tan(Self.fieldOfView / 2 * .pi / 180)
+        return Double(UIScreen.main.bounds.height) / max(visibleHeight, 1)
+    }
+    private static let fieldOfView = 30.0
+
     private func camera(at point: GeoPoint) -> MapCameraPosition {
         .camera(MapCamera(centerCoordinate: coordinate(point), distance: Self.cameraDistance, heading: 0, pitch: Self.cameraPitch))
     }
@@ -65,8 +75,8 @@ struct MapScreen: View {
 
     private var map: some View {
         Map(position: $position, interactionModes: [.pan, .zoom, .rotate, .pitch]) {
-            if let test = model.location.testPoint {
-                Annotation("あなた", coordinate: coordinate(test), anchor: .bottom) {
+            if let me = model.currentPoint {
+                Annotation("あなた", coordinate: coordinate(me), anchor: .bottom) {
                     meMarker
                 }
             } else {
@@ -74,7 +84,7 @@ struct MapScreen: View {
             }
             ForEach(model.towers) { tower in
                 Annotation("", coordinate: coordinate(tower.location), anchor: .bottom) {
-                    TowerMarker(tower: tower, inRange: isInRange(tower), config: model.config)
+                    TowerMarker(tower: tower, inRange: isInRange(tower), config: model.config, pointsPerMeter: pointsPerMeter)
                         .onTapGesture { selectedTower = tower }
                 }
             }
@@ -82,6 +92,9 @@ struct MapScreen: View {
         .mapStyle(.standard(elevation: realisticBuildings ? .realistic : .flat,
                             emphasis: .muted,
                             pointsOfInterest: .excludingAll))
+        .onMapCameraChange(frequency: .continuous) { context in
+            cameraDistance = context.camera.distance
+        }
         .ignoresSafeArea()
     }
 
@@ -90,15 +103,23 @@ struct MapScreen: View {
         return distance <= model.config.stackRadius
     }
 
+    /// あなたの位置。持っている雪玉を、実寸で、足もとにおく
     private var meMarker: some View {
-        VStack(spacing: 0) {
-            Image(systemName: "figure.walk.circle.fill")
-                .font(.system(size: 30))
-                .foregroundStyle(Soft.accent)
-                .background(Circle().fill(Soft.surface))
-            Image(systemName: "arrowtriangle.down.fill")
-                .font(.system(size: 10))
-                .foregroundStyle(Soft.accent)
+        let ball = max(0, CGFloat(model.carriedDiameter * pointsPerMeter))
+        return HStack(alignment: .bottom, spacing: 2) {
+            VStack(spacing: 0) {
+                Image(systemName: "figure.walk.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Soft.accent)
+                    .background(Circle().fill(Soft.surface))
+                Image(systemName: "arrowtriangle.down.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Soft.accent)
+            }
+            if ball >= 4 {
+                SnowBallDisc(size: ball, seed: 7)
+                    .accessibilityHidden(true)
+            }
         }
     }
 

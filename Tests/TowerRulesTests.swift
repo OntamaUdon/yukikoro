@@ -1,7 +1,7 @@
 import XCTest
 
 final class TowerRulesTests: XCTestCase {
-    private let config = TowerConfig.standard
+    private let config = TowerConfig.compact
     private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func ball(_ index: Int, _ diameter: Double, owner: String, id: String? = nil, at seconds: Double = 0,
@@ -12,20 +12,36 @@ final class TowerRulesTests: XCTestCase {
     }
 
     private func tower(_ balls: [Ball], period: String = "2026-W47", at point: GeoPoint = GeoPoint(lat: 35.0, lon: 139.0)) -> Tower {
-        TowerRules.tower(id: "T", location: point, periodId: period, prefecture: 13, createdAt: t0, balls: balls)
+        TowerRules.tower(id: "T", location: point, periodId: period, prefecture: 13, createdAt: t0, balls: balls, config: config)
     }
 
     // MARK: 大きさ
 
     func testDiameterFromSteps() {
-        XCTAssertEqual(BallSize.diameter(steps: 0), 0)
-        XCTAssertEqual(BallSize.diameter(steps: 1_000), 0.29, accuracy: 1e-9)
-        XCTAssertEqual(BallSize.diameter(steps: 41_000), 0.9998, accuracy: 0.001)
-        XCTAssertEqual(BallSize.diameter(steps: 1_000_000), 2.9, accuracy: 1e-9)
+        XCTAssertEqual(BallSize.diameter(steps: 0, config: config), 0)
+        XCTAssertEqual(BallSize.diameter(steps: 1_000, config: config), 0.29, accuracy: 1e-9)
+        XCTAssertEqual(BallSize.diameter(steps: 41_000, config: config), 0.9998, accuracy: 0.001)
+        XCTAssertEqual(BallSize.diameter(steps: 1_000_000, config: config), 2.9, accuracy: 1e-9)
         // 最小の雪玉は約 41 歩、土台の最小は約 1,100 歩
-        XCTAssertEqual(BallSize.steps(forDiameter: 0.10), 41)
-        XCTAssertEqual(BallSize.steps(forDiameter: 0.30), 1_107)
-        XCTAssertGreaterThanOrEqual(BallSize.diameter(steps: 41) + TowerRules.epsilon, 0.10)
+        XCTAssertEqual(BallSize.steps(forDiameter: 0.10, config: config), 41)
+        XCTAssertEqual(BallSize.steps(forDiameter: 0.30, config: config), 1_107)
+        XCTAssertGreaterThanOrEqual(BallSize.diameter(steps: 41, config: config) + TowerRules.epsilon, 0.10)
+    }
+
+    /// 標準の大きさ: 1 万歩で約 6m。実寸で地図や AR に出す
+    func testStandardSizeIsLifeSize() {
+        XCTAssertEqual(BallSize.diameter(steps: 10_000), 6.0, accuracy: 1e-9)
+        XCTAssertEqual(BallSize.diameter(steps: 100_000), 18.97, accuracy: 0.01)
+        XCTAssertEqual(BallSize.steps(forDiameter: 3.0), 2_500)
+        XCTAssertEqual(BallSize.steps(forDiameter: 1.0), 278)
+        XCTAssertGreaterThanOrEqual(BallSize.diameter(steps: 278) + TowerRules.epsilon, TowerConfig.standard.minBall)
+        // 線形にしたいときは、指数を 1 にするだけ
+        var linear = TowerConfig()
+        linear.diameterExponent = 1
+        linear.diameterCoefficient = 0.0006
+        XCTAssertEqual(BallSize.diameter(steps: 10_000, config: linear), 6.0, accuracy: 1e-9)
+        XCTAssertEqual(BallSize.steps(forDiameter: 6.0, config: linear), 10_000)
+        XCTAssertEqual(TowerConfig.standard.minBase, 3.0)
     }
 
     // MARK: 位置の格子
@@ -73,43 +89,43 @@ final class TowerRulesTests: XCTestCase {
 
     func testValidChain() {
         let balls = [ball(0, 1.0, owner: "A"), ball(1, 0.8, owner: "B"), ball(2, 0.5, owner: "A"), ball(3, 0.2, owner: "C")]
-        let result = TowerRules.validBalls(balls)
+        let result = TowerRules.validBalls(balls, config: config)
         XCTAssertEqual(result.valid.count, 4)
         XCTAssertTrue(result.rejected.isEmpty)
     }
 
     func testChainBreaksOnRatio() {
         let balls = [ball(0, 1.0, owner: "A"), ball(1, 0.85, owner: "B"), ball(2, 0.5, owner: "C")]
-        let result = TowerRules.validBalls(balls)
+        let result = TowerRules.validBalls(balls, config: config)
         XCTAssertEqual(result.valid.map(\.index), [0])
         XCTAssertEqual(result.rejected.count, 2, "条件を破った雪玉のあとは、順番が合わなくなって、無効")
     }
 
     func testSameOwnerCannotStackOnOwnBall() {
         let balls = [ball(0, 1.0, owner: "A"), ball(1, 0.5, owner: "A")]
-        XCTAssertEqual(TowerRules.validBalls(balls).valid.count, 1)
+        XCTAssertEqual(TowerRules.validBalls(balls, config: config).valid.count, 1)
         // 間に他の人がいれば、同じ人が何度でも参加できる
         let alternating = [ball(0, 1.0, owner: "A"), ball(1, 0.7, owner: "B"), ball(2, 0.4, owner: "A")]
-        XCTAssertEqual(TowerRules.validBalls(alternating).valid.count, 3)
+        XCTAssertEqual(TowerRules.validBalls(alternating, config: config).valid.count, 3)
     }
 
     func testDuplicateIndexKeepsTheEarlierOne() {
         let early = ball(1, 0.5, owner: "B", id: "early", at: 1)
         let late = ball(1, 0.6, owner: "C", id: "late", at: 2)
-        let result = TowerRules.validBalls([ball(0, 1.0, owner: "A"), late, early])
+        let result = TowerRules.validBalls([ball(0, 1.0, owner: "A"), late, early], config: config)
         XCTAssertEqual(result.valid.map(\.id), ["b0-A", "early"])
         XCTAssertEqual(result.rejected.map(\.id), ["late"])
         // 同時刻なら、id が小さいほう
         let x = ball(1, 0.5, owner: "B", id: "a-first", at: 5)
         let y = ball(1, 0.5, owner: "C", id: "b-second", at: 5)
-        XCTAssertEqual(TowerRules.validBalls([ball(0, 1.0, owner: "A"), y, x]).valid.last?.id, "a-first")
+        XCTAssertEqual(TowerRules.validBalls([ball(0, 1.0, owner: "A"), y, x], config: config).valid.last?.id, "a-first")
     }
 
     func testBaseMustBeBigEnoughAndBallsMustNotBeTooSmall() {
-        XCTAssertTrue(TowerRules.validBalls([ball(0, 0.2, owner: "A")]).valid.isEmpty)
-        XCTAssertEqual(TowerRules.validBalls([ball(0, 0.3, owner: "A")]).valid.count, 1)
+        XCTAssertTrue(TowerRules.validBalls([ball(0, 0.2, owner: "A")], config: config).valid.isEmpty)
+        XCTAssertEqual(TowerRules.validBalls([ball(0, 0.3, owner: "A")], config: config).valid.count, 1)
         let tiny = [ball(0, 0.5, owner: "A"), ball(1, 0.05, owner: "B")]
-        XCTAssertEqual(TowerRules.validBalls(tiny).valid.count, 1)
+        XCTAssertEqual(TowerRules.validBalls(tiny, config: config).valid.count, 1)
     }
 
     func testHeightAndClosing() {
@@ -144,7 +160,7 @@ final class TowerRulesTests: XCTestCase {
     func testStackIssues() {
         let t = tower([ball(0, 1.0, owner: "A"), ball(1, 0.6, owner: "B")])
         func issue(carried: Double, owner: String = "C", distance: Double? = 10, used: Int = 0, period: String = "2026-W47") -> StackIssue? {
-            TowerRules.stackIssue(tower: t, carried: carried, owner: owner, distance: distance, usedToday: used, currentPeriod: period)
+            TowerRules.stackIssue(tower: t, carried: carried, owner: owner, distance: distance, usedToday: used, currentPeriod: period, config: config)
         }
         XCTAssertNil(issue(carried: 0.4))
         if case .tooBig(let max)? = issue(carried: 0.5) {
@@ -170,7 +186,7 @@ final class TowerRulesTests: XCTestCase {
             balls.append(ball(i, d, owner: i % 2 == 0 ? "A" : "B"))
         }
         let t = tower(balls)
-        XCTAssertEqual(TowerRules.stackIssue(tower: t, carried: 0.1, owner: "C", distance: 1, usedToday: 0, currentPeriod: "2026-W47"), .closed)
+        XCTAssertEqual(TowerRules.stackIssue(tower: t, carried: 0.1, owner: "C", distance: 1, usedToday: 0, currentPeriod: "2026-W47", config: config), .closed)
     }
 
     func testPlaceIssues() {
@@ -178,7 +194,7 @@ final class TowerRulesTests: XCTestCase {
         let nearby = tower([ball(0, 1.0, owner: "A")], at: GeoPoint(lat: 35.0003, lon: 139.0))   // 約 33 m
         let far = tower([ball(0, 1.0, owner: "A")], at: GeoPoint(lat: 35.001, lon: 139.0))       // 約 111 m
         func issue(_ carried: Double, _ towers: [Tower], used: Int = 0) -> PlaceIssue? {
-            TowerRules.placeIssue(carried: carried, me: me, towers: towers, currentPeriod: "2026-W47", usedToday: used)
+            TowerRules.placeIssue(carried: carried, me: me, towers: towers, currentPeriod: "2026-W47", usedToday: used, config: config)
         }
         XCTAssertNil(issue(0.5, []))
         XCTAssertNil(issue(0.5, [far]))
@@ -290,7 +306,7 @@ final class TowerRulesTests: XCTestCase {
         let config = try JSONDecoder().decode(TowerConfig.self, from: json)
         XCTAssertEqual(config.stackRatio, 0.7)
         XCTAssertEqual(config.dailyLimit, 5)
-        XCTAssertEqual(config.minBase, 0.30)
+        XCTAssertEqual(config.minBase, 3.0)
         XCTAssertEqual(try JSONDecoder().decode(TowerConfig.self, from: "{}".data(using: .utf8)!), TowerConfig.standard)
     }
 
@@ -315,7 +331,7 @@ final class TowerRulesTests: XCTestCase {
         var p = PlayerState()
         p.addDebugSteps(1_000)
         XCTAssertEqual(p.carriedSteps, 1_000)
-        XCTAssertEqual(p.carriedDiameter(), 0.29, accuracy: 1e-9)
+        XCTAssertEqual(p.carriedDiameter(config: config), 0.29, accuracy: 1e-9)
         p.markUsed(dayKey: "2026-11-16")
         XCTAssertEqual(p.carriedSteps, 0)
         XCTAssertEqual(p.usedToday, 1)
@@ -330,14 +346,14 @@ final class TowerRulesTests: XCTestCase {
     func testShaveOnlyMakesTheBallSmaller() {
         var p = PlayerState()
         p.addDebugSteps(5_000)
-        let before = p.carriedDiameter()
-        p.shave(to: 0.30)
-        XCTAssertEqual(p.carriedDiameter(), 0.30, accuracy: 0.002)
-        XCTAssertLessThan(p.carriedDiameter(), before)
-        p.shave(to: 1.0)
-        XCTAssertEqual(p.carriedDiameter(), 0.30, accuracy: 0.002, "大きくは戻せない")
+        let before = p.carriedDiameter(config: config)
+        p.shave(to: 0.30, config: config)
+        XCTAssertEqual(p.carriedDiameter(config: config), 0.30, accuracy: 0.002)
+        XCTAssertLessThan(p.carriedDiameter(config: config), before)
+        p.shave(to: 1.0, config: config)
+        XCTAssertEqual(p.carriedDiameter(config: config), 0.30, accuracy: 0.002, "大きくは戻せない")
         p.addDebugSteps(100)
-        XCTAssertGreaterThan(p.carriedDiameter(), 0.30, "けずったあとも、歩けば育つ")
+        XCTAssertGreaterThan(p.carriedDiameter(config: config), 0.30, "けずったあとも、歩けば育つ")
     }
 
     func testDailyPointCap() {
@@ -361,4 +377,16 @@ final class TowerRulesTests: XCTestCase {
         XCTAssertEqual(empty.totalSteps, 0)
         XCTAssertEqual(empty.points, 0)
     }
+}
+
+// 試験用の「小さい雪玉」の設定（古い大きさ）。ルールの数式が、大きさに関係なく正しいことを確かめる。
+extension TowerConfig {
+    static let compact: TowerConfig = {
+        var c = TowerConfig()
+        c.diameterCoefficient = 0.029
+        c.diameterExponent = 1.0 / 3.0
+        c.minBall = 0.10
+        c.minBase = 0.30
+        return c
+    }()
 }

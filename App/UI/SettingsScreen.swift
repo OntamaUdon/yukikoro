@@ -179,7 +179,7 @@ struct SettingsScreen: View {
             }
             Text("雪玉の大きさを決める").font(Soft.font(12, .semibold)).foregroundStyle(Soft.subInk)
             HStack(spacing: 8) {
-                ForEach([(0.30, "30cm"), (0.50, "50cm"), (1.0, "1m"), (2.0, "2m")], id: \.1) { item in
+                ForEach([(3.0, "3m"), (6.0, "6m"), (10.0, "10m"), (20.0, "20m")], id: \.1) { item in
                     Button(item.1) { model.betaSetBallSteps(BallSize.steps(forDiameter: item.0, config: model.config)) }
                         .buttonStyle(SoftButtonStyle(radius: 16))
                         .font(Soft.font(12))

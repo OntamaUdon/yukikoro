@@ -2,14 +2,17 @@ import Foundation
 
 /// 塔のルールの数値。CloudKit の `Config` で、アプリを更新せずに変えられる。読めないときは `standard`。
 struct TowerConfig: Codable, Equatable {
-    /// 直径(m) = この値 × 歩数^(1/3)
-    var diameterCoefficient = 0.029
+    /// 直径(m) = この値 × 歩数^べき指数。1 万歩で 6m（実寸で地図や AR に出す）
+    var diameterCoefficient = 0.06
+    /// 歩数に対する、大きさの伸び方。1/3 は、体積が歩数に比例（伸びがゆるやか）。1 は、直径が歩数に比例（線形）。
+    /// 0.5 は、その中間（面積が歩数に比例）
+    var diameterExponent = 0.5
     /// 積む雪玉の直径は、いまの一番上の直径のこの倍以下
     var stackRatio = 0.8
     /// これより小さい雪玉は、おけない・積めない（m）
-    var minBall = 0.10
+    var minBall = 1.0
     /// 土台にできる最小の大きさ（m）
-    var minBase = 0.30
+    var minBase = 3.0
     /// 自分の位置から、塔の保存座標まで、この距離以内なら積める（m）
     var stackRadius = 50.0
     /// 完成していない塔が、この距離以内にあるときは、新しい土台をおけない（m）
@@ -42,6 +45,7 @@ struct TowerConfig: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = TowerConfig()
         diameterCoefficient = try c.decodeIfPresent(Double.self, forKey: .diameterCoefficient) ?? d.diameterCoefficient
+        diameterExponent = try c.decodeIfPresent(Double.self, forKey: .diameterExponent) ?? d.diameterExponent
         stackRatio = try c.decodeIfPresent(Double.self, forKey: .stackRatio) ?? d.stackRatio
         minBall = try c.decodeIfPresent(Double.self, forKey: .minBall) ?? d.minBall
         minBase = try c.decodeIfPresent(Double.self, forKey: .minBase) ?? d.minBase
@@ -60,16 +64,16 @@ struct TowerConfig: Codable, Equatable {
     }
 }
 
-/// 雪玉の大きさ。体積が歩数に比例する。
+/// 雪玉の大きさ。直径が、歩数の「べき指数」乗に比例する（標準は 0.5 乗）。
 enum BallSize {
     static func diameter(steps: Int, config: TowerConfig = .standard) -> Double {
-        config.diameterCoefficient * cbrt(Double(max(0, steps)))
+        config.diameterCoefficient * pow(Double(max(0, steps)), config.diameterExponent)
     }
 
     /// その大きさになる歩数（四捨五入）
     static func steps(forDiameter diameter: Double, config: TowerConfig = .standard) -> Int {
         guard diameter > 0 else { return 0 }
-        return Int(pow(diameter / config.diameterCoefficient, 3).rounded())
+        return Int(pow(diameter / config.diameterCoefficient, 1 / config.diameterExponent).rounded())
     }
 }
 

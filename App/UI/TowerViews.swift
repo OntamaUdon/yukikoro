@@ -10,24 +10,34 @@ struct TowerMarker: View {
     let tower: Tower
     var inRange = false
     var config: TowerConfig = .standard
+    /// 地図の縮尺（1m が画面で何ポイントか）。雪玉は、この縮尺で、実寸の大きさに描く
+    var pointsPerMeter: Double = 3.5
 
     /// 雪玉ごとに、でこぼこの形が変わるための数（雪玉の id から決まる）
     static func seed(for ball: Ball) -> UInt64 {
         ball.id.unicodeScalars.reduce(UInt64(17)) { $0 &* 31 &+ UInt64($1.value) } % 100_000
     }
 
-    /// 雪玉 1 つの、画面での大きさ（直径 m から）
-    static func discSize(_ diameter: Double) -> CGFloat {
-        CGFloat(10 + 26 * pow(max(diameter, 0.01), 0.6))
+    /// 雪玉 1 つの、画面での大きさ（直径 m × 縮尺）。実寸。ただし、遠くから見て点にならないよう、最小を決める
+    static func discSize(_ diameter: Double, pointsPerMeter: Double) -> CGFloat {
+        max(5, CGFloat(diameter * pointsPerMeter))
     }
 
     var body: some View {
-        let sizes = tower.balls.map { Self.discSize($0.diameter) }
-        let overlap: CGFloat = 0.80
+        let sizes = tower.balls.map { Self.discSize($0.diameter, pointsPerMeter: pointsPerMeter) }
+        // 3D の塔と同じ、玉と玉の重なり（下の玉の 6% ぶん、食いこむ）
+        let overlap: CGFloat = 0.94
         let base = sizes.first ?? 20
         let stackHeight = sizes.dropLast().reduce(0) { $0 + $1 * overlap } + (sizes.last ?? 0)
         let closed = tower.isClosed(config: config)
+        // 高さの札を上に、塔の足もとが、地図の位置にくるようにする
         VStack(spacing: 2) {
+            Text(formatLength(meters: tower.height))
+                .font(Soft.font(11))
+                .foregroundStyle(Soft.ink)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Soft.surface))
             ZStack(alignment: .bottom) {
                 Ellipse()
                     .fill(Soft.drop)
@@ -54,12 +64,7 @@ struct TowerMarker: View {
                 }
             }
             .frame(width: max(base, 24) * 1.5, height: stackHeight + 6, alignment: .bottom)
-            Text(formatLength(meters: tower.height))
-                .font(Soft.font(11))
-                .foregroundStyle(Soft.ink)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(Soft.surface))
+            .contentShape(Rectangle())
         }
     }
 }
@@ -321,6 +326,7 @@ struct TowerSheet: View {
     @Environment(\.dismiss) private var dismiss
     let towerID: String
     @State private var showReport = false
+    @State private var showAR = false
 
     private var tower: Tower? { model.towers.first { $0.id == towerID } }
 
@@ -392,6 +398,16 @@ struct TowerSheet: View {
                 .frame(height: 300)
                 .softWell(radius: 26)
                 .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+
+            Button {
+                showAR = true
+            } label: {
+                Label("ARで見る（実寸大）", systemImage: "arkit")
+            }
+            .buttonStyle(SoftButtonStyle())
+            .fullScreenCover(isPresented: $showAR) {
+                ARTowerScreen(diameters: tower.balls.map(\.diameter), height: tower.height)
+            }
 
             VStack(spacing: 10) {
                 HStack {

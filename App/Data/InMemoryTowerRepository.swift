@@ -97,11 +97,11 @@ actor InMemoryTowerRepository: TowerRepository {
         }
         struct Plan { var north: Double; var east: Double; var diameters: [Double] }
         let plans = [
-            Plan(north: 70, east: 40, diameters: [1.1, 0.85, 0.66, 0.5, 0.38, 0.28]),
-            Plan(north: -120, east: 90, diameters: [0.7, 0.5, 0.36]),
-            Plan(north: 150, east: -110, diameters: [1.6, 1.2, 0.95, 0.7]),
-            Plan(north: -40, east: -150, diameters: [0.45]),
-            Plan(north: 230, east: 60, diameters: [0.9, 0.7, 0.5, 0.38, 0.28, 0.2, 0.15, 0.11]),
+            Plan(north: 70, east: 40, diameters: [10, 8, 6.4, 5.1, 4.0, 3.2]),
+            Plan(north: -120, east: 90, diameters: [6.5, 5, 3.6]),
+            Plan(north: 150, east: -110, diameters: [14, 11, 8.8, 7]),
+            Plan(north: -40, east: -150, diameters: [4.5]),
+            Plan(north: 230, east: 60, diameters: [9, 7, 5.5, 4.3, 3.3, 2.5, 1.9, 1.5, 1.2]),
         ]
         let owners = ["demo-a", "demo-b", "demo-c"]
         let nicks = ["のんびりのくま", "ぴかぴかのうさぎ", "ゆっくりのふくろう"]
